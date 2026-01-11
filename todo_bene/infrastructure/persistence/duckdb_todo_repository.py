@@ -1,3 +1,4 @@
+from typing import Optional
 import duckdb
 from uuid import UUID
 from todo_bene.domain.entities.todo import Todo
@@ -49,22 +50,6 @@ class DuckDBTodoRepository:
                 todo.date_start, todo.date_due, todo.date_final
             ))
 
-    def get_by_id(self, todo_id: UUID) -> Todo | None:
-        with duckdb.connect(self.db_path) as conn:
-            result = conn.execute("""
-                SELECT uuid, title, user_id, category, description, parent_id, priority, date_start, date_due, date_final
-                FROM todos WHERE uuid = ?
-            """, (todo_id,)).fetchone()
-            
-            if not result:
-                return None
-            
-            return Todo(
-                uuid=result[0], title=result[1], user=result[2],
-                category=result[3], description=result[4], 
-                parent=result[5], priority=result[6],
-                date_start=result[7], date_due=result[8], date_final=result[9]
-            )
 
     def get_all_roots_by_user(self, user_id: UUID) -> list[Todo]:
         with duckdb.connect(self.db_path) as conn:
@@ -85,3 +70,33 @@ class DuckDBTodoRepository:
 
     def get_all_by_user(self, user_id: UUID) -> list[Todo]:
         return self.get_all_roots_by_user(user_id)
+    
+
+    def get_by_id(self, todo_id: UUID) -> Optional[Todo]:
+        with duckdb.connect(self.db_path) as conn:
+            row = conn.execute("""
+                SELECT uuid, title, user_id, category, description, parent_id, priority, date_start, date_due, date_final
+                FROM todos WHERE uuid = ?
+            """, (str(todo_id),)).fetchone()
+            
+            if not row:
+                return None
+            
+            # Fonction utilitaire locale pour éviter de recréer un UUID si c'en est déjà un
+            def to_uuid(val):
+                if val is None: 
+                    return None
+                return val if isinstance(val, UUID) else UUID(val)
+
+            return Todo(
+                uuid=to_uuid(row[0]), 
+                title=row[1], 
+                user=to_uuid(row[2]),
+                category=row[3], 
+                description=row[4],
+                parent=to_uuid(row[5]),
+                priority=row[6], 
+                date_start=row[7], 
+                date_due=row[8], 
+                date_final=row[9]
+            )

@@ -1,47 +1,97 @@
 from dataclasses import dataclass, field
 from uuid import UUID, uuid4
+from typing import Optional, Union, Tuple
 import pendulum
 
 @dataclass
 class Todo:
     title: str
-    user: UUID  # On utilise le type UUID directement
-    category: str = "Quotidien"  # Valeur par défaut
-    description: str = "" # Valeur par défaut
-    # Identifiant unique de cette tâche
+    user: UUID
     uuid: UUID = field(default_factory=uuid4)
-    # Pointe vers l'UUID d'un Todo parent (pour les sous-tâches)
-    parent: UUID | None = None
-    state: bool = field(init=False, default=False)
-    date_start: int | str = ""
-    date_due: int | str = ""
-    date_final: int = 0
-    frequency: str | tuple[str, int] = ""
+    category: str = "Quotidien"
+    description: str = ""
+    parent: Optional[UUID] = None
     priority: bool = False
+    frequency: Union[str, Tuple[str, int]] = ""
+    state: bool = False
+    date_start: Optional[int | str] = None
+    date_due: Optional[int | str] = None
+    date_final: int = 0
 
     def __post_init__(self):
-        # S'assure que user est bien un objet UUID si une string est passée
+        # 1. Gestion des IDs
         if isinstance(self.user, str):
             self.user = UUID(self.user)
+        if isinstance(self.uuid, str):
+            self.uuid = UUID(self.uuid)
+        if isinstance(self.parent, str) and self.parent:
+            self.parent = UUID(self.parent)
 
-        # Gestion centralisée des dates pour éviter la répétition
-        now = pendulum.now(pendulum.local_timezone()).int_timestamp
-        self.date_start = self._parse_date(self.date_start) or now
-        self.date_due = self._parse_date(self.date_due) or self.date_start
-
-        # Parsing de la fréquence plus robuste
+        # 2. Gestion de la Frequency
         if isinstance(self.frequency, str) and "," in self.frequency:
             parts = self.frequency.split(",")
-            if len(parts) == 2:
-                when, how = parts
-                self.frequency = (when.strip(), int(how.strip()))
+            try:
+                self.frequency = (parts[0], int(parts[1]))
+            except (ValueError, IndexError):
+                pass
 
-    def _parse_date(self, value: int | str) -> int | None:
-        """Helper pour convertir les entrées en timestamp int."""
-        if not value:
-            return None
-        if isinstance(value, int):
-            return value
-        return pendulum.from_format(
-            value, "YYYY-MM-DD HH:mm:ss", pendulum.local_timezone(), "fr"
-        ).int_timestamp
+        # 3. Initialisation des dates (Logique stricte du Domaine)
+        tz = pendulum.local_timezone()
+        now_ts = pendulum.now(tz).int_timestamp
+
+        if self.date_start is None:
+            self.date_start = now_ts
+        
+        # CORRECTION ICI : Pour satisfaire le test, date_due = date_start si absent
+        if self.date_due is None:
+            self.date_due = self.date_start
+
+        # 4. Conversion si les dates sont arrivées sous forme de chaînes
+        if isinstance(self.date_start, str):
+            self.date_start = self._parse_to_timestamp(self.date_start)
+        
+        if isinstance(self.date_due, str):
+            self.date_due = self._parse_to_timestamp(self.date_due)
+            
+        if isinstance(self.date_final, str):
+            self.date_final = self._parse_to_timestamp(self.date_final)
+        elif self.date_final is None:
+            self.date_final = 0
+            
+    def _parse_to_timestamp(self, date_str: str) -> int:
+        if not date_str:
+            return 0
+        tz = pendulum.local_timezone()
+        try:
+            dt = pendulum.parse(date_str).replace(tzinfo=tz)
+        except Exception:
+            formats = [
+                "DD/MM/YYYY HH:mm:ss", "DD/MM/YYYY HH:mm", "DD/MM/YYYY",
+                "DD-MM-YYYY HH:mm:ss", "DD-MM-YYYY HH:mm", "DD-MM-YYYY"
+            ]
+            dt = None
+            for fmt in formats:
+                try:
+                    dt = pendulum.from_format(date_str, fmt, tz=tz)
+                    break
+                except Exception:
+                    continue
+            if dt is None:
+                raise ValueError(f"Format de date non reconnu : {date_str}")
+        return dt.int_timestamp
+
+    def to_dict(self) -> dict:
+        return {
+            "uuid": str(self.uuid),
+            "title": self.title,
+            "user": str(self.user),
+            "parent": str(self.parent) if self.parent else None,
+            "category": self.category,
+            "description": self.description,
+            "frequency": self.frequency,
+            "state": self.state,
+            "priority": self.priority,
+            "date_start": self.date_start,
+            "date_due": self.date_due,
+            "date_final": self.date_final
+        }

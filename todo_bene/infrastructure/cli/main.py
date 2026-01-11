@@ -7,6 +7,7 @@ import typer
 import pendulum
 from rich.console import Console
 from rich.table import Table
+from rich import box
 
 from todo_bene.application.use_cases.todo_create import TodoCreateUseCase
 from todo_bene.infrastructure.cli.config import load_user_config, save_user_config
@@ -64,42 +65,93 @@ def create(
     
     console.print(f"[bold green]Succès ![/bold green] {msg}")
 
-# ... (imports identiques)
 
 @app.command()
 def list():
-    """Lister les Todos avec un formatage de date français."""
+    """Lister les Todos racines avec indicateur de sous-tâches."""
     user_id = load_user_config()
-    todos = get_repository().get_all_roots_by_user(user_id)
+    repo = get_repository()
+    roots = repo.get_all_roots_by_user(user_id)
 
-    if not todos:
+    if not roots:
         console.print("[yellow]Aucun Todo trouvé.[/yellow]")
         return
 
-    table = Table(title="Mes Todos")
-    table.add_column("Index", style="dim")
-    table.add_column("Titre", style="magenta")
-    table.add_column("Début", style="cyan")
+    # Style de table arrondi et zébré
+    table = Table(
+        title="[bold magenta]📂 Mes Objectifs[/bold magenta]", 
+        box=box.ROUNDED,
+        row_styles=["none", "dim"]
+    )
+    
+    table.add_column("Idx", justify="right", style="cyan", no_wrap=True)
+    table.add_column("Titre", style="white")
+    table.add_column("Début", style="blue")
     table.add_column("Echéance", style="yellow")
-    table.add_column("Priorité", justify="center")
+    table.add_column("Prio", justify="center")
 
     tz = pendulum.local_timezone()
-    for i, t in enumerate(todos, 1):
-        # Formatage français : Jour/Mois/Année Heure:Minute
-        d_start = pendulum.from_timestamp(t.date_start, tz=tz).format("DD/MM/YYYY HH:mm")
-        d_due = pendulum.from_timestamp(t.date_due, tz=tz).format("DD/MM/YYYY HH:mm")
+
+    for idx, todo in enumerate(roots, 1):
+        # Vérifier si le todo a des enfants
+        #children = repo.get_children(todo.uuid)
+        # TODO: workaround get_children not implemented
+        children = True
+        has_children_signal = " [+]" if children else ""
         
-        prio = "⭐" if t.priority else ""
+        # Formatage des dates
+        d_start = pendulum.from_timestamp(todo.date_start, tz=tz).format("DD/MM/YYYY HH:mm")
+        d_due = pendulum.from_timestamp(todo.date_due, tz=tz).format("DD/MM/YYYY HH:mm")
         
+        prio_icon = "[red]🔥[/red]" if todo.priority else ""
+
         table.add_row(
-            str(i), 
-            t.title, 
-            d_start, 
-            d_due, 
-            prio
+            str(idx),
+            f"{todo.title}{has_children_signal}",
+            d_start,
+            d_due,
+            prio_icon
         )
 
     console.print(table)
+    console.print("\n[dim]Saisissez l'index d'un Todo pour voir les détails (ou 'q' pour quitter)[/dim]")
+    
+    # Étape suivante : Gérer l'interaction ici
+
+# @app.command()
+# def list():
+#     """Lister les Todos avec un formatage de date français."""
+#     user_id = load_user_config()
+#     todos = get_repository().get_all_roots_by_user(user_id)
+
+#     if not todos:
+#         console.print("[yellow]Aucun Todo trouvé.[/yellow]")
+#         return
+
+#     table = Table(title="Mes Todos")
+#     table.add_column("Index", style="dim")
+#     table.add_column("Titre", style="magenta")
+#     table.add_column("Début", style="cyan")
+#     table.add_column("Echéance", style="yellow")
+#     table.add_column("Priorité", justify="center")
+
+#     tz = pendulum.local_timezone()
+#     for i, t in enumerate(todos, 1):
+#         # Formatage français : Jour/Mois/Année Heure:Minute
+#         d_start = pendulum.from_timestamp(t.date_start, tz=tz).format("DD/MM/YYYY HH:mm")
+#         d_due = pendulum.from_timestamp(t.date_due, tz=tz).format("DD/MM/YYYY HH:mm")
+        
+#         prio = "⭐" if t.priority else ""
+        
+#         table.add_row(
+#             str(i), 
+#             t.title, 
+#             d_start, 
+#             d_due, 
+#             prio
+#         )
+
+#     console.print(table)
 
 if __name__ == "__main__":
     app()
