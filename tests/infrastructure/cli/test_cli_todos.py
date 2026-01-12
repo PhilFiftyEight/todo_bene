@@ -37,7 +37,7 @@ def test_cli_priority_creation_and_display(test_config_env):
 
     # Vérification de l'étoile dans la liste
     result_list = runner.invoke(app, ["list"])
-    assert "⭐" in result_list.stdout
+    assert "🔥" in result_list.stdout
     assert "Urgent !" in result_list.stdout
 
 def test_cli_create_with_french_dates(test_config_env):

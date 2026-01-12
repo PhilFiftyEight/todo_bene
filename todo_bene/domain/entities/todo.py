@@ -27,7 +27,7 @@ class Todo:
         if isinstance(self.parent, str) and self.parent:
             self.parent = UUID(self.parent)
 
-        # 2. Gestion de la Frequency
+        # 2. Gestion de la Frequency (Conversion string "j,10" -> tuple ('j', 10))
         if isinstance(self.frequency, str) and "," in self.frequency:
             parts = self.frequency.split(",")
             try:
@@ -35,14 +35,13 @@ class Todo:
             except (ValueError, IndexError):
                 pass
 
-        # 3. Initialisation des dates (Logique stricte du Domaine)
+        # 3. Initialisation des dates par défaut
         tz = pendulum.local_timezone()
         now_ts = pendulum.now(tz).int_timestamp
 
         if self.date_start is None:
             self.date_start = now_ts
         
-        # CORRECTION ICI : Pour satisfaire le test, date_due = date_start si absent
         if self.date_due is None:
             self.date_due = self.date_start
 
@@ -57,7 +56,7 @@ class Todo:
             self.date_final = self._parse_to_timestamp(self.date_final)
         elif self.date_final is None:
             self.date_final = 0
-            
+
     def _parse_to_timestamp(self, date_str: str) -> int:
         if not date_str:
             return 0
@@ -65,33 +64,14 @@ class Todo:
         try:
             dt = pendulum.parse(date_str).replace(tzinfo=tz)
         except Exception:
-            formats = [
-                "DD/MM/YYYY HH:mm:ss", "DD/MM/YYYY HH:mm", "DD/MM/YYYY",
-                "DD-MM-YYYY HH:mm:ss", "DD-MM-YYYY HH:mm", "DD-MM-YYYY"
-            ]
+            formats = ["DD/MM/YYYY HH:mm:ss", "DD/MM/YYYY HH:mm", "DD/MM/YYYY", "DD-MM-YYYY HH:mm:ss", "DD-MM-YYYY HH:mm", "DD-MM-YYYY"]
             dt = None
             for fmt in formats:
                 try:
                     dt = pendulum.from_format(date_str, fmt, tz=tz)
                     break
-                except Exception:
+                except Exception: 
                     continue
-            if dt is None:
+            if dt is None: 
                 raise ValueError(f"Format de date non reconnu : {date_str}")
         return dt.int_timestamp
-
-    def to_dict(self) -> dict:
-        return {
-            "uuid": str(self.uuid),
-            "title": self.title,
-            "user": str(self.user),
-            "parent": str(self.parent) if self.parent else None,
-            "category": self.category,
-            "description": self.description,
-            "frequency": self.frequency,
-            "state": self.state,
-            "priority": self.priority,
-            "date_start": self.date_start,
-            "date_due": self.date_due,
-            "date_final": self.date_final
-        }
