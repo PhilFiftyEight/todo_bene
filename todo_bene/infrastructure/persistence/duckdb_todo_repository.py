@@ -1,78 +1,97 @@
 import duckdb
 from uuid import UUID
-from typing import Optional, List
+from typing import List, Optional
 from todo_bene.domain.entities.todo import Todo
 
 class DuckDBTodoRepository:
     def __init__(self, db_path: str):
         self.db_path = db_path
-        self._ensure_table_exists()
+        # On garde une connexion unique pour toute la durée de vie du repo
+        self._conn = duckdb.connect(self.db_path)
+        self._init_db()
 
-    def _ensure_table_exists(self):
-        with duckdb.connect(self.db_path) as conn:
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS todos (
-                    uuid UUID PRIMARY KEY,
-                    title TEXT NOT NULL,
-                    user_id UUID NOT NULL,
-                    category TEXT,
-                    description TEXT,
-                    parent_id UUID,
-                    priority BOOLEAN DEFAULT FALSE,
-                    frequency TEXT,
-                    state BOOLEAN DEFAULT FALSE,
-                    date_start INTEGER,
-                    date_due INTEGER,
-                    date_final INTEGER DEFAULT 0
-                )
-            """)
-
-    def _map_row_to_todo(self, row) -> Todo:
-        """Transforme une ligne SQL en objet Todo."""
-        if not row: 
-            return None
-        return Todo(
-            uuid=row[0] if isinstance(row[0], UUID) else UUID(row[0]),
-            title=row[1],
-            user=row[2] if isinstance(row[2], UUID) else UUID(row[2]),
-            category=row[3],
-            description=row[4],
-            parent=(row[5] if isinstance(row[5], UUID) else UUID(row[5])) if row[5] else None,
-            priority=row[6],
-            frequency=row[7] if row[7] else "",
-            state=row[8],
-            date_start=row[9],
-            date_due=row[10],
-            date_final=row[11]
-        )
+    def _init_db(self):
+        # Ici on n'utilise pas 'with' pour ne pas fermer self._conn
+        self._conn.execute("""
+            CREATE TABLE IF NOT EXISTS todos (
+                uuid UUID PRIMARY KEY,
+                title VARCHAR,
+                description TEXT,
+                category VARCHAR,
+                state BOOLEAN,
+                priority BOOLEAN,
+                date_start DOUBLE,
+                date_due DOUBLE,
+                user_id UUID,
+                parent_id UUID
+            )
+        """)
 
     def save(self, todo: Todo):
-        # Conversion du tuple frequency en string pour le stockage si nécessaire
-        freq_str = f"{todo.frequency[0]},{todo.frequency[1]}" if isinstance(todo.frequency, tuple) else todo.frequency
-
-        with duckdb.connect(self.db_path) as conn:
-            conn.execute("""
-                INSERT OR REPLACE INTO todos (
-                    uuid, title, user_id, category, description, parent_id, 
-                    priority, frequency, state, date_start, date_due, date_final
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                str(todo.uuid), todo.title, str(todo.user), todo.category, todo.description,
-                str(todo.parent) if todo.parent else None,
-                todo.priority, freq_str, todo.state, todo.date_start, todo.date_due, todo.date_final
-            ))
+        self._conn.execute("""
+            INSERT OR REPLACE INTO todos 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            todo.uuid, todo.title, todo.description, todo.category,
+            todo.state, todo.priority, todo.date_start, todo.date_due,
+            todo.user, todo.parent
+        ))
 
     def get_by_id(self, todo_id: UUID) -> Optional[Todo]:
-        with duckdb.connect(self.db_path) as conn:
-            row = conn.execute("SELECT * FROM todos WHERE uuid = ?", (str(todo_id),)).fetchone()
-            return self._map_row_to_todo(row)
+        res = self._conn.execute("SELECT * FROM todos WHERE uuid = ?", (todo_id,)).fetchone()
+        if res:
+            return self._row_to_todo(res)
+        return None
 
     def get_all_roots_by_user(self, user_id: UUID) -> List[Todo]:
-        with duckdb.connect(self.db_path) as conn:
-            rows = conn.execute("SELECT * FROM todos WHERE user_id = ? AND parent_id IS NULL", (str(user_id),)).fetchall()
-            return [self._map_row_to_todo(r) for r in rows]
+        query = """
+            SELECT uuid, title, description, category, state, priority, date_start, date_due, user_id, parent_id 
+            FROM todos 
+            WHERE user_id = ? AND parent_id IS NULL 
+            ORDER BY date_start ASC
+        """
+        rows = self._conn.execute(query, (user_id,)).fetchall()
+        return [self._row_to_todo(row) for row in rows]
 
     def get_children(self, parent_id: UUID) -> List[Todo]:
-        with duckdb.connect(self.db_path) as conn:
-            rows = conn.execute("SELECT * FROM todos WHERE parent_id = ?", (str(parent_id),)).fetchall()
-            return [self._map_row_to_todo(r) for r in rows]
+        query = """
+            SELECT uuid, title, description, category, state, priority, date_start, date_due, user_id, parent_id 
+            FROM todos 
+            WHERE parent_id = ? 
+            ORDER BY date_start ASC
+        """
+        rows = self._conn.execute(query, (parent_id,)).fetchall()
+        return [self._row_to_todo(row) for row in rows]
+
+    def search_by_title(self, user_id: UUID, search_term: str) -> List[Todo]:
+        query = """
+            SELECT uuid, title, description, category, state, priority, 
+                   date_start, date_due, user_id, parent_id 
+            FROM todos 
+            WHERE user_id = ? AND title ILIKE ?
+            ORDER BY title ASC
+            LIMIT 10
+        """
+        rows = self._conn.execute(query, (user_id, f"%{search_term}%")).fetchall()
+        return [self._row_to_todo(row) for row in rows]
+
+    def _row_to_todo(self, row) -> Todo:
+        return Todo(
+            uuid=row[0],
+            title=row[1],
+            description=row[2],
+            category=row[3],
+            state=row[4],
+            priority=row[5],
+            date_start=row[6],
+            date_due=row[7],
+            user=row[8],
+            parent=row[9]
+        )
+    
+    def __del__(self):
+        """Ferme proprement la connexion quand l'objet est détruit."""
+        try:
+            self._conn.close()
+        except:  # noqa: E722
+            pass

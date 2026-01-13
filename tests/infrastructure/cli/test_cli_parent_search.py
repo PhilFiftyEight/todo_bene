@@ -1,0 +1,38 @@
+import pytest  # noqa: F401
+from typer.testing import CliRunner
+from todo_bene.infrastructure.cli.main import app
+from todo_bene.domain.entities.todo import Todo
+
+runner = CliRunner()
+
+def test_create_todo_with_interactive_parent_selection(repository, user_id, monkeypatch):
+    # 1. On force le CLI à utiliser le repo de test et l'user de test
+    monkeypatch.setattr("todo_bene.infrastructure.cli.main.get_repository", lambda: repository)
+    monkeypatch.setattr("todo_bene.infrastructure.cli.main.load_user_config", lambda: user_id)
+
+    # 2. GIVEN: Deux parents potentiels en base
+    repository.save(Todo(title="Projet Alpha", user=user_id))
+    repository.save(Todo(title="Projet Beta", user=user_id))
+
+    # 3. WHEN: On simule l'entrée "1" pour choisir "Projet Alpha"
+    # Note: On ajoute \n pour valider le choix
+    result = runner.invoke(app, ["create", "Sous-tâche", "--parent", "Projet"], input="1\n")
+
+    # 4. THEN
+    if result.exit_code != 0:
+        print(result.stdout) # Pour debugger si ça rate encore
+        
+    assert result.exit_code == 0
+    assert "Plusieurs parents possibles" in result.stdout
+    assert "Projet Alpha" in result.stdout
+    assert "Succès" in result.stdout
+
+    # 5. Vérification finale en base
+    # On cherche la sous-tâche pour voir si elle a bien le parent
+    results = repository.search_by_title(user_id, "Sous-tâche")
+    assert len(results) == 1
+    assert results[0].parent is not None
+    
+    # On vérifie que c'est bien l'UUID de Projet Alpha
+    alpha = repository.search_by_title(user_id, "Alpha")[0]
+    assert results[0].parent == alpha.uuid

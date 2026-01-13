@@ -39,7 +39,10 @@ def test_todo_creation_required_parameters(get_todo_dict: dict, get_User: User):
     with pendulum.freeze():
         todo = Todo(**get_todo_dict)
         assert todo.date_start == pendulum.now(pendulum.local_timezone()).int_timestamp    # int <- timestamp (int)
-        assert todo.date_due == todo.date_start # si due_date n'est pas définie alors elle est égale date_start
+        tz = pendulum.local_timezone()
+        expected_due = pendulum.from_timestamp(todo.date_start, tz=tz).at(23, 59, 59).int_timestamp
+        assert todo.date_due == expected_due # si due_date n'est pas définie alors elle est égale date_start à 23:59:00
+        #assert todo.date_due == todo.date_start # si due_date n'est pas définie alors elle est égale date_start
     pendulum.travel_back()
 
 # if at least one parameter required missing: TypeError

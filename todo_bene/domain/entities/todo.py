@@ -35,15 +35,16 @@ class Todo:
             except (ValueError, IndexError):
                 pass
 
-        # 3. Initialisation des dates par défaut
         tz = pendulum.local_timezone()
-        now_ts = pendulum.now(tz).int_timestamp
+        now = pendulum.now(tz)
 
         if self.date_start is None:
-            self.date_start = now_ts
+            self.date_start = now.int_timestamp
         
         if self.date_due is None:
-            self.date_due = self.date_start
+            # CORRECTION : On prend la fin de journée du start_date
+            dt_start = pendulum.from_timestamp(self.date_start, tz=tz)
+            self.date_due = dt_start.at(23, 59, 59).int_timestamp
 
         # 4. Conversion si les dates sont arrivées sous forme de chaînes
         if isinstance(self.date_start, str):

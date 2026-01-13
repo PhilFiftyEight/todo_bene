@@ -51,7 +51,6 @@ def test_cli_create_with_french_dates(test_config_env):
         "--start", "01/06/2025",
         "--due", "15/06/2025"
     ])
-
     assert result.exit_code == 0
     assert "Succès" in result.stdout
 

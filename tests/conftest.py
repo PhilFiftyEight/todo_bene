@@ -1,4 +1,7 @@
 import pytest
+from uuid import uuid4
+from todo_bene.infrastructure.persistence.duckdb_todo_repository import DuckDBTodoRepository
+
 #import os
 
 @pytest.fixture(autouse=True)
@@ -20,3 +23,15 @@ def setup_test_env(tmp_path, monkeypatch):
 def test_config_env(setup_test_env):
     """Alias pour les anciens tests qui attendent un objet Path."""
     return setup_test_env["config"]
+
+
+@pytest.fixture
+def user_id():
+    """Génère un UUID unique pour l'utilisateur du test."""
+    return uuid4()
+
+@pytest.fixture
+def repository():
+    """Initialise un repository en mémoire pour les tests."""
+    # Ton __init__ appelle déjà _init_db(), donc c'est parfait.
+    return DuckDBTodoRepository(db_path=":memory:")

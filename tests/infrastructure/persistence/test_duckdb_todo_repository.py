@@ -1,64 +1,57 @@
 import pytest  # noqa: F401
-from uuid import UUID
+# from uuid import uuid4
 from todo_bene.domain.entities.todo import Todo
-from todo_bene.infrastructure.persistence.duckdb_todo_repository import DuckDBTodoRepository
 
-def test_repository_save_and_get_by_id(tmp_path):
-    # Arrange
-    db_path = tmp_path / "test_todo.db"
-    repository = DuckDBTodoRepository(str(db_path))
-    user_id = UUID("550e8400-e29b-41d4-a716-446655440000")
-    todo = Todo(title="Acheter du lait", user=user_id)
-
-    # Act
+def test_repository_save_and_get_by_id(repository, user_id):
+    todo = Todo(title="Test Todo", user=user_id)
     repository.save(todo)
-    retrieved_todo = repository.get_by_id(todo.uuid)
+    
+    retrieved = repository.get_by_id(todo.uuid)
+    assert retrieved is not None
+    assert retrieved.title == "Test Todo"
+    assert retrieved.user == user_id
 
-    # Assert
-    assert retrieved_todo is not None
-    assert retrieved_todo.title == "Acheter du lait"
-    assert retrieved_todo.user == user_id
-
-def test_repository_preserves_priority(tmp_path):
-    # Arrange
-    db_path = tmp_path / "test_priority.db"
-    repository = DuckDBTodoRepository(str(db_path))
-    user_id = UUID("550e8400-e29b-41d4-a716-446655440000")
+def test_repository_preserves_priority(repository, user_id):
     todo = Todo(title="Urgent", user=user_id, priority=True)
-
-    # Act
     repository.save(todo)
-    retrieved_todo = repository.get_by_id(todo.uuid)
-
-    # Assert
-    assert retrieved_todo.priority is True
-
-def test_repository_preserves_dates(tmp_path):
-    """
-    Test que le repository enregistre et restitue correctement les timestamps.
-    """
-    # Arrange
-    db_path = tmp_path / "test_dates.db"
-    repository = DuckDBTodoRepository(str(db_path))
-    user_id = UUID("550e8400-e29b-41d4-a716-446655440000")
     
-    # On définit des timestamps précis (ex: 1er Janvier 2025)
-    start_ts = 1735689600 
-    due_ts = 1735776000
-    
-    todo = Todo(
-        title="Tâche datée", 
-        user=user_id, 
-        date_start=start_ts, 
-        date_due=due_ts
-    )
+    retrieved = repository.get_by_id(todo.uuid)
+    assert retrieved.priority is True
 
-    # Act
+def test_repository_preserves_dates(repository, user_id):
+    todo = Todo(title="Timed", user=user_id, date_start=1000, date_due=2000)
     repository.save(todo)
-    retrieved_todo = repository.get_by_id(todo.uuid)
+    
+    retrieved = repository.get_by_id(todo.uuid)
+    assert retrieved.date_start == 1000
+    assert retrieved.date_due == 2000
 
-    # Assert
-    assert retrieved_todo is not None
-    # L'échec se produira ici car le repo actuel ne stocke pas ces colonnes
-    assert retrieved_todo.date_start == start_ts
-    assert retrieved_todo.date_due == due_ts
+def test_search_by_title_returns_matching_todos(repository, user_id):
+    # GIVEN
+    t1 = Todo(title="Acheter du pain", user=user_id, category="Courses")
+    t2 = Todo(title="Acheter du lait", user=user_id, category="Courses")
+    t3 = Todo(title="Nettoyer le salon", user=user_id, category="Maison")
+    
+    repository.save(t1)
+    repository.save(t2)
+    repository.save(t3)
+
+    # WHEN
+    results = repository.search_by_title(user_id, "Ach")
+
+    # THEN
+    assert len(results) == 2
+    titles = [t.title for t in results]
+    assert "Acheter du pain" in titles
+    assert "Acheter du lait" in titles
+
+def test_search_by_title_is_case_insensitive(repository, user_id):
+    # GIVEN
+    repository.save(Todo(title="Urgent : Rapport", user=user_id, category="Pro"))
+
+    # WHEN
+    results = repository.search_by_title(user_id, "urgent")
+
+    # THEN
+    assert len(results) == 1
+    assert results[0].title == "Urgent : Rapport"

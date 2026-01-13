@@ -84,3 +84,49 @@ def test_todo_create_with_extra_fields():
     assert todo.priority is True
     # Vérifie que le __post_init__ de l'entité a bien converti la date en timestamp
     assert isinstance(todo.date_due, int)
+
+
+
+def test_create_todo_with_parent_success(repository, user_id):
+    # GIVEN
+    use_case = TodoCreateUseCase(repository)
+    # On crée d'abord un parent en base avec une date lointaine
+    repository.save(repository._row_to_todo([
+        uuid4(), "Parent", "", "Cat", False, False, 
+        1000, 9999999999, user_id, None
+    ]))
+    # Récupérons l'ID généré ou injecté
+    parent_id = repository.get_all_roots_by_user(user_id)[0].uuid
+
+    # WHEN
+    new_todo = use_case.execute(
+        title="Sous-tâche",
+        user=user_id,
+        parent=parent_id
+    )
+
+    # THEN
+    assert new_todo.parent == parent_id
+    saved_todo = repository.get_by_id(new_todo.uuid)
+    assert saved_todo.parent == parent_id
+
+def test_create_todo_with_parent_date_error(repository, user_id):
+    # GIVEN
+    use_case = TodoCreateUseCase(repository)
+    # On crée un parent qui finit très tôt (timestamp 1000)
+    parent_id = uuid4()
+    #import todo_bene.domain.entities.todo as todo_mod
+    from todo_bene.domain.entities.todo import Todo
+    
+    p = Todo(title="Parent", user=user_id, uuid=parent_id, date_due=1000)
+    repository.save(p)
+
+    # WHEN / THEN : On essaie de créer un enfant qui finit demain
+    # Cela doit lever une ValueError à cause de ta règle n°2 dans le Use Case
+    with pytest.raises(ValueError, match="La date d'échéance de l'enfant ne peut pas dépasser celle du parent"):
+        use_case.execute(
+            title="Sous-tâche trop longue",
+            user=user_id,
+            parent=parent_id,
+            date_due="31/12/2099" 
+        )
