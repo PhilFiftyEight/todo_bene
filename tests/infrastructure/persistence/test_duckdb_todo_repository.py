@@ -55,3 +55,21 @@ def test_search_by_title_is_case_insensitive(repository, user_id):
     # THEN
     assert len(results) == 1
     assert results[0].title == "Urgent : Rapport"
+
+def test_repository_recursive_delete(repository, user_id):
+    from todo_bene.domain.entities.todo import Todo
+    
+    parent = Todo(title="Parent", user=user_id)
+    child = Todo(title="Enfant", user=user_id, parent=parent.uuid)
+    grand_child = Todo(title="Petit-enfant", user=user_id, parent=child.uuid)
+    
+    repository.save(parent)
+    repository.save(child)
+    repository.save(grand_child)
+
+    # Cette ligne va lever une AttributeError car .delete() n'existe pas encore dans DuckDB
+    repository.delete(parent.uuid)
+
+    assert repository.get_by_id(parent.uuid) is None
+    assert repository.get_by_id(child.uuid) is None
+    assert repository.get_by_id(grand_child.uuid) is None

@@ -2,9 +2,9 @@ import pytest  # noqa: F401
 from uuid import uuid4
 from todo_bene.domain.entities.todo import Todo
 from todo_bene.infrastructure.persistence.memory_todo_repository import MemoryTodoRepository
-from todo_bene.application.use_cases.todo_get_all_roots_by_user import TodoGetAllRootsByUserUseCase
+from todo_bene.application.use_cases.todo_find_top_level_by_user import TodoGetAllRootsByUserUseCase
 
-def test_todo_get_all_roots_by_user_success():
+def test_todo_find_top_level_by_user_success():
     # Arrange
     repo = MemoryTodoRepository()
     use_case = TodoGetAllRootsByUserUseCase(repo)
@@ -33,7 +33,7 @@ def test_todo_get_all_roots_by_user_success():
     assert found_todos[0].user == user_id
     assert found_todos[0].parent is None
 
-def test_todo_get_all_roots_by_user_empty_when_none():
+def test_todo_find_top_level_by_user_empty_when_none():
     # Arrange
     repo = MemoryTodoRepository()
     use_case = TodoGetAllRootsByUserUseCase(repo)

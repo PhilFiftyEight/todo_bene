@@ -15,12 +15,15 @@ class TodoRepository(ABC):
     def find_by_parent(self, parent_id: UUID) -> list[Todo]:
         pass
 
-    # @abstractmethod
-    # def find_by_user(self, user_id: UUID) -> list[Todo]:
-    #     """Récupère tous les Todos appartenant à un utilisateur spécifique."""
-    #     pass
-
     @abstractmethod
     def find_top_level_by_user(self, user_id: UUID) -> list[Todo]:
-        """Récupère les Todos racines (sans parent) d'un utilisateur."""
+        pass
+
+    @abstractmethod
+    def search_by_title(self, user_id: UUID, search_term: str) -> list[Todo]:
+        pass
+
+    @abstractmethod
+    def delete(self, todo_id: UUID) -> None:
+        """Supprime un Todo et toute sa descendance récursivement."""
         pass

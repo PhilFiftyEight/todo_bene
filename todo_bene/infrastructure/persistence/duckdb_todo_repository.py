@@ -2,16 +2,15 @@ import duckdb
 from uuid import UUID
 from typing import List, Optional
 from todo_bene.domain.entities.todo import Todo
+from todo_bene.application.interfaces.todo_repository import TodoRepository
 
-class DuckDBTodoRepository:
+class DuckDBTodoRepository(TodoRepository):
     def __init__(self, db_path: str):
         self.db_path = db_path
-        # On garde une connexion unique pour toute la durée de vie du repo
         self._conn = duckdb.connect(self.db_path)
         self._init_db()
 
     def _init_db(self):
-        # Ici on n'utilise pas 'with' pour ne pas fermer self._conn
         self._conn.execute("""
             CREATE TABLE IF NOT EXISTS todos (
                 uuid UUID PRIMARY KEY,
@@ -43,20 +42,18 @@ class DuckDBTodoRepository:
             return self._row_to_todo(res)
         return None
 
-    def get_all_roots_by_user(self, user_id: UUID) -> List[Todo]:
+    def find_top_level_by_user(self, user_id: UUID) -> List[Todo]:
         query = """
-            SELECT uuid, title, description, category, state, priority, date_start, date_due, user_id, parent_id 
-            FROM todos 
+            SELECT * FROM todos 
             WHERE user_id = ? AND parent_id IS NULL 
             ORDER BY date_start ASC
         """
         rows = self._conn.execute(query, (user_id,)).fetchall()
         return [self._row_to_todo(row) for row in rows]
 
-    def get_children(self, parent_id: UUID) -> List[Todo]:
+    def find_by_parent(self, parent_id: UUID) -> List[Todo]:
         query = """
-            SELECT uuid, title, description, category, state, priority, date_start, date_due, user_id, parent_id 
-            FROM todos 
+            SELECT * FROM todos 
             WHERE parent_id = ? 
             ORDER BY date_start ASC
         """
@@ -65,9 +62,7 @@ class DuckDBTodoRepository:
 
     def search_by_title(self, user_id: UUID, search_term: str) -> List[Todo]:
         query = """
-            SELECT uuid, title, description, category, state, priority, 
-                   date_start, date_due, user_id, parent_id 
-            FROM todos 
+            SELECT * FROM todos 
             WHERE user_id = ? AND title ILIKE ?
             ORDER BY title ASC
             LIMIT 10
@@ -75,23 +70,39 @@ class DuckDBTodoRepository:
         rows = self._conn.execute(query, (user_id, f"%{search_term}%")).fetchall()
         return [self._row_to_todo(row) for row in rows]
 
+    def delete(self, todo_id: UUID) -> None:
+        """Supprime récursivement un todo et ses enfants via SQL."""
+        query = """
+            DELETE FROM todos WHERE uuid IN (
+                WITH RECURSIVE tree AS (
+                    SELECT uuid FROM todos WHERE uuid = ?
+                    UNION ALL
+                    SELECT t.uuid FROM todos t JOIN tree ON t.parent_id = tree.uuid
+                )
+                SELECT uuid FROM tree
+            )
+        """
+        self._conn.execute(query, (todo_id,))
+
     def _row_to_todo(self, row) -> Todo:
         return Todo(
-            uuid=row[0],
-            title=row[1],
-            description=row[2],
-            category=row[3],
-            state=row[4],
-            priority=row[5],
-            date_start=row[6],
-            date_due=row[7],
-            user=row[8],
-            parent=row[9]
+            uuid=row[0], title=row[1], description=row[2], category=row[3],
+            state=row[4], priority=row[5], date_start=row[6], date_due=row[7],
+            user=row[8], parent=row[9]
         )
     
     def __del__(self):
-        """Ferme proprement la connexion quand l'objet est détruit."""
         try:
             self._conn.close()
         except:  # noqa: E722
             pass
+
+    def find_all_by_user(self, user_id: UUID) -> list[Todo]:
+        """Récupère tous les todos de l'utilisateur, sans filtre hiérarchique."""
+        with duckdb.connect(self.db_path) as conn:
+            res = conn.execute(
+                    "SELECT * FROM todos WHERE user_id = ? ORDER BY date_start ASC",
+                [str(user_id)]
+            ).fetchall()
+        # On utilise ta méthode de mapping existante 
+        return [self._row_to_todo(row) for row in res]

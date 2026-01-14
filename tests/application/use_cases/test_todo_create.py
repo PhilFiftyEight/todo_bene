@@ -96,7 +96,7 @@ def test_create_todo_with_parent_success(repository, user_id):
         1000, 9999999999, user_id, None
     ]))
     # Récupérons l'ID généré ou injecté
-    parent_id = repository.get_all_roots_by_user(user_id)[0].uuid
+    parent_id = repository.find_top_level_by_user(user_id)[0].uuid
 
     # WHEN
     new_todo = use_case.execute(

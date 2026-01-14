@@ -17,6 +17,7 @@ from pathlib import Path
 from todo_bene.infrastructure.cli.config import load_user_config, save_user_config
 from todo_bene.infrastructure.persistence.duckdb_todo_repository import DuckDBTodoRepository
 from todo_bene.application.use_cases.todo_create import TodoCreateUseCase
+from todo_bene.application.use_cases.todo_delete import TodoDeleteUseCase
 
 app = typer.Typer()
 console = Console()
@@ -24,12 +25,10 @@ console = Console()
 # --- UTILITAIRES ---
 
 def get_repository():
-    """Initialise le repository avec le chemin de la base de données."""
     db_path = os.getenv("TODO_BENE_DB_PATH", str(Path.home() / ".todo_bene.db"))
     return DuckDBTodoRepository(db_path)
 
 def get_date_format():
-    """Détermine le format de date selon la locale du système."""
     try:
         lang, _ = locale.getlocale()
         if lang and lang.startswith('fr'):
@@ -39,7 +38,6 @@ def get_date_format():
     return "YYYY-MM-DD HH:mm"
 
 def continue_after_invalid(message: str):
-    """Affiche une erreur et attend une action utilisateur avant de continuer (interactif uniquement)."""
     console.print(f"[red]{message}[/red]")
     if sys.stdin.isatty():
         Prompt.ask("[dim]Appuyez sur Entrée pour continuer[/dim]", show_default=False, default="")
@@ -47,8 +45,8 @@ def continue_after_invalid(message: str):
 # --- NAVIGATION ET DÉTAILS ---
 
 def show_details(todo_uuid: UUID):
-    """Affiche les détails d'un Todo et permet de naviguer dans ses enfants."""
     repo = get_repository()
+    user_id = load_user_config()
     tz = pendulum.local_timezone()
     date_fmt = get_date_format()
     
@@ -60,7 +58,6 @@ def show_details(todo_uuid: UUID):
         if sys.stdin.isatty():
             console.clear()
         
-        # Statut et Priorité
         status = "[bold green]COMPLÉTÉ[/bold green]" if todo.state else "[bold yellow]À FAIRE[/bold yellow]"
         prio = " 🔥" if todo.priority else ""
         
@@ -72,18 +69,16 @@ def show_details(todo_uuid: UUID):
             expand=False
         ))
         
-        # Dates
         d_start = pendulum.from_timestamp(todo.date_start, tz=tz).format(date_fmt)
         d_due = pendulum.from_timestamp(todo.date_due, tz=tz).format(date_fmt)
         console.print(f"[green]Début :[/green] {d_start}   [magenta]Échéance :[/magenta] {d_due}")
         
-        # Enfants
-        children = repo.get_children(todo.uuid)
+        children = repo.find_by_parent(todo.uuid)
         if children:
             console.print("\n[bold]Sous-tâches :[/bold]")
             child_table = Table(box=box.SIMPLE, header_style="bold", row_styles=["none", "dim"])
             child_table.add_column("Idx", justify="right", style="cyan", width=4)
-            child_table.add_column(" ", justify="center", width=2) # Colonne pour le feu
+            child_table.add_column(" ", justify="center", width=2)
             child_table.add_column("Titre", style="blue")
             child_table.add_column("Description", style="white")
             child_table.add_column("Début", style="green")
@@ -91,8 +86,8 @@ def show_details(todo_uuid: UUID):
 
             for i, child in enumerate(children, 1):
                 prio_mark = "🔥" if child.priority else ""
-                children_count = len(repo.get_children(child.uuid))
-                child_signal = f" [bold cyan][{children_count}+][/bold cyan]" if children_count > 0 else ""
+                sub_children = repo.find_by_parent(child.uuid)
+                child_signal = f" [bold cyan][{len(sub_children)}+][/bold cyan]" if len(sub_children) > 0 else ""
 
                 raw_desc = str(child.description) if child.description else ""
                 desc = (raw_desc[:20] + "...") if len(raw_desc) > 20 else raw_desc
@@ -110,15 +105,23 @@ def show_details(todo_uuid: UUID):
                 )
             console.print(child_table)
         
-        if not sys.stdin.isatty():
+        if sys.stdin.isatty():
+            console.print("\n[bold]Actions :[/bold]")
+            console.print("[white][V]oir sous-tâche (n°) | [T]erminer | [S]upprimer | [R]etour[/white]")
+        
+        try:
+            choice = Prompt.ask("\nQue voulez-vous faire ?", default="r").lower()
+        except EOFError:
             break
 
-        console.print("\n[bold]Actions :[/bold]")
-        console.print("[white][V]oir sous-tâche (n°) | [T]erminer | [S]upprimer | [R]etour[/white]")
-        
-        choice = Prompt.ask("\nQue voulez-vous faire ?", default="r").lower()
         if choice == 'r':
             break
+        elif choice == 's':
+            if typer.confirm(f"Voulez-vous vraiment supprimer '{todo.title}' et tous ses enfants ?"):
+                use_case = TodoDeleteUseCase(repo)
+                use_case.execute(todo_id=todo.uuid, user_id=user_id)
+                console.print("[bold green]Supprimé avec succès.[/bold green]")
+                return 
         elif choice.startswith('v'):
             try:
                 idx_str = choice.replace('v', '').strip()
@@ -130,7 +133,8 @@ def show_details(todo_uuid: UUID):
             except ValueError:
                 continue_after_invalid("Format invalide.")
 
-# --- COMMANDES CLI ---
+        if not sys.stdin.isatty():
+            break
 
 @app.callback()
 def main(ctx: typer.Context):
@@ -177,11 +181,9 @@ def create(
                 console.print(f"[yellow]⚠ Aucun parent trouvé pour '{parent}'.[/yellow]")
                 if not typer.confirm("Voulez-vous créer la tâche sans parent ?"):
                     raise typer.Abort()
-            
             elif len(candidates) == 1:
                 selected_parent_uuid = candidates[0].uuid
                 console.print(f"[green]Parent sélectionné : {candidates[0].title}[/green]")
-            
             else:
                 console.print("\n[bold cyan]Plusieurs parents possibles trouvés :[/bold cyan]")
                 table = Table(show_header=True, header_style="bold magenta")
@@ -194,7 +196,6 @@ def create(
                 
                 console.print(table)
                 choice = Prompt.ask("Choisissez le numéro du parent", default="0")
-                
                 try:
                     idx = int(choice)
                     if 1 <= idx <= len(candidates):
@@ -208,7 +209,6 @@ def create(
             description=description, priority=priority,
             date_start=start, date_due=due, parent=selected_parent_uuid
         )
-
         msg = f"Todo créé : [cyan]{todo.title}[/cyan]"
         if todo.priority:
             msg += " [yellow](prioritaire)[/yellow]"
@@ -219,24 +219,20 @@ def create(
 
 @app.command(name="list")
 def list_todos():
-    """Lister les tâches racines triées par date de début."""
     user_id = load_user_config()
     repo = get_repository()
     tz = pendulum.local_timezone()
     date_fmt = get_date_format()
-    
-    is_interactive = sys.stdin.isatty()
 
     while True:
-        roots = repo.get_all_roots_by_user(user_id)
+        roots = repo.find_top_level_by_user(user_id)
         if not roots:
             console.print("[yellow]Aucun Todo trouvé.[/yellow]")
             return
 
-        if is_interactive:
+        if sys.stdin.isatty():
             console.clear()
         
-        console.print("") 
         table = Table(box=box.SIMPLE, header_style="bold", row_styles=["none", "dim"])
         table.add_column("Idx", justify="right", style="cyan", width=4)
         table.add_column(" ", justify="center", width=2)
@@ -247,8 +243,8 @@ def list_todos():
 
         for idx, todo in enumerate(roots, 1):
             prio_mark = "🔥" if todo.priority else ""
-            children_count = len(repo.get_children(todo.uuid))
-            child_signal = f" [bold cyan][{children_count}+][/bold cyan]" if children_count > 0 else ""
+            children = repo.find_by_parent(todo.uuid)
+            child_signal = f" [bold cyan][{len(children)}+][/bold cyan]" if len(children) > 0 else ""
 
             raw_desc = str(todo.description) if todo.description else ""
             desc = (raw_desc[:20] + "...") if len(raw_desc) > 20 else raw_desc
@@ -256,24 +252,20 @@ def list_todos():
             d_start = pendulum.from_timestamp(todo.date_start, tz=tz).format(date_fmt)
             d_due = pendulum.from_timestamp(todo.date_due, tz=tz).format(date_fmt)
 
-            table.add_row(
-                f"{idx:3}", 
-                prio_mark, 
-                f"{todo.title}{child_signal}", 
-                desc or "[dim italic]Pas de description[/dim italic]", 
-                d_start, 
-                d_due
-            )
+            table.add_row(f"{idx:3}", prio_mark, f"{todo.title}{child_signal}", desc or "[dim italic]Pas de description[/dim italic]", d_start, d_due)
 
         console.print(table)
         count = len(roots)
         message = f"{count} tâche racine trouvée" if count <= 1 else f"{count} tâches racines trouvées"
         console.print(f"\n[dim] {message}.[/dim]")
         
-        if not is_interactive:
+        # --- FIX POUR LES TESTS ---
+        # On lit le choix avant de vérifier isatty()
+        try:
+            choice = Prompt.ask("\nSaisissez l'index pour voir les détails (ou 'q' pour quitter)", default="q").lower()
+        except EOFError:
             break
-            
-        choice = Prompt.ask("\nSaisissez l'index pour voir les détails (ou 'q' pour quitter)", default="q").lower()
+
         if choice == 'q':
             break
         try:
@@ -284,6 +276,49 @@ def list_todos():
                 continue_after_invalid("Index inconnu.")
         except ValueError:
             continue_after_invalid("Saisie invalide.")
+            
+        # Si on n'est pas dans un terminal (test), on ne veut pas boucler après une commande
+        if not sys.stdin.isatty():
+            break
+
+@app.command(name="list-dev")
+def list_dev():
+    """Affiche une vue technique brute de tous les Todos en base."""
+    user_id = load_user_config()
+    repo = get_repository()
+    
+    # On récupère tout sans distinction de hiérarchie
+    todos = repo.find_all_by_user(user_id) 
+    
+    if not todos:
+        console.print("[yellow]La base est vide pour cet utilisateur.[/yellow]")
+        return
+
+    table = Table(title="Vue Développeur - Tous les Todos", box=box.MINIMAL_DOUBLE_HEAD)
+    table.add_column("UUID (Short)", style="dim")
+    table.add_column("Titre", style="bold")
+    table.add_column("Parent UUID", style="dim")
+    table.add_column("État", justify="center")
+    table.add_column("Start (TS)", style="green")
+    table.add_column("Due (TS)", style="magenta")
+
+    for t in todos:
+        state = "✅" if t.state else "❌"
+        # On tronque les UUID pour la lisibilité
+        short_id = str(t.uuid)[:8] + "..."
+        parent_id = str(t.parent)[:8] + "..." if t.parent else "None"
+        
+        table.add_row(
+            short_id,
+            t.title,
+            parent_id,
+            state,
+            str(t.date_start),
+            str(t.date_due)
+        )
+    
+    console.print(table)
+    console.print(f"\n[bold cyan]Total en base : {len(todos)} items.[/bold cyan]")
 
 if __name__ == "__main__":
     app()

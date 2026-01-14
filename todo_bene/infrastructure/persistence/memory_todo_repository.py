@@ -9,7 +9,7 @@ class MemoryTodoRepository(TodoRepository):
     def save(self, todo: Todo) -> None:
         self.todos[todo.uuid] = todo
 
-    def get_by_id(self, todo_id):
+    def get_by_id(self, todo_id: UUID) -> Todo | None:
         return self.todos.get(todo_id)
 
     def find_by_parent(self, parent_id: UUID) -> list[Todo]:
@@ -20,3 +20,19 @@ class MemoryTodoRepository(TodoRepository):
             todo for todo in self.todos.values() 
             if todo.user == user_id and todo.parent is None
         ]
+
+    def search_by_title(self, user_id: UUID, search_term: str) -> list[Todo]:
+        return [
+            todo for todo in self.todos.values()
+            if todo.user == user_id and search_term.lower() in todo.title.lower()
+        ]
+
+    def delete(self, todo_id: UUID) -> None:
+        # On trouve tous les enfants d'abord
+        children = self.find_by_parent(todo_id)
+        for child in children:
+            self.delete(child.uuid) # Appel récursif
+        
+        # On supprime le todo lui-même
+        if todo_id in self.todos:
+            del self.todos[todo_id]
