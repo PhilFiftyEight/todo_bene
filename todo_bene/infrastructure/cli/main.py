@@ -19,6 +19,7 @@ from todo_bene.infrastructure.cli.config import load_user_config, save_user_conf
 from todo_bene.infrastructure.persistence.duckdb_todo_repository import DuckDBTodoRepository
 from todo_bene.application.use_cases.todo_create import TodoCreateUseCase
 from todo_bene.application.use_cases.todo_delete import TodoDeleteUseCase
+from todo_bene.application.use_cases.todo_complete import TodoCompleteUseCase
 
 app = typer.Typer()
 console = Console()
@@ -42,6 +43,42 @@ def continue_after_invalid(message: str):
     console.print(f"[red]{message}[/red]")
     if sys.stdin.isatty():
         Prompt.ask("[dim]Appuyez sur Entrée pour continuer[/dim]", show_default=False, default="")
+
+def handle_completion_success(repo, result, user_id: UUID):
+    """Gère les conséquences d'une complétude réussie (répétition et remontée).
+       Return True si on doit quitter la vue détail"""
+    should_exit = False
+    # 1. Si c'est une racine, on propose la répétition
+    if result.get("is_root"):
+        # On récupère le titre pour la clarté (optionnel mais mieux)
+        todo = repo.get_by_id(result["completed_id"])
+        title = todo.title if todo else "la racine"
+        Prompt.ask(f"\n[bold cyan]' {title} ' est une tâche racine. Voulez-vous la répéter ?[/bold cyan] (o/N)", default="n")
+        should_exit = True # On vient de finir une racine, on veut sortir
+    
+    # 2. Si des parents sont libérés, on propose la validation récursive
+    if result.get("newly_pending_ids"):
+        ask_validate_parents_recursive(repo, result["newly_pending_ids"], user_id)
+        # Si l'utilisateur valide un parent, on considère qu'on veut remonter
+        should_exit = True
+
+    return should_exit
+
+def ask_validate_parents_recursive(repo, newly_pending_ids: list, user_id: UUID):
+    """Demande récursivement à l'utilisateur s'il veut valider les parents libérés."""
+    for p_id in newly_pending_ids:
+        p_todo = repo.get_by_id(p_id)
+        if not p_todo:
+            continue
+            
+        if typer.confirm(f"\n💡 Valider aussi le parent '{p_todo.title}' ?"):
+            use_case = TodoCompleteUseCase(repo)
+            result = use_case.execute(todo_id=p_id, user_id=user_id)
+            
+            if result and result.get("success"):
+                console.print(f"[bold green]✓ Parent '{p_todo.title}' terminé ![/bold green]")
+                # On utilise la fonction de succès ici AUSSI !
+                handle_completion_success(repo, result, user_id)
 
 # --- NAVIGATION ET DÉTAILS ---
 
@@ -128,14 +165,38 @@ def show_details(todo_uuid: UUID):
             try:
                 idx = int(choice) - 1
                 if 0 <= idx < len(children):
-                    show_details(children[idx].uuid)
+                    # On capture la valeur de retour
+                    child_finished_cascade = show_details(children[idx].uuid)        
+                    # show_details(children[idx].uuid)
+                    # SI l'enfant nous dit qu'il y a eu une cascade de complétude
+                    if child_finished_cascade:
+                        return True # On referme immédiatement la vue actuelle aussi
                 else:
                     continue_after_invalid(f"L'index {choice} n'existe pas dans les sous-tâches.")
             except ValueError:
                 continue_after_invalid("Format invalide.")
+
         elif choice == 't':
-            # Ici viendra ta future logique pour "Terminer"
-            continue_after_invalid("[yellow]Action 'Terminer' bientôt disponible ![/yellow]")
+            use_case = TodoCompleteUseCase(repo)
+            result = use_case.execute(todo_id=todo.uuid, user_id=user_id)
+            
+            # Gestion du blocage (force)
+            if result and not result["success"] and result["reason"] == "active_children":
+                console.print(f"\n[bold red]⚠ Blocage :[/bold red] {result['active_count']} sous-tâche(s) en cours.")
+                if typer.confirm("Voulez-vous TOUT terminer (enfants inclus) ?"):
+                    result = use_case.execute(todo_id=todo.uuid, user_id=user_id, force=True)
+                else:
+                    continue
+
+            # Traitement du succès
+            if result and result.get("success"):
+                console.print("[bold green]✓ Tâche terminée ![/bold green]")
+                should_exit_stack = handle_completion_success(repo, result, user_id)
+                if should_exit_stack:
+                    return True # On renvoie True pour dire au niveau au-dessus de quitter aussi
+                # Si handle_completion_success a renvoyé False (pas de cascade), 
+                # on quitte quand même la vue de la tâche actuelle car elle est finie
+                return False
 
         if not sys.stdin.isatty():
             break

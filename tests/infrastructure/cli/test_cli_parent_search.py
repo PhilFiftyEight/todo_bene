@@ -20,7 +20,7 @@ def test_create_todo_with_interactive_parent_selection(repository, user_id, monk
 
     # 4. THEN
     if result.exit_code != 0:
-        print(result.stdout) # Pour debugger si ça rate encore
+        print(result.stdout)
         
     assert result.exit_code == 0
     assert "Plusieurs parents possibles" in result.stdout

@@ -33,5 +33,4 @@ def user_id():
 @pytest.fixture
 def repository():
     """Initialise un repository en mémoire pour les tests."""
-    # Ton __init__ appelle déjà _init_db(), donc c'est parfait.
     return DuckDBTodoRepository(db_path=":memory:")
