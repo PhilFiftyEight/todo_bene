@@ -5,10 +5,15 @@ from todo_bene.domain.entities.todo import Todo
 
 runner = CliRunner()
 
+
 def test_cli_delete_todo_interactive(repository, user_id, monkeypatch):
     # 1. Mocking
-    monkeypatch.setattr("todo_bene.infrastructure.cli.main.get_repository", lambda: repository)
-    monkeypatch.setattr("todo_bene.infrastructure.cli.main.load_user_config", lambda: user_id)
+    monkeypatch.setattr(
+        "todo_bene.infrastructure.cli.main.get_repository", lambda: repository
+    )
+    monkeypatch.setattr(
+        "todo_bene.infrastructure.cli.main.load_user_config", lambda: user_id
+    )
 
     # 2. GIVEN: Un Todo en base
     todo = Todo(title="Tâche à supprimer", user=user_id)

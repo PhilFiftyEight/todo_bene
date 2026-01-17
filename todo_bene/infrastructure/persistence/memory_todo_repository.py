@@ -2,6 +2,7 @@ from uuid import UUID
 from todo_bene.domain.entities.todo import Todo
 from todo_bene.application.interfaces.todo_repository import TodoRepository
 
+
 class MemoryTodoRepository(TodoRepository):
     def __init__(self):
         self.todos = {}
@@ -17,13 +18,15 @@ class MemoryTodoRepository(TodoRepository):
 
     def find_top_level_by_user(self, user_id: UUID) -> list[Todo]:
         return [
-            todo for todo in self.todos.values() 
+            todo
+            for todo in self.todos.values()
             if todo.user == user_id and todo.parent is None and not todo.state
         ]
 
     def search_by_title(self, user_id: UUID, search_term: str) -> list[Todo]:
         return [
-            todo for todo in self.todos.values()
+            todo
+            for todo in self.todos.values()
             if todo.user == user_id and search_term.lower() in todo.title.lower()
         ]
 
@@ -31,8 +34,8 @@ class MemoryTodoRepository(TodoRepository):
         # On trouve tous les enfants d'abord
         children = self.find_by_parent(todo_id)
         for child in children:
-            self.delete(child.uuid) # Appel récursif
-        
+            self.delete(child.uuid)  # Appel récursif
+
         # On supprime le todo lui-même
         if todo_id in self.todos:
             del self.todos[todo_id]
@@ -42,13 +45,12 @@ class MemoryTodoRepository(TodoRepository):
             self.todos[todo_id].state = state
 
     def get_pending_completion_parents(self, user_id: UUID) -> list[Todo]:
-            all_todos = self.todos.values()
-            parents = [t for t in all_todos if t.user == user_id and not t.state]
-            
-            results = []
-            for p in parents:
-                children = [t for t in all_todos if t.parent == p.uuid]
-                if children and all(c.state for c in children):
-                    results.append(p)
-            return results
-    
+        all_todos = self.todos.values()
+        parents = [t for t in all_todos if t.user == user_id and not t.state]
+
+        results = []
+        for p in parents:
+            children = [t for t in all_todos if t.parent == p.uuid]
+            if children and all(c.state for c in children):
+                results.append(p)
+        return results

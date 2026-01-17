@@ -4,6 +4,7 @@ from typing import List, Optional
 from todo_bene.domain.entities.todo import Todo
 from todo_bene.application.interfaces.todo_repository import TodoRepository
 
+
 class DuckDBTodoRepository(TodoRepository):
     def __init__(self, db_path: str):
         self.db_path = db_path
@@ -27,17 +28,29 @@ class DuckDBTodoRepository(TodoRepository):
         """)
 
     def save(self, todo: Todo):
-        self._conn.execute("""
+        self._conn.execute(
+            """
             INSERT OR REPLACE INTO todos 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            todo.uuid, todo.title, todo.description, todo.category,
-            todo.state, todo.priority, todo.date_start, todo.date_due,
-            todo.user, todo.parent
-        ))
+        """,
+            (
+                todo.uuid,
+                todo.title,
+                todo.description,
+                todo.category,
+                todo.state,
+                todo.priority,
+                todo.date_start,
+                todo.date_due,
+                todo.user,
+                todo.parent,
+            ),
+        )
 
     def get_by_id(self, todo_id: UUID) -> Optional[Todo]:
-        res = self._conn.execute("SELECT * FROM todos WHERE uuid = ?", (todo_id,)).fetchone()
+        res = self._conn.execute(
+            "SELECT * FROM todos WHERE uuid = ?", (todo_id,)
+        ).fetchone()
         if res:
             return self._row_to_todo(res)
         return None
@@ -76,10 +89,10 @@ class DuckDBTodoRepository(TodoRepository):
         """Récupère tous les todos de l'utilisateur, sans filtre hiérarchique."""
         with duckdb.connect(self.db_path) as conn:
             res = conn.execute(
-                    "SELECT * FROM todos WHERE user_id = ? ORDER BY date_start ASC",
-                [str(user_id)]
+                "SELECT * FROM todos WHERE user_id = ? ORDER BY date_start ASC",
+                [str(user_id)],
             ).fetchall()
-        # On utilise ta méthode de mapping existante 
+        # On utilise ta méthode de mapping existante
         return [self._row_to_todo(row) for row in res]
 
     def count_all_descendants(self, todo_uuid: UUID) -> int:
@@ -106,14 +119,16 @@ class DuckDBTodoRepository(TodoRepository):
 
     def update_state(self, todo_id: UUID, state: bool) -> None:
         """Met à jour l'état d'un todo en base de données."""
-         # Maintenant on peut mettre à jour
-        self._conn.execute( "UPDATE todos SET state = ? WHERE uuid = ?",[state, str(todo_id)])
+        # Maintenant on peut mettre à jour
+        self._conn.execute(
+            "UPDATE todos SET state = ? WHERE uuid = ?", [state, str(todo_id)]
+        )
 
     def get_pending_completion_parents(self, user_id: UUID) -> list[Todo]:
-            # On cherche les tâches (P) non complétées
-            # QUI ont des enfants
-            # ET pour lesquelles il n'existe AUCUN enfant non complété
-            query = """
+        # On cherche les tâches (P) non complétées
+        # QUI ont des enfants
+        # ET pour lesquelles il n'existe AUCUN enfant non complété
+        query = """
                 SELECT p.* FROM todos p
                 WHERE p.user_id = ? 
                 AND p.state = false
@@ -124,18 +139,25 @@ class DuckDBTodoRepository(TodoRepository):
                     AND c.state = false
                 )
             """
-            # On utilise la connexion déjà ouverte de l'instance
-            res = self._conn.execute(query, [str(user_id)]).fetchall()
-            # On transforme les lignes en objets Todo (utilise ta méthode de mapping habituelle)
-            return [self._row_to_todo(row) for row in res]
+        # On utilise la connexion déjà ouverte de l'instance
+        res = self._conn.execute(query, [str(user_id)]).fetchall()
+        # On transforme les lignes en objets Todo (utilise ta méthode de mapping habituelle)
+        return [self._row_to_todo(row) for row in res]
 
     def _row_to_todo(self, row) -> Todo:
         return Todo(
-            uuid=row[0], title=row[1], description=row[2], category=row[3],
-            state=row[4], priority=row[5], date_start=row[6], date_due=row[7],
-            user=row[8], parent=row[9]
+            uuid=row[0],
+            title=row[1],
+            description=row[2],
+            category=row[3],
+            state=row[4],
+            priority=row[5],
+            date_start=row[6],
+            date_due=row[7],
+            user=row[8],
+            parent=row[9],
         )
-    
+
     def __del__(self):
         try:
             self._conn.close()

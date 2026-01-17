@@ -1,8 +1,11 @@
 import pytest
 from uuid import uuid4
-from todo_bene.infrastructure.persistence.duckdb_todo_repository import DuckDBTodoRepository
+from todo_bene.infrastructure.persistence.duckdb_todo_repository import (
+    DuckDBTodoRepository,
+)
 
-#import os
+# import os
+
 
 @pytest.fixture(autouse=True)
 def setup_test_env(tmp_path, monkeypatch):
@@ -14,10 +17,8 @@ def setup_test_env(tmp_path, monkeypatch):
     monkeypatch.setenv("TODO_BENE_CONFIG_PATH", str(fake_config))
     monkeypatch.setenv("TODO_BENE_DB_PATH", str(fake_db))
 
-    return {
-        "config": fake_config,
-        "db": fake_db
-    }
+    return {"config": fake_config, "db": fake_db}
+
 
 @pytest.fixture
 def test_config_env(setup_test_env):
@@ -29,6 +30,7 @@ def test_config_env(setup_test_env):
 def user_id():
     """Génère un UUID unique pour l'utilisateur du test."""
     return uuid4()
+
 
 @pytest.fixture
 def repository():

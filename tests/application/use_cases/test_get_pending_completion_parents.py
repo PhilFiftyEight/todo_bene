@@ -1,7 +1,10 @@
 import pytest  # noqa: F401
 from uuid import uuid4
 from todo_bene.domain.entities.todo import Todo
-from todo_bene.application.use_cases.get_pending_completion_parents import GetPendingCompletionParentsUseCase
+from todo_bene.application.use_cases.get_pending_completion_parents import (
+    GetPendingCompletionParentsUseCase,
+)
+
 
 def test_get_pending_completion_parents(repository):
     user_id = uuid4()

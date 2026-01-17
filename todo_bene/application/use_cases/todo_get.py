@@ -2,6 +2,7 @@ from uuid import UUID
 from todo_bene.domain.entities.todo import Todo
 from todo_bene.application.interfaces.todo_repository import TodoRepository
 
+
 class TodoGetUseCase:
     def __init__(self, todo_repo: TodoRepository):
         self.todo_repo = todo_repo
@@ -12,10 +13,10 @@ class TodoGetUseCase:
         # Vérification : existence ET propriété
         if not todo or todo.user != user_id:
             return None, []
-            
+
         # On récupère les enfants associés à ce Todo
-        children = self.todo_repo.find_by_parent(todo_id)        
-        return todo, children 
+        children = self.todo_repo.find_by_parent(todo_id)
+        return todo, children
 
 
 # ajouter la règle: un utilisateur ne peut voir que ses propres Todos

@@ -1,7 +1,7 @@
 from uuid import UUID
 from todo_bene.application.interfaces.todo_repository import TodoRepository
 
-    
+
 class GetPendingCompletionParentsUseCase:
     def __init__(self, repository: TodoRepository):
         self.repository = repository

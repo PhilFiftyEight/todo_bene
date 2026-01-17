@@ -5,20 +5,25 @@ from typer.testing import CliRunner
 
 runner = CliRunner()
 
+
 def test_cli_terminer_change_state_in_db(monkeypatch, repository):
     # GIVEN
     user_id = uuid4()
-    
+
     # 1. On mocke load_user_config PARTOUT où il est utilisé dans main
-    monkeypatch.setattr("todo_bene.infrastructure.cli.main.load_user_config", lambda: user_id)
+    monkeypatch.setattr(
+        "todo_bene.infrastructure.cli.main.load_user_config", lambda: user_id
+    )
     # 2. Mock du repository pour que la CLI utilise CELUI du test
-    monkeypatch.setattr("todo_bene.infrastructure.cli.main.get_repository", lambda: repository)
-    
+    monkeypatch.setattr(
+        "todo_bene.infrastructure.cli.main.get_repository", lambda: repository
+    )
+
     # On crée le Todo avec cet ID
     todo = Todo(title="Tâche à finir", user=user_id)
     repository.save(todo)
-    
-    # On simule les entrées : 
+
+    # On simule les entrées :
     # 1 (sélection)
     # t (terminer)
     # n (réponse à la question de répétition)
@@ -29,16 +34,21 @@ def test_cli_terminer_change_state_in_db(monkeypatch, repository):
     # THEN
     # On force une relecture propre depuis le repository
     updated_todo = repository.get_by_id(todo.uuid)
-    
+
     assert updated_todo.state is True
     # On vérifie aussi que le message de succès est apparu dans la console
     assert "terminée" in result.stdout.lower()
 
+
 def test_cli_proposes_force_complete_when_children_active(repository, monkeypatch):
     # GIVEN
     user_id = uuid4()
-    monkeypatch.setattr("todo_bene.infrastructure.cli.main.load_user_config", lambda: user_id)
-    monkeypatch.setattr("todo_bene.infrastructure.cli.main.get_repository", lambda: repository)
+    monkeypatch.setattr(
+        "todo_bene.infrastructure.cli.main.load_user_config", lambda: user_id
+    )
+    monkeypatch.setattr(
+        "todo_bene.infrastructure.cli.main.get_repository", lambda: repository
+    )
 
     # Création d'une hiérarchie Parent -> Enfant (non terminé)
     p = Todo(title="Parent Bloqué", user=user_id)
@@ -46,7 +56,7 @@ def test_cli_proposes_force_complete_when_children_active(repository, monkeypatc
     e = Todo(title="Enfant Actif", user=user_id, parent=p.uuid)
     repository.save(e)
 
-    # Simulation : 
+    # Simulation :
     # '1' -> Choisir le Parent
     # 't' -> Terminer
     # 'y' -> Accepter de "Tout terminer" (force=True)
@@ -56,9 +66,9 @@ def test_cli_proposes_force_complete_when_children_active(repository, monkeypatc
     result = runner.invoke(app, ["list"], input=inputs)
 
     # THEN
-    assert  "⚠ Blocage :" in result.stdout 
+    assert "⚠ Blocage :" in result.stdout
     assert "Voulez-vous TOUT terminer (enfants inclus) ?" in result.stdout
-    
+
     # Vérification que TOUT est terminé en base
     assert repository.get_by_id(p.uuid).state is True
     assert repository.get_by_id(e.uuid).state is True

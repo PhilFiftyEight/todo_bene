@@ -3,14 +3,15 @@ from uuid import uuid4
 from todo_bene.domain.entities.todo import Todo
 from todo_bene.application.use_cases.todo_complete import TodoCompleteUseCase
 
+
 def test_todo_complete_simple(repository):
     # GIVEN : Un utilisateur et une tâche non terminée
     user_id = uuid4()
     todo = Todo(title="Acheter du pain", user=user_id)
     repository.save(todo)
-    
+
     # On s'assure qu'elle est bien à 'False' au début
-    assert todo.state is False 
+    assert todo.state is False
 
     use_case = TodoCompleteUseCase(repository)
 

@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from uuid import UUID
 from todo_bene.domain.entities.todo import Todo
 
+
 class TodoRepository(ABC):
     @abstractmethod
     def save(self, todo: Todo) -> None:
@@ -36,7 +37,7 @@ class TodoRepository(ABC):
     @abstractmethod
     def get_pending_completion_parents(self, user_id: UUID) -> list[Todo]:
         """
-        Récupère les parents non complétés dont TOUS les enfants 
+        Récupère les parents non complétés dont TOUS les enfants
         sont complétés (et qui ont au moins un enfant).
         """
         pass

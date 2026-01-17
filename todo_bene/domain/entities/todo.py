@@ -3,6 +3,7 @@ from uuid import UUID, uuid4
 from typing import Optional, Union, Tuple
 import pendulum
 
+
 @dataclass
 class Todo:
     title: str
@@ -40,7 +41,7 @@ class Todo:
 
         if self.date_start is None:
             self.date_start = now.int_timestamp
-        
+
         if self.date_due is None:
             # CORRECTION : On prend la fin de journée du start_date
             dt_start = pendulum.from_timestamp(self.date_start, tz=tz)
@@ -49,10 +50,10 @@ class Todo:
         # 4. Conversion si les dates sont arrivées sous forme de chaînes
         if isinstance(self.date_start, str):
             self.date_start = self._parse_to_timestamp(self.date_start)
-        
+
         if isinstance(self.date_due, str):
             self.date_due = self._parse_to_timestamp(self.date_due)
-            
+
         if isinstance(self.date_final, str):
             self.date_final = self._parse_to_timestamp(self.date_final)
         elif self.date_final is None:
@@ -65,14 +66,21 @@ class Todo:
         try:
             dt = pendulum.parse(date_str).replace(tzinfo=tz)
         except Exception:
-            formats = ["DD/MM/YYYY HH:mm:ss", "DD/MM/YYYY HH:mm", "DD/MM/YYYY", "DD-MM-YYYY HH:mm:ss", "DD-MM-YYYY HH:mm", "DD-MM-YYYY"]
+            formats = [
+                "DD/MM/YYYY HH:mm:ss",
+                "DD/MM/YYYY HH:mm",
+                "DD/MM/YYYY",
+                "DD-MM-YYYY HH:mm:ss",
+                "DD-MM-YYYY HH:mm",
+                "DD-MM-YYYY",
+            ]
             dt = None
             for fmt in formats:
                 try:
                     dt = pendulum.from_format(date_str, fmt, tz=tz)
                     break
-                except Exception: 
+                except Exception:
                     continue
-            if dt is None: 
+            if dt is None:
                 raise ValueError(f"Format de date non reconnu : {date_str}")
         return dt.int_timestamp

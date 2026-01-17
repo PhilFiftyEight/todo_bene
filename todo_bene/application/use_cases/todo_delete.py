@@ -1,6 +1,7 @@
 from uuid import UUID
 from todo_bene.application.interfaces.todo_repository import TodoRepository
 
+
 class TodoDeleteUseCase:
     def __init__(self, repository: TodoRepository):
         self.repository = repository
@@ -12,7 +13,7 @@ class TodoDeleteUseCase:
         """
         # 1. Récupération du Todo
         todo = self.repository.get_by_id(todo_id)
-        
+
         # 2. Si le Todo n'existe pas, on ne fait rien (idempotence)
         if not todo:
             return

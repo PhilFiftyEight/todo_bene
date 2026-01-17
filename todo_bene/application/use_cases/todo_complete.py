@@ -15,14 +15,14 @@ class TodoCompleteUseCase:
         # 2. BLOQUEUR : Vérifier s'il reste des enfants non terminés
         children = self.repository.find_by_parent(todo_id)
         active_children = [c for c in children if not c.state]
-        
+
         # Si on ne force pas et qu'il y a des enfants actifs -> Erreur
         if active_children and not force:
             return {
                 "success": False,
                 "reason": "active_children",
                 "active_count": len(active_children),
-                "active_titles": [c.title for c in active_children]
+                "active_titles": [c.title for c in active_children],
             }
         # Si on force, on termine récursivement tous les descendants
         if force:
@@ -33,12 +33,12 @@ class TodoCompleteUseCase:
 
         # 4. Logique de remontée (inchangée)
         newly_pending_ids = self._get_newly_pending_parents(todo)
-        
+
         return {
             "success": True,
             "completed_id": todo_id,
             "newly_pending_ids": newly_pending_ids,
-            "is_root": todo.parent is None
+            "is_root": todo.parent is None,
         }
 
     def _complete_descendants(self, parent_id: UUID):

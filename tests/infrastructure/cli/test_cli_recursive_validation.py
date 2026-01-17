@@ -5,11 +5,16 @@ from typer.testing import CliRunner
 
 runner = CliRunner()
 
+
 def test_cli_recursive_parent_validation_cascade(repository, monkeypatch):
     # GIVEN
     user_id = uuid4()
-    monkeypatch.setattr("todo_bene.infrastructure.cli.main.load_user_config", lambda: user_id)
-    monkeypatch.setattr("todo_bene.infrastructure.cli.main.get_repository", lambda: repository)
+    monkeypatch.setattr(
+        "todo_bene.infrastructure.cli.main.load_user_config", lambda: user_id
+    )
+    monkeypatch.setattr(
+        "todo_bene.infrastructure.cli.main.get_repository", lambda: repository
+    )
 
     # Création de la chaîne : G (racine) -> P -> E
     g = Todo(title="Grand-Parent", user=user_id)
@@ -34,10 +39,17 @@ def test_cli_recursive_parent_validation_cascade(repository, monkeypatch):
     # THEN
     # Vérification des états en base de données
     assert repository.get_by_id(e.uuid).state is True, "L'enfant devrait être terminé"
-    assert repository.get_by_id(p.uuid).state is True, "Le parent devrait être terminé par cascade"
-    assert repository.get_by_id(g.uuid).state is True, "Le grand-parent devrait être terminé par cascade"
+    assert repository.get_by_id(p.uuid).state is True, (
+        "Le parent devrait être terminé par cascade"
+    )
+    assert repository.get_by_id(g.uuid).state is True, (
+        "Le grand-parent devrait être terminé par cascade"
+    )
 
     # Vérification des messages dans la console
     assert "Valider aussi le parent 'Parent' ?" in result.stdout
     assert "Valider aussi le parent 'Grand-Parent' ?" in result.stdout
-    assert "' Grand-Parent ' est une tâche racine. Voulez-vous la répéter ?" in result.stdout
+    assert (
+        "' Grand-Parent ' est une tâche racine. Voulez-vous la répéter ?"
+        in result.stdout
+    )

@@ -3,6 +3,7 @@ from uuid import uuid4
 from todo_bene.domain.entities.todo import Todo
 from todo_bene.application.use_cases.todo_complete import TodoCompleteUseCase
 
+
 def test_complete_child_identifies_parent_as_pending(repository):
     user_id = uuid4()
     use_case = TodoCompleteUseCase(repository)
@@ -10,10 +11,10 @@ def test_complete_child_identifies_parent_as_pending(repository):
     # GIVEN : Un arbre Racine -> Parent -> Enfant
     racine = Todo(title="Racine", user=user_id)
     repository.save(racine)
-    
+
     parent = Todo(title="Parent", user=user_id, parent=racine.uuid)
     repository.save(parent)
-    
+
     enfant = Todo(title="Enfant", user=user_id, parent=parent.uuid)
     repository.save(enfant)
 
@@ -26,6 +27,7 @@ def test_complete_child_identifies_parent_as_pending(repository):
     assert parent.uuid in result["newly_pending_ids"]
     assert result["is_root"] is False
 
+
 def test_complete_child_only_signals_parent_if_all_children_done(repository):
     user_id = uuid4()
     use_case = TodoCompleteUseCase(repository)
@@ -33,7 +35,7 @@ def test_complete_child_only_signals_parent_if_all_children_done(repository):
     # GIVEN : Un Parent avec DEUX enfants
     parent = Todo(title="Parent", user=user_id)
     repository.save(parent)
-    
+
     enfant_1 = Todo(title="Enfant 1", user=user_id, parent=parent.uuid)
     enfant_2 = Todo(title="Enfant 2", user=user_id, parent=parent.uuid)
     repository.save(enfant_1)
@@ -51,6 +53,7 @@ def test_complete_child_only_signals_parent_if_all_children_done(repository):
     # ASSERTION 2 : Là, le parent doit être signalé
     assert parent.uuid in result_2["newly_pending_ids"]
 
+
 def test_complete_parent_with_active_children_fails(repository):
     user_id = uuid4()
     use_case = TodoCompleteUseCase(repository)
@@ -59,7 +62,7 @@ def test_complete_parent_with_active_children_fails(repository):
     parent = Todo(title="Parent", user=user_id)
     repository.save(parent)
     enfant = Todo(title="Enfant", user=user_id, parent=parent.uuid)
-    repository.save(enfant) # state est False par défaut
+    repository.save(enfant)  # state est False par défaut
 
     # WHEN : On essaie de terminer le parent
     result = use_case.execute(todo_id=parent.uuid, user_id=user_id)
@@ -67,6 +70,7 @@ def test_complete_parent_with_active_children_fails(repository):
     # THEN : Le Use Case doit signaler que c'est impossible (ex: via un flag ou une erreur)
     assert result["success"] is False
     assert "active_children" in result["reason"]
+
 
 def test_force_complete_finishes_all_descendants(repository):
     user_id = uuid4()

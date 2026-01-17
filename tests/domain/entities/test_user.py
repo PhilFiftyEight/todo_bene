@@ -10,5 +10,4 @@ def test_user_creation():
     # Assert
     assert user.name == "Jean Dupont"
     assert user.email == "jean.dupont@example.com"
-    assert isinstance(user.uuid, UUID) # L'ID doit être généré automatiquement
-
+    assert isinstance(user.uuid, UUID)  # L'ID doit être généré automatiquement
