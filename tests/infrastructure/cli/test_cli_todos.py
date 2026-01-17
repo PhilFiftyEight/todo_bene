@@ -88,13 +88,11 @@ def test_cli_precise_hour_parsing_fr(test_config_env):
     user_id = "550e8400-e29b-41d4-a716-446655440000"
     save_user_config(user_id)
 
-    result = runner.invoke(app, [
+    runner.invoke(app, [
         "create", "Rendez-vous dentiste",
         "--start", "12/02/2026 14:15"
     ])
-    #print(f"\n{result.output}")
     result_list = runner.invoke(app, ["list"])
-    #print(f"\n{result_list.output}")
     assert "12/02/2026 14:15" in result_list.stdout
     # L'échéance doit suivre sur le même jour à 23:59
     assert "12/02/2026 23:59" in result_list.stdout
