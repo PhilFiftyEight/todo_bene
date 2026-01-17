@@ -32,3 +32,11 @@ class TodoRepository(ABC):
     def update_state(self, todo_id: UUID, state: bool) -> None:
         """Met à jour l'état (complété ou non) d'un Todo."""
         pass
+
+    @abstractmethod
+    def get_pending_completion_parents(self, user_id: UUID) -> list[Todo]:
+        """
+        Récupère les parents non complétés dont TOUS les enfants 
+        sont complétés (et qui ont au moins un enfant).
+        """
+        pass

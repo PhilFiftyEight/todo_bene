@@ -18,7 +18,7 @@ class MemoryTodoRepository(TodoRepository):
     def find_top_level_by_user(self, user_id: UUID) -> list[Todo]:
         return [
             todo for todo in self.todos.values() 
-            if todo.user == user_id and todo.parent is None
+            if todo.user == user_id and todo.parent is None and not todo.state
         ]
 
     def search_by_title(self, user_id: UUID, search_term: str) -> list[Todo]:
@@ -40,3 +40,15 @@ class MemoryTodoRepository(TodoRepository):
     def update_state(self, todo_id: UUID, state: bool):
         if todo_id in self.todos:
             self.todos[todo_id].state = state
+
+    def get_pending_completion_parents(self, user_id: UUID) -> list[Todo]:
+            all_todos = self.todos.values()
+            parents = [t for t in all_todos if t.user == user_id and not t.state]
+            
+            results = []
+            for p in parents:
+                children = [t for t in all_todos if t.parent == p.uuid]
+                if children and all(c.state for c in children):
+                    results.append(p)
+            return results
+    

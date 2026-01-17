@@ -33,6 +33,14 @@ def test_todo_find_top_level_by_user_success():
     assert found_todos[0].user == user_id
     assert found_todos[0].parent is None
 
+    # 4. Verify todo with state == True not visible   
+    todo_completed = Todo(title="Tâche finie", user=user_id, state=True)
+    repo.save(todo_completed)
+    found_todos = use_case.execute(user_id)
+    assert len(found_todos) == 1 # found_todos not contain todo_completed, only root_todo
+    assert found_todos[0].uuid == root_todo.uuid
+
+
 def test_todo_find_top_level_by_user_empty_when_none():
     # Arrange
     repo = MemoryTodoRepository()

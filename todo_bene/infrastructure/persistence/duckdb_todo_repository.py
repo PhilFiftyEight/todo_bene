@@ -45,7 +45,9 @@ class DuckDBTodoRepository(TodoRepository):
     def find_top_level_by_user(self, user_id: UUID) -> List[Todo]:
         query = """
             SELECT * FROM todos 
-            WHERE user_id = ? AND parent_id IS NULL 
+            WHERE user_id = ? 
+            AND parent_id IS NULL 
+            AND state = false 
             ORDER BY date_start ASC
         """
         rows = self._conn.execute(query, (user_id,)).fetchall()
@@ -106,6 +108,26 @@ class DuckDBTodoRepository(TodoRepository):
         """Met à jour l'état d'un todo en base de données."""
          # Maintenant on peut mettre à jour
         self._conn.execute( "UPDATE todos SET state = ? WHERE uuid = ?",[state, str(todo_id)])
+
+    def get_pending_completion_parents(self, user_id: UUID) -> list[Todo]:
+            # On cherche les tâches (P) non complétées
+            # QUI ont des enfants
+            # ET pour lesquelles il n'existe AUCUN enfant non complété
+            query = """
+                SELECT p.* FROM todos p
+                WHERE p.user_id = ? 
+                AND p.state = false
+                AND EXISTS (SELECT 1 FROM todos c WHERE c.parent_id = p.uuid)
+                AND NOT EXISTS (
+                    SELECT 1 FROM todos c 
+                    WHERE c.parent_id = p.uuid 
+                    AND c.state = false
+                )
+            """
+            # On utilise la connexion déjà ouverte de l'instance
+            res = self._conn.execute(query, [str(user_id)]).fetchall()
+            # On transforme les lignes en objets Todo (utilise ta méthode de mapping habituelle)
+            return [self._row_to_todo(row) for row in res]
 
     def _row_to_todo(self, row) -> Todo:
         return Todo(
