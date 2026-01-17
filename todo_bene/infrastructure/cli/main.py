@@ -8,6 +8,7 @@ from rich.console import Console
 from rich import box
 from rich.prompt import Prompt
 from rich.panel import Panel
+from rich.align import Align
 import pendulum
 import locale
 from uuid import UUID
@@ -60,20 +61,21 @@ def show_details(todo_uuid: UUID):
         
         status = "[bold green]COMPLÉTÉ[/bold green]" if todo.state else "[bold yellow]À FAIRE[/bold yellow]"
         prio = " 🔥" if todo.priority else ""
-        
-        console.print(Panel(
-            f"[bold blue]{todo.title}[/bold blue]{prio}\n\n"
-            f"[white]{todo.description or 'Aucune description.'}[/white]\n\n"
-            f"[dim]Catégorie : {todo.category}[/dim]",
-            title=status,
-            expand=False
-        ))
-        
         d_start = pendulum.from_timestamp(todo.date_start, tz=tz).format(date_fmt)
         d_due = pendulum.from_timestamp(todo.date_due, tz=tz).format(date_fmt)
-        console.print(f"[green]Début :[/green] {d_start}   [magenta]Échéance :[/magenta] {d_due}")
+
+        # Construction du contenu du Panel
+        content = (
+            f"[bold blue]{todo.title}[/bold blue]{prio}\n\n"
+            f"[white]{todo.description or 'Aucune description.'}[/white]\n\n"
+            f"[dim]Catégorie : {todo.category}[/dim]\n"
+            f"[green]Début     :[/green] {d_start} ⇢ " 
+            f"[magenta] Échéance  :[/magenta] {d_due}"
+        )
+        console.print(Align.center(Panel(content, title=status, expand=False)))
         
         children = repo.find_by_parent(todo.uuid)
+        #children = repo.count_all_descendants(todo.uuid)
         if children:
             console.print("\n[bold]Sous-tâches :[/bold]")
             child_table = Table(box=box.SIMPLE, header_style="bold", row_styles=["none", "dim"])
@@ -87,7 +89,7 @@ def show_details(todo_uuid: UUID):
             for i, child in enumerate(children, 1):
                 prio_mark = "🔥" if child.priority else ""
                 sub_children = repo.find_by_parent(child.uuid)
-                child_signal = f" [bold cyan][{len(sub_children)}+][/bold cyan]" if len(sub_children) > 0 else ""
+                child_signal = f" [bold cyan][{repo.count_all_descendants(child.uuid)}+][/bold cyan]" if len(sub_children) > 0 else ""
 
                 raw_desc = str(child.description) if child.description else ""
                 desc = (raw_desc[:20] + "...") if len(raw_desc) > 20 else raw_desc
@@ -107,7 +109,7 @@ def show_details(todo_uuid: UUID):
         
         if sys.stdin.isatty():
             console.print("\n[bold]Actions :[/bold]")
-            console.print("[white][V]oir sous-tâche (n°) | [T]erminer | [S]upprimer | [R]etour[/white]")
+            console.print("[white] \[n°]Voir sous-tâche [T]erminer [S]upprimer [R]etour[/white]")
         
         try:
             choice = Prompt.ask("\nQue voulez-vous faire ?", default="r").lower()
@@ -122,16 +124,18 @@ def show_details(todo_uuid: UUID):
                 use_case.execute(todo_id=todo.uuid, user_id=user_id)
                 console.print("[bold green]Supprimé avec succès.[/bold green]")
                 return 
-        elif choice.startswith('v'):
+        elif choice.isdigit():
             try:
-                idx_str = choice.replace('v', '').strip()
-                idx = int(idx_str) - 1
+                idx = int(choice) - 1
                 if 0 <= idx < len(children):
                     show_details(children[idx].uuid)
                 else:
-                    continue_after_invalid("Index de sous-tâche inconnu.")
+                    continue_after_invalid(f"L'index {choice} n'existe pas dans les sous-tâches.")
             except ValueError:
                 continue_after_invalid("Format invalide.")
+        elif choice == 't':
+            # Ici viendra ta future logique pour "Terminer"
+            continue_after_invalid("[yellow]Action 'Terminer' bientôt disponible ![/yellow]")
 
         if not sys.stdin.isatty():
             break
@@ -244,7 +248,8 @@ def list_todos():
         for idx, todo in enumerate(roots, 1):
             prio_mark = "🔥" if todo.priority else ""
             children = repo.find_by_parent(todo.uuid)
-            child_signal = f" [bold cyan][{len(children)}+][/bold cyan]" if len(children) > 0 else ""
+            
+            child_signal = f" [bold cyan][{repo.count_all_descendants(todo.uuid)}+][/bold cyan]" if len(children) > 0 else ""
 
             raw_desc = str(todo.description) if todo.description else ""
             desc = (raw_desc[:20] + "...") if len(raw_desc) > 20 else raw_desc
@@ -283,42 +288,47 @@ def list_todos():
 
 @app.command(name="list-dev")
 def list_dev():
-    """Affiche une vue technique brute de tous les Todos en base."""
+    """Vue technique détaillée avec encadrement minimaliste (style list)."""
     user_id = load_user_config()
     repo = get_repository()
-    
-    # On récupère tout sans distinction de hiérarchie
     todos = repo.find_all_by_user(user_id) 
     
     if not todos:
         console.print("[yellow]La base est vide pour cet utilisateur.[/yellow]")
         return
 
+    # On reprend le style box.SIMPLE de la commande 'list'
+    #table = Table(box=box.SIMPLE, header_style="bold")
     table = Table(title="Vue Développeur - Tous les Todos", box=box.MINIMAL_DOUBLE_HEAD)
-    table.add_column("UUID (Short)", style="dim")
-    table.add_column("Titre", style="bold")
-    table.add_column("Parent UUID", style="dim")
+    table.add_column("UUID (8)", style="dim", no_wrap=True)
+    table.add_column("Structure (Parent)", no_wrap=True)
+    table.add_column("Titre", style="bold white")
     table.add_column("État", justify="center")
-    table.add_column("Start (TS)", style="green")
-    table.add_column("Due (TS)", style="magenta")
+    table.add_column("Dates (Raw TS)", style="dim")
 
     for t in todos:
-        state = "✅" if t.state else "❌"
-        # On tronque les UUID pour la lisibilité
-        short_id = str(t.uuid)[:8] + "..."
-        parent_id = str(t.parent)[:8] + "..." if t.parent else "None"
+        state = "[green]✅[/green]" if t.state else "[red]❌[/red]"
+        short_id = f"{str(t.uuid)[:8]}"
+        
+        # Identification visuelle du parent
+        if t.parent:
+            parent_info = f"[cyan]↳ {str(t.parent)[:8]}[/cyan]"
+        else:
+            parent_info = "[dim]• Racine[/dim]"
+        
+        # Timestamps bruts pour le debug
+        raw_dates = f"S:{t.date_start} | D:{t.date_due}"
         
         table.add_row(
             short_id,
+            parent_info,
             t.title,
-            parent_id,
             state,
-            str(t.date_start),
-            str(t.date_due)
+            raw_dates
         )
     
     console.print(table)
-    console.print(f"\n[bold cyan]Total en base : {len(todos)} items.[/bold cyan]")
+    console.print(f"\n[dim] Total : {len(todos)} items en base.[/dim]")
 
 if __name__ == "__main__":
     app()

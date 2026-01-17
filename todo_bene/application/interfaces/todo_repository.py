@@ -27,3 +27,8 @@ class TodoRepository(ABC):
     def delete(self, todo_id: UUID) -> None:
         """Supprime un Todo et toute sa descendance récursivement."""
         pass
+
+    @abstractmethod
+    def update_state(self, todo_id: UUID, state: bool) -> None:
+        """Met à jour l'état (complété ou non) d'un Todo."""
+        pass

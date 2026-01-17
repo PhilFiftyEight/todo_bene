@@ -36,3 +36,7 @@ class MemoryTodoRepository(TodoRepository):
         # On supprime le todo lui-même
         if todo_id in self.todos:
             del self.todos[todo_id]
+
+    def update_state(self, todo_id: UUID, state: bool):
+        if todo_id in self.todos:
+            self.todos[todo_id].state = state

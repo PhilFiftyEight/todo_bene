@@ -70,6 +70,24 @@ class DuckDBTodoRepository(TodoRepository):
         rows = self._conn.execute(query, (user_id, f"%{search_term}%")).fetchall()
         return [self._row_to_todo(row) for row in rows]
 
+    def find_all_by_user(self, user_id: UUID) -> list[Todo]:
+        """Récupère tous les todos de l'utilisateur, sans filtre hiérarchique."""
+        with duckdb.connect(self.db_path) as conn:
+            res = conn.execute(
+                    "SELECT * FROM todos WHERE user_id = ? ORDER BY date_start ASC",
+                [str(user_id)]
+            ).fetchall()
+        # On utilise ta méthode de mapping existante 
+        return [self._row_to_todo(row) for row in res]
+
+    def count_all_descendants(self, todo_uuid: UUID) -> int:
+        """Compte récursivement tous les descendants d'un Todo."""
+        children = self.find_by_parent(todo_uuid)
+        total = len(children)
+        for child in children:
+            total += self.count_all_descendants(child.uuid)
+        return total
+
     def delete(self, todo_id: UUID) -> None:
         """Supprime récursivement un todo et ses enfants via SQL."""
         query = """
@@ -84,6 +102,11 @@ class DuckDBTodoRepository(TodoRepository):
         """
         self._conn.execute(query, (todo_id,))
 
+    def update_state(self, todo_id: UUID, state: bool) -> None:
+        """Met à jour l'état d'un todo en base de données."""
+         # Maintenant on peut mettre à jour
+        self._conn.execute( "UPDATE todos SET state = ? WHERE uuid = ?",[state, str(todo_id)])
+
     def _row_to_todo(self, row) -> Todo:
         return Todo(
             uuid=row[0], title=row[1], description=row[2], category=row[3],
@@ -96,13 +119,3 @@ class DuckDBTodoRepository(TodoRepository):
             self._conn.close()
         except:  # noqa: E722
             pass
-
-    def find_all_by_user(self, user_id: UUID) -> list[Todo]:
-        """Récupère tous les todos de l'utilisateur, sans filtre hiérarchique."""
-        with duckdb.connect(self.db_path) as conn:
-            res = conn.execute(
-                    "SELECT * FROM todos WHERE user_id = ? ORDER BY date_start ASC",
-                [str(user_id)]
-            ).fetchall()
-        # On utilise ta méthode de mapping existante 
-        return [self._row_to_todo(row) for row in res]

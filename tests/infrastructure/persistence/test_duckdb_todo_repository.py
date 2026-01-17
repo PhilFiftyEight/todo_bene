@@ -56,6 +56,34 @@ def test_search_by_title_is_case_insensitive(repository, user_id):
     assert len(results) == 1
     assert results[0].title == "Urgent : Rapport"
 
+def test_repository_count_all_descendants(repository, user_id):
+    # GIVEN: Une hiérarchie sur 3 niveaux
+    # Racine -> Enfant -> Petit-enfant
+    racine = Todo(title="Racine", user=user_id)
+    repository.save(racine)
+    
+    enfant = Todo(title="Enfant", user=user_id, parent=racine.uuid)
+    repository.save(enfant)
+    
+    petit_enfant = Todo(title="Petit-enfant", user=user_id, parent=enfant.uuid)
+    repository.save(petit_enfant)
+    
+    # On ajoute une autre branche pour être sûr
+    autre_enfant = Todo(title="Autre Enfant", user=user_id, parent=racine.uuid)
+    repository.save(autre_enfant)
+
+    # WHEN: On compte les descendants de la racine
+    count = repository.count_all_descendants(racine.uuid)
+
+    # THEN: On doit en trouver 3 (enfant, petit_enfant, autre_enfant)
+    assert count == 3
+    
+    # ET: L'enfant doit en avoir 1 (le petit-enfant)
+    assert repository.count_all_descendants(enfant.uuid) == 1
+    
+    # ET: Le petit-enfant doit en avoir 0
+    assert repository.count_all_descendants(petit_enfant.uuid) == 0
+
 def test_repository_recursive_delete(repository, user_id):
     from todo_bene.domain.entities.todo import Todo
     
@@ -73,3 +101,4 @@ def test_repository_recursive_delete(repository, user_id):
     assert repository.get_by_id(parent.uuid) is None
     assert repository.get_by_id(child.uuid) is None
     assert repository.get_by_id(grand_child.uuid) is None
+
