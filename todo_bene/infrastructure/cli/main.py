@@ -155,20 +155,38 @@ def ask_validate_parents_recursive(repo, newly_pending_ids: list, user_id: UUID)
                 handle_completion_success(repo, result, user_id)
 
 
-def _display_detail_view(todo: Todo, children: list[Todo]):
-    """S'occupe uniquement du rendu visuel de la vue détail."""
+def _display_detail_view(todo: Todo, children: list[Todo], repo):
+    """S'occupe uniquement du rendu visuel des détails."""
     if sys.stdin.isatty():
-        console.clear()
-    # Panel principal
-    status = "[green]Fait[/green]" if todo.state else "[yellow]En cours[/yellow]"
-    console.print(
-        Panel(
-            f"[bold blue]{todo.title}[/bold blue]\n"
-            f"Statut : {status}\n"
-            f"ID : [dim]{todo.uuid}[/dim]",
-            title="Détails de la tâche",
-        )
+                console.clear()
+    # 1. État et Couleur
+    state_label = "[bold green]✅ COMPLÉTÉE[/bold green]" if todo.state else "[bold red]⏳ À FAIRE[/bold red]"
+    
+    # 2. Titre et Priorité
+    prio_mark = "[yellow]🔥 [/yellow]" if todo.priority else ""
+    header = f"{prio_mark}[bold white]{todo.title}[/bold white]"
+
+    # 3. Information Parent
+    parent_line = ""
+    if todo.parent:
+        p_obj = repo.get_by_id(todo.parent)
+        p_name = p_obj.title if p_obj else str(todo.parent)[:8]
+        parent_line = f"\n[dim]↳ {p_name}[/dim]"
+
+    # 4. Construction du contenu du Panel
+    content = f"{header}{parent_line}\n"
+    content += f"\n[italic]{todo.description or 'Pas de description'}[/italic]"
+
+    panel = Panel(
+        Align.center(content, vertical="middle"),
+        title=state_label,
+        border_style="grey37", # Couleur grise
+        box=box.ROUNDED,
+        width=60,
+        expand=False
     )
+    
+    console.print(Align.center(panel))
 
     # Affichage des enfants
     if children:
@@ -231,7 +249,7 @@ def _handle_action(
     # 4. Ajout de sous-tâche
     if choice == "n":
         title = Prompt.ask("Titre de la sous-tâche")
-        TodoCreateUseCase(repo).execute(title, todo.user, parent_uuid=todo.uuid)
+        TodoCreateUseCase(repo).execute(title, todo.user, parent=todo.uuid)
         # On retourne False, False pour rafraîchir l'affichage et voir le nouvel enfant
         return False, False
 
@@ -364,7 +382,7 @@ def show_details(todo_uuid: UUID, user_id: UUID) -> bool:
             # children = repo.find_by_parent(todo_uuid)
 
             # 2. Affichage (Extrait à l'étape 1)
-            _display_detail_view(todo, children)
+            _display_detail_view(todo, children, repo)
 
             choice = Prompt.ask("\nVotre choix").lower().strip()
 

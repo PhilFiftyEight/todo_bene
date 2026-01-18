@@ -99,7 +99,3 @@ def test_todo_creation_priority_bool(get_todo_dict: dict):
     todo = Todo(**get_todo_dict, priority=True)
     assert todo.priority is True
 
-
-"""
-- date_final fait partie du usecase Achèvement, à tester dans le test de celui-ci
-"""
