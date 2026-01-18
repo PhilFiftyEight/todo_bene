@@ -171,11 +171,16 @@ def _display_detail_view(todo: Todo, children: list[Todo], repo):
     if todo.parent:
         p_obj = repo.get_by_id(todo.parent)
         p_name = p_obj.title if p_obj else str(todo.parent)[:8]
-        parent_line = f"\n[dim]↳ {p_name}[/dim]"
+        parent_line = f"[dim] → {p_name}[/dim]"
 
     # 4. Construction du contenu du Panel
     content = f"{header}{parent_line}\n"
     content += f"\n[italic]{todo.description or 'Pas de description'}[/italic]"
+    tz = pendulum.local_timezone()
+    date_fmt = get_date_format()
+    d_start = pendulum.from_timestamp(todo.date_start, tz=tz).format(date_fmt)
+    d_due = pendulum.from_timestamp(todo.date_due, tz=tz).format(date_fmt)
+    content += f"\n\n[blue]Démarrage: {d_start} - Échéance: {d_due}[/blue]"
 
     panel = Panel(
         Align.center(content, vertical="middle"),
@@ -183,9 +188,9 @@ def _display_detail_view(todo: Todo, children: list[Todo], repo):
         border_style="grey37", # Couleur grise
         box=box.ROUNDED,
         width=60,
-        expand=False
+        #expand=False
     )
-    
+    console.print("\n")
     console.print(Align.center(panel))
 
     # Affichage des enfants
@@ -248,8 +253,9 @@ def _handle_action(
 
     # 4. Ajout de sous-tâche
     if choice == "n":
-        title = Prompt.ask("Titre de la sous-tâche")
-        TodoCreateUseCase(repo).execute(title, todo.user, parent=todo.uuid)
+        Prompt.ask("Action à venir, merci d'utiliser la ligne de commande!")
+        #title = Prompt.ask("Titre de la sous-tâche")
+        #TodoCreateUseCase(repo).execute(title, todo.user, parent=todo.uuid)
         # On retourne False, False pour rafraîchir l'affichage et voir le nouvel enfant
         return False, False
 
