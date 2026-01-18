@@ -23,13 +23,15 @@ def test_cli_register_success(monkeypatch, test_config_env):
         data = json.load(f)
         assert "user_id" in data
 
-
 def test_commands_blocked_when_unregistered(test_config_env):
-    """Vérifie que la garde bloque les commandes si pas de profil."""
+    """Vérifie que le wizard se lance si pas de profil."""
     if test_config_env.exists():
         test_config_env.unlink()
 
-    result = runner.invoke(app, ["list"])
+    # On simule l'appel à 'list'
+    result = runner.invoke(app, ["list"], input="philippe@local\nphilippe\n")
 
-    assert result.exit_code == 1
-    assert "Aucun utilisateur enregistré" in result.stdout
+    # On vérifie que le wizard a bien été déclenché
+    assert "Configurons votre profil" in result.stdout
+    assert "Quel est votre email ?" in result.stdout
+    assert result.exit_code == 0 # Devrait maintenant être 0 car le wizard finit par réussir

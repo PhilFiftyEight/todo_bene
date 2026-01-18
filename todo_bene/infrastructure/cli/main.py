@@ -16,9 +16,10 @@ from rich.align import Align
 import pendulum
 
 # Imports Internes
+from todo_bene.application.use_cases.user_create import UserCreateUseCase
 from todo_bene.application.use_cases.todo_get import TodoGetUseCase
 from todo_bene.domain.entities.todo import Todo
-from todo_bene.infrastructure.cli.config import load_user_config, save_user_config
+from todo_bene.infrastructure.config import load_user_config, save_user_config
 from todo_bene.infrastructure.persistence.duckdb_todo_repository import (
     DuckDBTodoRepository,
 )
@@ -30,7 +31,59 @@ app = typer.Typer()
 console = Console()
 
 # --- UTILITAIRES ---
+def ensure_user_setup() -> UUID:
+    """
+    Vérifie si un utilisateur est configuré. 
+    Sinon, lance un wizard avec un en-tête stylisé 'TODO BENE'.
+    """
+    console.clear()
+    user_id = load_user_config()
+    if user_id:
+        return user_id
 
+    # --- EN-TÊTE STYLISÉ (Style image) ---
+    # On crée un titre imposant
+    banner = (
+        "[bold cyan]  _____ ___  ___   ___  [/bold cyan]\n"
+        "[bold cyan] |_   _/ _ \|   \ / _ \ [/bold cyan]\n"
+        "[bold cyan]   | || (_) | |) | (_) |[/bold cyan]\n"
+        "[bold white]   |_| \___/|___/ \___/ [/bold white]\n"
+        "[bold green]  ___  ___ _  _ ___ [/bold green]\n"
+        "[bold green] | _ )| __| \| | __|[/bold green]\n"
+        "[bold green] | _ \| _|| .` | _| [/bold green]\n"
+        "[bold white] |___/|___|_|\_|___|[/bold white]\n"
+        "\n[dim]// Configurons votre profil pour commencer.[/dim]"
+    )
+
+    console.print("\n")
+    console.print(Align.center(
+        Panel(
+            Align.center(banner),
+            border_style="green",
+            box=box.DOUBLE_EDGE,
+            padding=(1, 5)
+        )
+    ))
+    console.print("\n")
+
+    email = Prompt.ask("[bold]Quel est votre email ?[/bold]")
+
+    with get_repository() as repo:
+        # 1. On vérifie si cet email est déjà connu en BDD
+        existing_user = repo.get_user_by_email(email)
+        
+        if existing_user:
+            console.print(f"[yellow]Restauration du profil existant pour : {existing_user.name}[/yellow]")
+            save_user_config(existing_user.uuid)
+            return existing_user.uuid
+        
+        # 2. Sinon, on continue la création classique
+        name = Prompt.ask("Email inconnu. Quel est votre nom ?", default=getpass.getuser())
+        new_user = UserCreateUseCase(repo).execute(name, email)
+        
+        save_user_config(new_user.uuid)
+        console.print(f"\n[bold green]Bienvenue {name} ! Profil créé.[/bold green]")
+        return new_user.uuid   
 
 @contextmanager
 def get_repository():
@@ -406,13 +459,24 @@ def show_details(todo_uuid: UUID, user_id: UUID) -> bool:
                 return exit_cascade
 
 
+# @app.callback()
+# def main(ctx: typer.Context):
+#     if ctx.invoked_subcommand == "register":
+#         return
+#     if load_user_config() is None:
+#         console.print("[red]Erreur : Aucun utilisateur enregistré.[/red]")
+#         raise typer.Exit(code=1)
 @app.callback()
 def main(ctx: typer.Context):
+    """
+    Callback principal : s'assure que l'environnement est prêt,
+    sauf pour la commande 'register' qui est manuelle.
+    """
     if ctx.invoked_subcommand == "register":
         return
-    if load_user_config() is None:
-        console.print("[red]Erreur : Aucun utilisateur enregistré.[/red]")
-        raise typer.Exit(code=1)
+    
+    # On lance le wizard automatiquement si besoin
+    ensure_user_setup()
 
 
 @app.command()

@@ -11,6 +11,6 @@ class UserCreateUseCase:
         user = User(name=name, email=email)
 
         # On utilise la méthode définie dans l'interface
-        self.repo.save(user)
+        self.repo.save_user(user)
 
         return user
