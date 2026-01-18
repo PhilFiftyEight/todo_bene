@@ -43,7 +43,8 @@ def repo():
     # On crée l'instance manuellement pour le test
     repo = DuckDBTodoRepository(db_path=":memory:")
     yield repo  # Le test utilise le repo ici
-    repo.close() # Pytest exécute ceci APRÈS le test
+    repo.close()  # Pytest exécute ceci APRÈS le test
+
 
 @pytest.fixture
 def repository(monkeypatch, repo):
@@ -52,12 +53,12 @@ def repository(monkeypatch, repo):
     Utilise 'repository' (la fixture existante) et la rend compatible
     avec le pattern 'with get_repository()'.
     """
+
     @contextmanager
     def _mock_context():
         yield repo
 
     monkeypatch.setattr(
-        "todo_bene.infrastructure.cli.main.get_repository", 
-        _mock_context
+        "todo_bene.infrastructure.cli.main.get_repository", _mock_context
     )
     return repo

@@ -17,4 +17,3 @@ class TodoGetUseCase:
         # On récupère les enfants associés à ce Todo
         children = self.todo_repo.find_by_parent(todo_id)
         return todo, children
-

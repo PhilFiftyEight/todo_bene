@@ -26,7 +26,7 @@ class DuckDBTodoRepository(TodoRepository):
                 parent_id UUID
             )
         """)
-    
+
     # AJOUT : Pour le support du bloc 'with'
     def __enter__(self):
         return self
@@ -40,7 +40,7 @@ class DuckDBTodoRepository(TodoRepository):
             try:
                 self._conn.close()
             except duckdb.Error:
-                pass # Ici, une erreur de fermeture est moins critique qu'un except nu
+                pass  # Ici, une erreur de fermeture est moins critique qu'un except nu
 
     def save(self, todo: Todo):
         self._conn.execute(
