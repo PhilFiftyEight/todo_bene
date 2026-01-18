@@ -79,7 +79,7 @@ class Todo:
                 try:
                     dt = pendulum.from_format(date_str, fmt, tz=tz)
                     break
-                except Exception:
+                except (ValueError, pendulum.parsing.exceptions.ParserError):
                     continue
             if dt is None:
                 raise ValueError(f"Format de date non reconnu : {date_str}")

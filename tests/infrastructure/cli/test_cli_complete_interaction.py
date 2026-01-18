@@ -9,17 +9,11 @@ runner = CliRunner()
 def test_cli_terminer_change_state_in_db(monkeypatch, repository):
     # GIVEN
     user_id = uuid4()
-
     # 1. On mocke load_user_config PARTOUT où il est utilisé dans main
     monkeypatch.setattr(
         "todo_bene.infrastructure.cli.main.load_user_config", lambda: user_id
     )
-    # 2. Mock du repository pour que la CLI utilise CELUI du test
-    monkeypatch.setattr(
-        "todo_bene.infrastructure.cli.main.get_repository", lambda: repository
-    )
 
-    # On crée le Todo avec cet ID
     todo = Todo(title="Tâche à finir", user=user_id)
     repository.save(todo)
 
@@ -46,11 +40,7 @@ def test_cli_proposes_force_complete_when_children_active(repository, monkeypatc
     monkeypatch.setattr(
         "todo_bene.infrastructure.cli.main.load_user_config", lambda: user_id
     )
-    monkeypatch.setattr(
-        "todo_bene.infrastructure.cli.main.get_repository", lambda: repository
-    )
 
-    # Création d'une hiérarchie Parent -> Enfant (non terminé)
     p = Todo(title="Parent Bloqué", user=user_id)
     repository.save(p)
     e = Todo(title="Enfant Actif", user=user_id, parent=p.uuid)

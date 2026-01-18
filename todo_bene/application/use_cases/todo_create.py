@@ -23,7 +23,7 @@ class TodoCreateUseCase:
             for fmt in formats:
                 try:
                     return pendulum.from_format(date_str, fmt, tz=tz)
-                except Exception:
+                except (ValueError, pendulum.parsing.exceptions.ParserError):
                     continue
             raise ValueError(f"Format de date non supporté : {date_str}")
 

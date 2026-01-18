@@ -18,5 +18,3 @@ class TodoGetUseCase:
         children = self.todo_repo.find_by_parent(todo_id)
         return todo, children
 
-
-# ajouter la règle: un utilisateur ne peut voir que ses propres Todos

@@ -1,8 +1,12 @@
-import typer
 import os
 import sys
 import getpass
 from typing import Optional
+from contextlib import contextmanager
+import locale
+from uuid import UUID
+from pathlib import Path
+import typer
 from rich.table import Table
 from rich.console import Console
 from rich import box
@@ -10,11 +14,10 @@ from rich.prompt import Prompt
 from rich.panel import Panel
 from rich.align import Align
 import pendulum
-import locale
-from uuid import UUID
-from pathlib import Path
 
 # Imports Internes
+from todo_bene.application.use_cases.todo_get import TodoGetUseCase
+from todo_bene.domain.entities.todo import Todo
 from todo_bene.infrastructure.cli.config import load_user_config, save_user_config
 from todo_bene.infrastructure.persistence.duckdb_todo_repository import (
     DuckDBTodoRepository,
@@ -28,18 +31,21 @@ console = Console()
 
 # --- UTILITAIRES ---
 
-
+@contextmanager
 def get_repository():
     db_path = os.getenv("TODO_BENE_DB_PATH", str(Path.home() / ".todo_bene.db"))
-    return DuckDBTodoRepository(db_path)
-
+    repo = DuckDBTodoRepository(db_path)
+    try:
+        yield repo
+    finally:
+        repo.close()
 
 def get_date_format():
     try:
         lang, _ = locale.getlocale()
         if lang and lang.startswith("fr"):
             return "DD/MM/YYYY HH:mm"
-    except Exception:
+    except TypeError:
         pass
     return "YYYY-MM-DD HH:mm"
 
@@ -96,154 +102,308 @@ def ask_validate_parents_recursive(repo, newly_pending_ids: list, user_id: UUID)
                 # On utilise la fonction de succès ici AUSSI !
                 handle_completion_success(repo, result, user_id)
 
+def _display_detail_view(todo: Todo, children: list[Todo]):
+    """S'occupe uniquement du rendu visuel de la vue détail."""
+    if sys.stdin.isatty():
+        console.clear()
+    # Panel principal
+    status = "[green]Fait[/green]" if todo.state else "[yellow]En cours[/yellow]"
+    console.print(Panel(
+        f"[bold blue]{todo.title}[/bold blue]\n"
+        f"Statut : {status}\n"
+        f"ID : [dim]{todo.uuid}[/dim]",
+        title="Détails de la tâche"
+    ))
+
+    # Affichage des enfants
+    if children:
+        console.print("\n[bold]Sous-tâches :[/bold]")
+        for idx, child in enumerate(children, 1):
+            c_status = "✅" if child.state else "⏳"
+            console.print(f"  {idx}. {c_status} {child.title}")
+    else:
+        console.print("\n[dim]Aucune sous-tâche.[/dim]")
+
+    # Menu d'actions
+    console.print("\n[bold]Actions :[/bold]")
+    console.print("  [b]t[/b]: Terminer | [b]s[/b]: Supprimer | [b]n[/b]: Nouvelle sous-tâche")
+    console.print("  [b]r[/b]: Retour | [b][N°][/b]: Voir sous-tâche")
+
+def _handle_action(choice: str, todo: Todo, children: list[Todo], repo, user_id) -> tuple[bool, bool]:
+    """
+    Traite l'action textuelle choisie par l'utilisateur.
+
+    Cette fonction découple la prise de décision de la boucle d'affichage.
+    Elle utilise un système de signaux via un tuple de booléens.
+
+    Args:
+        choice (str): La commande saisie ('t', 'd', 'n', 'r', etc.).
+        todo (Todo): L'objet Todo actuellement consulté.
+        children (list[Todo]): La liste des sous-tâches chargées.
+        repo: Le repository pour les opérations de persistance.
+
+    Returns:
+        tuple[bool, bool]: (should_break, exit_cascade)
+            - should_break (bool): Si True, la boucle 'while' de la vue actuelle 
+              doit s'arrêter (on quitte l'écran de cette tâche).
+            - exit_cascade (bool): Si True, demande aux parents dans la pile 
+              récursive de se fermer aussi (utilisé après une complétude réussie).
+    """
+    # 1. Retour simple
+    if choice == 'r':
+        return True, False
+        
+    # 2. Complétude (Le point complexe)
+    if choice == 't':
+        # On délègue à une mini-fonction dédiée (Étape 2.1)
+        finished = _execute_completion_logic(todo, repo, user_id)
+        if finished:
+            # On casse la boucle ET on demande aux parents de se fermer
+            return True, True  
+            
+    # 3. Suppression
+    if choice == 's':
+        if typer.confirm(f"Supprimer {todo.title} ?"):
+            TodoDeleteUseCase(repo).execute(todo.uuid, user_id)
+            console.print("[green]Supprimé avec succès.[/green]")
+            return True, False # On quitte car l'objet n'existe plus
+            
+    # 4. Ajout de sous-tâche
+    if choice == 'n':
+        title = Prompt.ask("Titre de la sous-tâche")
+        TodoCreateUseCase(repo).execute(title, todo.user, parent_uuid=todo.uuid)
+        # On retourne False, False pour rafraîchir l'affichage et voir le nouvel enfant
+        return False, False
+            
+    return False, False
+
+def _execute_completion_logic(todo: Todo, repo, user_id: UUID) -> bool:
+    """
+    Gère la logique de complétude et retourne True si on doit fermer la vue.
+    """
+    use_case = TodoCompleteUseCase(repo)
+    
+    # Exécution du Use Case
+    result = use_case.execute(todo.uuid, user_id)
+    
+    if result is None:
+        console.print("[red]Erreur : Tâche introuvable ou accès refusé.[/red]")
+        return False
+
+    # CAS 1 : Succès immédiat
+    if result.get("success"):
+        console.print(f"[green]✔[/green] Tâche '{todo.title}' terminée !")
+        # Gère la répétition ou la remontée aux parents (cascade)
+        handle_completion_success(repo, result, user_id)
+        return True
+
+    # CAS 2 : Blocage car enfants actifs (success: False)
+    if result.get("reason") == "active_children":
+        active_count = result.get("active_count", 0)
+        console.print(f"\n[yellow]⚠ Blocage :[/yellow] {active_count} sous-tâche(s) en cours.")
+        
+        if typer.confirm("Voulez-vous TOUT terminer (enfants inclus) ?"):
+            # Deuxième appel avec force=True
+            final_result = use_case.execute(todo.uuid, user_id, force=True)
+            if final_result and final_result.get("success"):
+                console.print(f"[green]✔[/green] {todo.title} a été terminée !")
+                handle_completion_success(repo, final_result, user_id)
+                return True
+    
+    return False
 
 # --- NAVIGATION ET DÉTAILS ---
+def _handle_navigation(choice: str, children: list[Todo], user_id: UUID) -> bool:
+    """
+    Gère l'entrée dans une sous-tâche par son index.
+    
+    Args:
+        choice (str): La saisie utilisateur (censée être un chiffre).
+        children (list[Todo]): La liste des enfants affichés.
+        
+    Returns:
+        bool: True si on doit propager la fermeture (cascade), False sinon.
+    """
+    if not choice.isdigit():
+        return False
+        
+    idx = int(choice) - 1
+    if 0 <= idx < len(children):
+        # Appel récursif : on descend dans l'enfant
+        # Rappel : show_details renvoie True si le parent doit aussi se fermer
+        exit_cascade = show_details(children[idx].uuid, user_id)
+        return exit_cascade
+        
+    console.print("[yellow]Index invalide.[/yellow]")
+    return False
 
+def show_details(todo_uuid: UUID, user_id: UUID) -> bool:
+    with get_repository() as repo:
+        while True:
+            # 1. Rafraîchissement des données
+            todo, children = TodoGetUseCase(repo).execute(todo_uuid, user_id)
+            #children = repo.find_by_parent(todo_uuid)
+            
+            # 2. Affichage (Extrait à l'étape 1)
+            _display_detail_view(todo, children)
+            
+            choice = Prompt.ask("\nVotre choix").lower().strip()
+            
+            # 3. Navigation numérique (Extrait à l'étape 4)
+            if choice.isdigit():
+                if _handle_navigation(choice, children, user_id):
+                    return True # Cascade !
+                continue
 
-def show_details(todo_uuid: UUID):
-    repo = get_repository()
-    user_id = load_user_config()
-    tz = pendulum.local_timezone()
-    date_fmt = get_date_format()
+            # 4. Actions textuelles (Extrait à l'étape 2)
+            should_break, exit_cascade = _handle_action(choice, todo, children, repo, user_id)
+            if should_break:
+                return exit_cascade
+# def show_details(todo_uuid: UUID):
+#     #repo = get_repository()
+#     with get_repository() as repo:
+#         user_id = load_user_config()
+#         tz = pendulum.local_timezone()
+#         date_fmt = get_date_format()
 
-    while True:
-        todo = repo.get_by_id(todo_uuid)
-        if not todo:
-            break
+#         while True:
+#             todo = repo.get_by_id(todo_uuid)
+#             if not todo:
+#                 break
 
-        if sys.stdin.isatty():
-            console.clear()
+#             if sys.stdin.isatty():
+#                 console.clear()
 
-        status = (
-            "[bold green]COMPLÉTÉ[/bold green]"
-            if todo.state
-            else "[bold yellow]À FAIRE[/bold yellow]"
-        )
-        prio = " 🔥" if todo.priority else ""
-        d_start = pendulum.from_timestamp(todo.date_start, tz=tz).format(date_fmt)
-        d_due = pendulum.from_timestamp(todo.date_due, tz=tz).format(date_fmt)
+#             status = (
+#                 "[bold green]COMPLÉTÉ[/bold green]"
+#                 if todo.state
+#                 else "[bold yellow]À FAIRE[/bold yellow]"
+#             )
+#             prio = " 🔥" if todo.priority else ""
+#             d_start = pendulum.from_timestamp(todo.date_start, tz=tz).format(date_fmt)
+#             d_due = pendulum.from_timestamp(todo.date_due, tz=tz).format(date_fmt)
 
-        # Construction du contenu du Panel
-        content = (
-            f"[bold blue]{todo.title}[/bold blue]{prio}\n\n"
-            f"[white]{todo.description or 'Aucune description.'}[/white]\n\n"
-            f"[dim]Catégorie : {todo.category}[/dim]\n"
-            f"[green]Début     :[/green] {d_start} ⇢ "
-            f"[magenta] Échéance  :[/magenta] {d_due}"
-        )
-        console.print(Align.center(Panel(content, title=status, expand=False)))
+#             # Construction du contenu du Panel
+#             content = (
+#                 f"[bold blue]{todo.title}[/bold blue]{prio}\n\n"
+#                 f"[white]{todo.description or 'Aucune description.'}[/white]\n\n"
+#                 f"[dim]Catégorie : {todo.category}[/dim]\n"
+#                 f"[green]Début     :[/green] {d_start} ⇢ "
+#                 f"[magenta] Échéance  :[/magenta] {d_due}"
+#             )
+#             console.print(Align.center(Panel(content, title=status, expand=False)))
 
-        children = repo.find_by_parent(todo.uuid)
-        # children = repo.count_all_descendants(todo.uuid)
-        if children:
-            console.print("\n[bold]Sous-tâches :[/bold]")
-            child_table = Table(
-                box=box.SIMPLE, header_style="bold", row_styles=["none", "dim"]
-            )
-            child_table.add_column("Idx", justify="right", style="cyan", width=4)
-            child_table.add_column(" ", justify="center", width=2)
-            child_table.add_column("Titre", style="blue")
-            child_table.add_column("Description", style="white")
-            child_table.add_column("Début", style="green")
-            child_table.add_column("Echéance", style="magenta")
+#             children = repo.find_by_parent(todo.uuid)
+#             # children = repo.count_all_descendants(todo.uuid)
+#             if children:
+#                 console.print("\n[bold]Sous-tâches :[/bold]")
+#                 child_table = Table(
+#                     box=box.SIMPLE, header_style="bold", row_styles=["none", "dim"]
+#                 )
+#                 child_table.add_column("Idx", justify="right", style="cyan", width=4)
+#                 child_table.add_column(" ", justify="center", width=2)
+#                 child_table.add_column("Titre", style="blue")
+#                 child_table.add_column("Description", style="white")
+#                 child_table.add_column("Début", style="green")
+#                 child_table.add_column("Echéance", style="magenta")
 
-            for i, child in enumerate(children, 1):
-                prio_mark = "🔥" if child.priority else ""
-                sub_children = repo.find_by_parent(child.uuid)
-                child_signal = (
-                    f" [bold cyan][{repo.count_all_descendants(child.uuid)}+][/bold cyan]"
-                    if len(sub_children) > 0
-                    else ""
-                )
+#                 for i, child in enumerate(children, 1):
+#                     prio_mark = "🔥" if child.priority else ""
+#                     sub_children = repo.find_by_parent(child.uuid)
+#                     child_signal = (
+#                         f" [bold cyan][{repo.count_all_descendants(child.uuid)}+][/bold cyan]"
+#                         if len(sub_children) > 0
+#                         else ""
+#                     )
 
-                raw_desc = str(child.description) if child.description else ""
-                desc = (raw_desc[:20] + "...") if len(raw_desc) > 20 else raw_desc
+#                     raw_desc = str(child.description) if child.description else ""
+#                     desc = (raw_desc[:20] + "...") if len(raw_desc) > 20 else raw_desc
 
-                c_start = pendulum.from_timestamp(child.date_start, tz=tz).format(
-                    date_fmt
-                )
-                c_due = pendulum.from_timestamp(child.date_due, tz=tz).format(date_fmt)
+#                     c_start = pendulum.from_timestamp(child.date_start, tz=tz).format(
+#                         date_fmt
+#                     )
+#                     c_due = pendulum.from_timestamp(child.date_due, tz=tz).format(date_fmt)
 
-                child_table.add_row(
-                    f"{i:3}",
-                    prio_mark,
-                    f"{child.title}{child_signal}",
-                    desc or "[dim italic]Pas de description[/dim italic]",
-                    c_start,
-                    c_due,
-                )
-            console.print(child_table)
+#                     child_table.add_row(
+#                         f"{i:3}",
+#                         prio_mark,
+#                         f"{child.title}{child_signal}",
+#                         desc or "[dim italic]Pas de description[/dim italic]",
+#                         c_start,
+#                         c_due,
+#                     )
+#                 console.print(child_table)
 
-        if sys.stdin.isatty():
-            console.print("\n[bold]Actions :[/bold]")
-            console.print(
-                "[white] \\[n°]Voir sous-tâche [T]erminer [S]upprimer [R]etour[/white]"
-            )
+#             if sys.stdin.isatty():
+#                 console.print("\n[bold]Actions :[/bold]")
+#                 console.print(
+#                     "[white] \\[n°]Voir sous-tâche [T]erminer [S]upprimer [R]etour[/white]"
+#                 )
 
-        try:
-            choice = Prompt.ask("\nQue voulez-vous faire ?", default="r").lower()
-        except EOFError:
-            break
+#             try:
+#                 choice = Prompt.ask("\nQue voulez-vous faire ?", default="r").lower()
+#             except EOFError:
+#                 break
 
-        if choice == "r":
-            break
-        elif choice == "s":
-            if typer.confirm(
-                f"Voulez-vous vraiment supprimer '{todo.title}' et tous ses enfants ?"
-            ):
-                use_case = TodoDeleteUseCase(repo)
-                use_case.execute(todo_id=todo.uuid, user_id=user_id)
-                console.print("[bold green]Supprimé avec succès.[/bold green]")
-                return
-        elif choice.isdigit():
-            try:
-                idx = int(choice) - 1
-                if 0 <= idx < len(children):
-                    # On capture la valeur de retour
-                    child_finished_cascade = show_details(children[idx].uuid)
-                    # show_details(children[idx].uuid)
-                    # SI l'enfant nous dit qu'il y a eu une cascade de complétude
-                    if child_finished_cascade:
-                        return True  # On referme immédiatement la vue actuelle aussi
-                else:
-                    continue_after_invalid(
-                        f"L'index {choice} n'existe pas dans les sous-tâches."
-                    )
-            except ValueError:
-                continue_after_invalid("Format invalide.")
+#             if choice == "r":
+#                 break
+#             elif choice == "s":
+#                 if typer.confirm(
+#                     f"Voulez-vous vraiment supprimer '{todo.title}' et tous ses enfants ?"
+#                 ):
+#                     use_case = TodoDeleteUseCase(repo)
+#                     use_case.execute(todo_id=todo.uuid, user_id=user_id)
+#                     console.print("[bold green]Supprimé avec succès.[/bold green]")
+#                     return
+#             elif choice.isdigit():
+#                 try:
+#                     idx = int(choice) - 1
+#                     if 0 <= idx < len(children):
+#                         # On capture la valeur de retour
+#                         child_finished_cascade = show_details(children[idx].uuid)
+#                         # show_details(children[idx].uuid)
+#                         # SI l'enfant nous dit qu'il y a eu une cascade de complétude
+#                         if child_finished_cascade:
+#                             return True  # On referme immédiatement la vue actuelle aussi
+#                     else:
+#                         continue_after_invalid(
+#                             f"L'index {choice} n'existe pas dans les sous-tâches."
+#                         )
+#                 except ValueError:
+#                     continue_after_invalid("Format invalide.")
 
-        elif choice == "t":
-            use_case = TodoCompleteUseCase(repo)
-            result = use_case.execute(todo_id=todo.uuid, user_id=user_id)
+#             elif choice == "t":
+#                 use_case = TodoCompleteUseCase(repo)
+#                 result = use_case.execute(todo_id=todo.uuid, user_id=user_id)
 
-            # Gestion du blocage (force)
-            if (
-                result
-                and not result["success"]
-                and result["reason"] == "active_children"
-            ):
-                console.print(
-                    f"\n[bold red]⚠ Blocage :[/bold red] {result['active_count']} sous-tâche(s) en cours."
-                )
-                if typer.confirm("Voulez-vous TOUT terminer (enfants inclus) ?"):
-                    result = use_case.execute(
-                        todo_id=todo.uuid, user_id=user_id, force=True
-                    )
-                else:
-                    continue
+#                 # Gestion du blocage (force)
+#                 if (
+#                     result
+#                     and not result["success"]
+#                     and result["reason"] == "active_children"
+#                 ):
+#                     console.print(
+#                         f"\n[bold red]⚠ Blocage :[/bold red] {result['active_count']} sous-tâche(s) en cours."
+#                     )
+#                     if typer.confirm("Voulez-vous TOUT terminer (enfants inclus) ?"):
+#                         result = use_case.execute(
+#                             todo_id=todo.uuid, user_id=user_id, force=True
+#                         )
+#                     else:
+#                         continue
 
-            # Traitement du succès
-            if result and result.get("success"):
-                console.print("[bold green]✓ Tâche terminée ![/bold green]")
-                should_exit_stack = handle_completion_success(repo, result, user_id)
-                if should_exit_stack:
-                    return True  # On renvoie True pour dire au niveau au-dessus de quitter aussi
-                # Si handle_completion_success a renvoyé False (pas de cascade),
-                # on quitte quand même la vue de la tâche actuelle car elle est finie
-                return False
+#                 # Traitement du succès
+#                 if result and result.get("success"):
+#                     console.print("[bold green]✓ Tâche terminée ![/bold green]")
+#                     should_exit_stack = handle_completion_success(repo, result, user_id)
+#                     if should_exit_stack:
+#                         return True  # On renvoie True pour dire au niveau au-dessus de quitter aussi
+#                     # Si handle_completion_success a renvoyé False (pas de cascade),
+#                     # on quitte quand même la vue de la tâche actuelle car elle est finie
+#                     return False
 
-        if not sys.stdin.isatty():
-            break
+#             if not sys.stdin.isatty():
+#                 break
 
 
 @app.callback()
@@ -281,192 +441,195 @@ def create(
     ),
 ):
     effective_user_id = user_id or load_user_config()
-    repo = get_repository()
-    use_case = TodoCreateUseCase(repo)
+    # repo = get_repository()
+    with get_repository() as repo:
+        use_case = TodoCreateUseCase(repo)
 
-    selected_parent_uuid = None
+        selected_parent_uuid = None
 
-    if parent:
-        try:
-            selected_parent_uuid = UUID(parent)
-        except ValueError:
-            candidates = repo.search_by_title(effective_user_id, parent)
+        if parent:
+            try:
+                selected_parent_uuid = UUID(parent)
+            except ValueError:
+                candidates = repo.search_by_title(effective_user_id, parent)
 
-            if not candidates:
-                console.print(
-                    f"[yellow]⚠ Aucun parent trouvé pour '{parent}'.[/yellow]"
-                )
-                if not typer.confirm("Voulez-vous créer la tâche sans parent ?"):
-                    raise typer.Abort()
-            elif len(candidates) == 1:
-                selected_parent_uuid = candidates[0].uuid
-                console.print(
-                    f"[green]Parent sélectionné : {candidates[0].title}[/green]"
-                )
-            else:
-                console.print(
-                    "\n[bold cyan]Plusieurs parents possibles trouvés :[/bold cyan]"
-                )
-                table = Table(show_header=True, header_style="bold magenta")
-                table.add_column("N°", style="dim")
-                table.add_column("Titre")
-                table.add_column("Catégorie")
-
-                for i, cand in enumerate(candidates, 1):
-                    table.add_row(str(i), cand.title, cand.category)
-
-                console.print(table)
-                choice = Prompt.ask("Choisissez le numéro du parent", default="0")
-                try:
-                    idx = int(choice)
-                    if 1 <= idx <= len(candidates):
-                        selected_parent_uuid = candidates[idx - 1].uuid
-                except ValueError:
+                if not candidates:
                     console.print(
-                        "[yellow]Choix invalide, création sans parent.[/yellow]"
+                        f"[yellow]⚠ Aucun parent trouvé pour '{parent}'.[/yellow]"
                     )
+                    if not typer.confirm("Voulez-vous créer la tâche sans parent ?"):
+                        raise typer.Abort()
+                elif len(candidates) == 1:
+                    selected_parent_uuid = candidates[0].uuid
+                    console.print(
+                        f"[green]Parent sélectionné : {candidates[0].title}[/green]"
+                    )
+                else:
+                    console.print(
+                        "\n[bold cyan]Plusieurs parents possibles trouvés :[/bold cyan]"
+                    )
+                    table = Table(show_header=True, header_style="bold magenta")
+                    table.add_column("N°", style="dim")
+                    table.add_column("Titre")
+                    table.add_column("Catégorie")
 
-    try:
-        todo = use_case.execute(
-            title=title,
-            user=effective_user_id,
-            category=category,
-            description=description,
-            priority=priority,
-            date_start=start,
-            date_due=due,
-            parent=selected_parent_uuid,
-        )
-        msg = f"Todo créé : [cyan]{todo.title}[/cyan]"
-        if todo.priority:
-            msg += " [yellow](prioritaire)[/yellow]"
-        console.print(f"[bold green]Succès ![/bold green] {msg}")
-    except ValueError as e:
-        console.print(f"[bold red]Erreur : {e}[/bold red]")
-        raise typer.Exit(code=1)
+                    for i, cand in enumerate(candidates, 1):
+                        table.add_row(str(i), cand.title, cand.category)
+
+                    console.print(table)
+                    choice = Prompt.ask("Choisissez le numéro du parent", default="0")
+                    try:
+                        idx = int(choice)
+                        if 1 <= idx <= len(candidates):
+                            selected_parent_uuid = candidates[idx - 1].uuid
+                    except ValueError:
+                        console.print(
+                            "[yellow]Choix invalide, création sans parent.[/yellow]"
+                        )
+
+        try:
+            todo = use_case.execute(
+                title=title,
+                user=effective_user_id,
+                category=category,
+                description=description,
+                priority=priority,
+                date_start=start,
+                date_due=due,
+                parent=selected_parent_uuid,
+            )
+            msg = f"Todo créé : [cyan]{todo.title}[/cyan]"
+            if todo.priority:
+                msg += " [yellow](prioritaire)[/yellow]"
+            console.print(f"[bold green]Succès ![/bold green] {msg}")
+        except ValueError as e:
+            console.print(f"[bold red]Erreur : {e}[/bold red]")
+            raise typer.Exit(code=1)
 
 
 @app.command(name="list")
 def list_todos():
     user_id = load_user_config()
-    repo = get_repository()
-    tz = pendulum.local_timezone()
-    date_fmt = get_date_format()
+    # repo = get_repository()
+    with get_repository() as repo:
+        tz = pendulum.local_timezone()
+        date_fmt = get_date_format()
 
-    while True:
-        roots = repo.find_top_level_by_user(user_id)
-        if not roots:
-            console.print("[yellow]Aucun Todo trouvé.[/yellow]")
-            return
+        while True:
+            roots = repo.find_top_level_by_user(user_id)
+            if not roots:
+                console.print("[yellow]Aucun Todo trouvé.[/yellow]")
+                return
 
-        if sys.stdin.isatty():
-            console.clear()
+            if sys.stdin.isatty():
+                console.clear()
 
-        table = Table(box=box.SIMPLE, header_style="bold", row_styles=["none", "dim"])
-        table.add_column("Idx", justify="right", style="cyan", width=4)
-        table.add_column(" ", justify="center", width=2)
-        table.add_column("Titre", style="blue")
-        table.add_column("Description", style="white")
-        table.add_column("Début", style="green")
-        table.add_column("Echéance", style="magenta")
+            table = Table(box=box.SIMPLE, header_style="bold", row_styles=["none", "dim"])
+            table.add_column("Idx", justify="right", style="cyan", width=4)
+            table.add_column(" ", justify="center", width=2)
+            table.add_column("Titre", style="blue")
+            table.add_column("Description", style="white")
+            table.add_column("Début", style="green")
+            table.add_column("Echéance", style="magenta")
 
-        for idx, todo in enumerate(roots, 1):
-            prio_mark = "🔥" if todo.priority else ""
-            children = repo.find_by_parent(todo.uuid)
+            for idx, todo in enumerate(roots, 1):
+                prio_mark = "🔥" if todo.priority else ""
+                children = repo.find_by_parent(todo.uuid)
 
-            child_signal = (
-                f" [bold cyan][{repo.count_all_descendants(todo.uuid)}+][/bold cyan]"
-                if len(children) > 0
-                else ""
+                child_signal = (
+                    f" [bold cyan][{repo.count_all_descendants(todo.uuid)}+][/bold cyan]"
+                    if len(children) > 0
+                    else ""
+                )
+
+                raw_desc = str(todo.description) if todo.description else ""
+                desc = (raw_desc[:20] + "...") if len(raw_desc) > 20 else raw_desc
+
+                d_start = pendulum.from_timestamp(todo.date_start, tz=tz).format(date_fmt)
+                d_due = pendulum.from_timestamp(todo.date_due, tz=tz).format(date_fmt)
+
+                table.add_row(
+                    f"{idx:3}",
+                    prio_mark,
+                    f"{todo.title}{child_signal}",
+                    desc or "[dim italic]Pas de description[/dim italic]",
+                    d_start,
+                    d_due,
+                )
+
+            console.print(table)
+            count = len(roots)
+            message = (
+                f"{count} tâche racine trouvée"
+                if count <= 1
+                else f"{count} tâches racines trouvées"
             )
+            console.print(f"\n[dim] {message}.[/dim]")
 
-            raw_desc = str(todo.description) if todo.description else ""
-            desc = (raw_desc[:20] + "...") if len(raw_desc) > 20 else raw_desc
+            # --- FIX POUR LES TESTS ---
+            # On lit le choix avant de vérifier isatty()
+            try:
+                choice = Prompt.ask(
+                    "\nSaisissez l'index pour voir les détails (ou 'q' pour quitter)",
+                    default="q",
+                ).lower()
+            except EOFError:
+                break
 
-            d_start = pendulum.from_timestamp(todo.date_start, tz=tz).format(date_fmt)
-            d_due = pendulum.from_timestamp(todo.date_due, tz=tz).format(date_fmt)
+            if choice == "q":
+                break
+            try:
+                idx = int(choice) - 1
+                if 0 <= idx < len(roots):
+                    show_details(roots[idx].uuid, user_id)
+                else:
+                    continue_after_invalid("Index inconnu.")
+            except ValueError:
+                continue_after_invalid("Saisie invalide.")
 
-            table.add_row(
-                f"{idx:3}",
-                prio_mark,
-                f"{todo.title}{child_signal}",
-                desc or "[dim italic]Pas de description[/dim italic]",
-                d_start,
-                d_due,
-            )
-
-        console.print(table)
-        count = len(roots)
-        message = (
-            f"{count} tâche racine trouvée"
-            if count <= 1
-            else f"{count} tâches racines trouvées"
-        )
-        console.print(f"\n[dim] {message}.[/dim]")
-
-        # --- FIX POUR LES TESTS ---
-        # On lit le choix avant de vérifier isatty()
-        try:
-            choice = Prompt.ask(
-                "\nSaisissez l'index pour voir les détails (ou 'q' pour quitter)",
-                default="q",
-            ).lower()
-        except EOFError:
-            break
-
-        if choice == "q":
-            break
-        try:
-            idx = int(choice) - 1
-            if 0 <= idx < len(roots):
-                show_details(roots[idx].uuid)
-            else:
-                continue_after_invalid("Index inconnu.")
-        except ValueError:
-            continue_after_invalid("Saisie invalide.")
-
-        # Si on n'est pas dans un terminal (test), on ne veut pas boucler après une commande
-        if not sys.stdin.isatty():
-            break
+            # Si on n'est pas dans un terminal (test), on ne veut pas boucler après une commande
+            if not sys.stdin.isatty():
+                break
 
 
 @app.command(name="list-dev")
 def list_dev():
     """Vue technique détaillée avec encadrement minimaliste (style list)."""
     user_id = load_user_config()
-    repo = get_repository()
-    todos = repo.find_all_by_user(user_id)
+    # repo = get_repository()
+    with get_repository() as repo:
+        todos = repo.find_all_by_user(user_id)
 
-    if not todos:
-        console.print("[yellow]La base est vide pour cet utilisateur.[/yellow]")
-        return
+        if not todos:
+            console.print("[yellow]La base est vide pour cet utilisateur.[/yellow]")
+            return
 
-    # On reprend le style box.SIMPLE de la commande 'list'
-    # table = Table(box=box.SIMPLE, header_style="bold")
-    table = Table(title="Vue Développeur - Tous les Todos", box=box.MINIMAL_DOUBLE_HEAD)
-    table.add_column("UUID (8)", style="dim", no_wrap=True)
-    table.add_column("Structure (Parent)", no_wrap=True)
-    table.add_column("Titre", style="bold white")
-    table.add_column("État", justify="center")
-    table.add_column("Dates (Raw TS)", style="dim")
+        # On reprend le style box.SIMPLE de la commande 'list'
+        # table = Table(box=box.SIMPLE, header_style="bold")
+        table = Table(title="Vue Développeur - Tous les Todos", box=box.MINIMAL_DOUBLE_HEAD)
+        table.add_column("UUID (8)", style="dim", no_wrap=True)
+        table.add_column("Structure (Parent)", no_wrap=True)
+        table.add_column("Titre", style="bold white")
+        table.add_column("État", justify="center")
+        table.add_column("Dates (Raw TS)", style="dim")
 
-    for t in todos:
-        state = "[green]✅[/green]" if t.state else "[red]❌[/red]"
-        short_id = f"{str(t.uuid)[:8]}"
+        for t in todos:
+            state = "[green]✅[/green]" if t.state else "[red]❌[/red]"
+            short_id = f"{str(t.uuid)[:8]}"
 
-        # Identification visuelle du parent
-        if t.parent:
-            parent_info = f"[cyan]↳ {str(t.parent)[:8]}[/cyan]"
-        else:
-            parent_info = "[dim]• Racine[/dim]"
+            # Identification visuelle du parent
+            if t.parent:
+                parent_info = f"[cyan]↳ {str(t.parent)[:8]}[/cyan]"
+            else:
+                parent_info = "[dim]• Racine[/dim]"
 
-        # Timestamps bruts pour le debug
-        raw_dates = f"S:{t.date_start} | D:{t.date_due}"
+            # Timestamps bruts pour le debug
+            raw_dates = f"S:{t.date_start} | D:{t.date_due}"
 
-        table.add_row(short_id, parent_info, t.title, state, raw_dates)
+            table.add_row(short_id, parent_info, t.title, state, raw_dates)
 
-    console.print(table)
-    console.print(f"\n[dim] Total : {len(todos)} items en base.[/dim]")
+        console.print(table)
+        console.print(f"\n[dim] Total : {len(todos)} items en base.[/dim]")
 
 
 if __name__ == "__main__":

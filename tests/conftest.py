@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 import pytest
 from uuid import uuid4
 from todo_bene.infrastructure.persistence.duckdb_todo_repository import (
@@ -32,7 +33,31 @@ def user_id():
     return uuid4()
 
 
+# @pytest.fixture
+# def repository():
+#     """Initialise un repository en mémoire pour les tests."""
+#     return DuckDBTodoRepository(db_path=":memory:")
 @pytest.fixture
-def repository():
-    """Initialise un repository en mémoire pour les tests."""
-    return DuckDBTodoRepository(db_path=":memory:")
+def repo():
+    """Initialise un repository DuckDB en mémoire pour les tests."""
+    # On crée l'instance manuellement pour le test
+    repo = DuckDBTodoRepository(db_path=":memory:")
+    yield repo  # Le test utilise le repo ici
+    repo.close() # Pytest exécute ceci APRÈS le test
+
+@pytest.fixture
+def repository(monkeypatch, repo):
+    """
+    Automatise le monkeypatch du repository pour la CLI.
+    Utilise 'repository' (la fixture existante) et la rend compatible
+    avec le pattern 'with get_repository()'.
+    """
+    @contextmanager
+    def _mock_context():
+        yield repo
+
+    monkeypatch.setattr(
+        "todo_bene.infrastructure.cli.main.get_repository", 
+        _mock_context
+    )
+    return repo

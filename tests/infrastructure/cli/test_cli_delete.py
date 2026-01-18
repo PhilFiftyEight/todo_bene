@@ -9,9 +9,6 @@ runner = CliRunner()
 def test_cli_delete_todo_interactive(repository, user_id, monkeypatch):
     # 1. Mocking
     monkeypatch.setattr(
-        "todo_bene.infrastructure.cli.main.get_repository", lambda: repository
-    )
-    monkeypatch.setattr(
         "todo_bene.infrastructure.cli.main.load_user_config", lambda: user_id
     )
 

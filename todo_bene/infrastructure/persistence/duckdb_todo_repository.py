@@ -26,6 +26,21 @@ class DuckDBTodoRepository(TodoRepository):
                 parent_id UUID
             )
         """)
+    
+    # AJOUT : Pour le support du bloc 'with'
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def close(self):
+        """Fermeture explicite et sécurisée."""
+        if self._conn:
+            try:
+                self._conn.close()
+            except duckdb.Error:
+                pass # Ici, une erreur de fermeture est moins critique qu'un except nu
 
     def save(self, todo: Todo):
         self._conn.execute(
@@ -157,9 +172,3 @@ class DuckDBTodoRepository(TodoRepository):
             user=row[8],
             parent=row[9],
         )
-
-    def __del__(self):
-        try:
-            self._conn.close()
-        except:  # noqa: E722
-            pass

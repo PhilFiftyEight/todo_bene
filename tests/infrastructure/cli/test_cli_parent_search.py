@@ -9,10 +9,7 @@ runner = CliRunner()
 def test_create_todo_with_interactive_parent_selection(
     repository, user_id, monkeypatch
 ):
-    # 1. On force le CLI à utiliser le repo de test et l'user de test
-    monkeypatch.setattr(
-        "todo_bene.infrastructure.cli.main.get_repository", lambda: repository
-    )
+    # 1. On force le CLI à utiliser l'user de test
     monkeypatch.setattr(
         "todo_bene.infrastructure.cli.main.load_user_config", lambda: user_id
     )

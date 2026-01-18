@@ -12,9 +12,6 @@ def test_cli_recursive_parent_validation_cascade(repository, monkeypatch):
     monkeypatch.setattr(
         "todo_bene.infrastructure.cli.main.load_user_config", lambda: user_id
     )
-    monkeypatch.setattr(
-        "todo_bene.infrastructure.cli.main.get_repository", lambda: repository
-    )
 
     # Création de la chaîne : G (racine) -> P -> E
     g = Todo(title="Grand-Parent", user=user_id)
