@@ -1,3 +1,5 @@
+# Copyright (c) 2026 PhilFiftyEight
+# Licensed under the MIT License.
 import os
 import sys
 import getpass

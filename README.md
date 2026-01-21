@@ -157,6 +157,8 @@ $ uv run pytest -s
 ```
 
 ---
-
+## Licence
+Ce projet est concédé sous licence selon les termes de la licence MIT
+---
 
 *Développé avec passion pour un flux de travail organisé et serein.*

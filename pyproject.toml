@@ -1,7 +1,16 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["todo_bene*"]
+
 [project]
 name = "todo-bene"
 version = "0.1.0"
 description = "To-do-list"
+license = "MIT"
+license-files = ["LICENSE.txt"]
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
@@ -24,9 +33,3 @@ tb = "todo_bene.infrastructure.cli.main:app"
 [tool.uv]
 package = true
 
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools.packages.find]
-include = ["todo_bene*"]
