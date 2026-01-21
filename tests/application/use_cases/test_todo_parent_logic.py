@@ -18,12 +18,11 @@ def test_child_cannot_end_after_parent(test_config_env, monkeypatch):
         user_id = uuid4()
 
         # 1. Créer un parent qui finit le 15 Janvier
-        parent = use_case.execute(title="Parent", user=user_id, date_due="15/01/2026")
-
+        parent = use_case.execute(title="Parent", user=user_id, date_start="15/01/2026", date_due="15/01/2026")
         # 2. Tenter de créer un enfant qui finit le 20 Janvier (DOIT LEVER UNE ERREUR)
         with pytest.raises(
             ValueError,
-            match="La date d'échéance de l'enfant ne peut pas dépasser celle du parent",
+            match="La date d'échéance de l'enfant ne peut pas dépasser celle du parent\.",
         ):
             use_case.execute(
                 title="Enfant rebelle",
