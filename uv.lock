@@ -375,12 +375,12 @@ dev = [
 requires-dist = [
     { name = "duckdb", specifier = ">=1.4.3" },
     { name = "pendulum", extras = ["test"], specifier = ">=3.1.0" },
-    { name = "typer", specifier = ">=0.21.0" },
+    { name = "typer", specifier = ">=0.21.1" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "bandit", specifier = ">=1.9.2" },
+    { name = "bandit", specifier = ">=1.9.3" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "pytest-cov", specifier = ">=7.0.0" },
     { name = "radon", specifier = ">=6.0.1" },
