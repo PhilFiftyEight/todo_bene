@@ -491,7 +491,7 @@ def register(
     console.print(f"[bold green]Bienvenue {name} ![/bold green]")
 
 
-@app.command()
+@app.command(name="add")
 def create(
     title: str,
     user_id: Optional[UUID] = typer.Option(None),

@@ -21,7 +21,7 @@ def test_create_todo_with_interactive_parent_selection(
     # 3. WHEN: On simule l'entrée "1" pour choisir "Projet Alpha"
     # Note: On ajoute \n pour valider le choix
     result = runner.invoke(
-        app, ["create", "Sous-tâche", "--parent", "Projet"], input="1\n"
+        app, ["add", "Sous-tâche", "--parent", "Projet"], input="1\n"
     )
 
     # 4. THEN

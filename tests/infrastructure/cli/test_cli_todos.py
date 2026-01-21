@@ -36,7 +36,7 @@ def test_cli_priority_creation_and_display(test_config_env):
     save_user_config(user_id)
 
     # Création avec le flag priority
-    result = runner.invoke(app, ["create", "Urgent !", "--priority"])
+    result = runner.invoke(app, ["add", "Urgent !", "--priority"])
     assert result.exit_code == 0
     assert "prioritaire" in result.stdout.lower()
 
@@ -54,7 +54,7 @@ def test_cli_create_with_french_dates(test_config_env):
     # Utilisation du format FR à la création
     result = runner.invoke(
         app,
-        ["create", "Réserver vacances", "--start", "01/06/2025", "--due", "15/06/2025"],
+        ["add", "Réserver vacances", "--start", "01/06/2025", "--due", "15/06/2025"],
     )
     assert result.exit_code == 0
     assert "Succès" in result.stdout
@@ -79,7 +79,7 @@ def test_cli_default_date_logic(test_config_env, time_machine):
     time_machine.move_to(now_fixed)
 
     # Act : Création sans aucune option de date
-    runner.invoke(app, ["create", "Tâche auto-datée"])
+    runner.invoke(app, ["add", "Tâche auto-datée"])
 
     # Assert : Vérification dans la liste au format FR
     result_list = runner.invoke(app, ["list"])
@@ -96,7 +96,7 @@ def test_cli_precise_hour_parsing_fr(test_config_env):
     save_user_config(user_id)
 
     runner.invoke(
-        app, ["create", "Rendez-vous dentiste", "--start", "12/02/2026 14:15"]
+        app, ["add", "Rendez-vous dentiste", "--start", "12/02/2026 14:15"]
     )
     result_list = runner.invoke(app, ["list"])
     assert "12/02/2026 14:15" in result_list.stdout
@@ -110,10 +110,10 @@ def test_cli_create_with_various_separators(test_config_env):
     save_user_config(user_id)
 
     # Test avec tirets (ton cas d'erreur)
-    runner.invoke(app, ["create", "Tiret test", "--start", "11-01-2026 13:00"])
+    runner.invoke(app, ["add", "Tiret test", "--start", "11-01-2026 13:00"])
 
     # Test avec slashs
-    runner.invoke(app, ["create", "Slash test", "--start", "12/01/2026 14:00"])
+    runner.invoke(app, ["add", "Slash test", "--start", "12/01/2026 14:00"])
 
     result_list = runner.invoke(app, ["list"])
     assert "11/01/2026 13:00" in result_list.stdout

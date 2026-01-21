@@ -7,12 +7,6 @@ requires-python = ">=3.14"
 dependencies = [
     "duckdb>=1.4.3",
     "pendulum[test]>=3.1.0",
-    "pyobjc-core>=12.1",
-    "pyobjc-framework-cocoa>=12.1",
-    "pyobjc-framework-quartz>=12.1",
-    "pyobjc-framework-security>=12.1",
-    "pyobjc-framework-webkit>=12.1",
-    "rio-ui[window]>=0.12",
     "typer>=0.21.0",
 ]
 
@@ -24,4 +18,15 @@ dev = [
     "radon>=6.0.1",
     "ruff>=0.14.13",
 ]
+[project.scripts]
+tb = "todo_bene.infrastructure.cli.main:app"
 
+[tool.uv]
+package = true
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["todo_bene*"]
