@@ -1,0 +1,48 @@
+# Python-generated files
+__pycache__/
+*.py[ocd]
+*$py.class
+build/
+dist/
+wheels/
+*.egg-info
+venv/
+.pytest_cache/
+
+# Virtual environments
+.venv/
+
+# snippets
+snippets.py
+
+# pytest
+.pytest_cache
+.coverage
+htmtlcov/
+.python-version
+
+# ruff
+.ruff_cache
+
+#IDE
+.vscode
+.DS_Store
+.idea/
+
+# docs perso
+docs/
+
+# Base de données DuckDB
+*.db
+*.db.wal
+*.duckdb
+*.tmp
+
+# Configuration locale
+.todo_bene.json
+
+# audit
+audit/
+
+# fichiers divers
+calendar.ics
