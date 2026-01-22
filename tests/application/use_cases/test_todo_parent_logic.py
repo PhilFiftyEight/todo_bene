@@ -22,7 +22,7 @@ def test_child_cannot_end_after_parent(test_config_env, monkeypatch):
         # 2. Tenter de créer un enfant qui finit le 20 Janvier (DOIT LEVER UNE ERREUR)
         with pytest.raises(
             ValueError,
-            match="La date d'échéance de l'enfant ne peut pas dépasser celle du parent\.",
+            match=r"La date d'échéance de l'enfant ne peut pas dépasser celle du parent\.",
         ):
             use_case.execute(
                 title="Enfant rebelle",
