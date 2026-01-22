@@ -46,15 +46,15 @@ def ensure_user_setup() -> UUID:
     # --- EN-TÊTE STYLISÉ (Style image) ---
     # On crée un titre imposant
     banner = (
-        "[bold cyan]  _____ ___  ___   ___  [/bold cyan]\n"
-        "[bold cyan] |_   _/ _ \|   \ / _ \ [/bold cyan]\n"
-        "[bold cyan]   | || (_) | |) | (_) |[/bold cyan]\n"
-        "[bold white]   |_| \___/|___/ \___/ [/bold white]\n"
-        "[bold green]  ___  ___ _  _ ___ [/bold green]\n"
-        "[bold green] | _ )| __| \| | __|[/bold green]\n"
-        "[bold green] | _ \| _|| .` | _| [/bold green]\n"
-        "[bold white] |___/|___|_|\_|___|[/bold white]\n"
-        "\n[dim]// Configurons votre profil pour commencer.[/dim]"
+        r"[bold cyan]  _____ ___  ___   ___  [/bold cyan]\n"
+        r"[bold cyan] |_   _/ _ \|   \ / _ \ [/bold cyan]\n"
+        r"[bold cyan]   | || (_) | |) | (_) |[/bold cyan]\n"
+        r"[bold white]   |_| \___/|___/ \___/ [/bold white]\n"
+        r"[bold green]  ___  ___ _  _ ___ [/bold green]\n"
+        r"[bold green] | _ )| __| \| | __|[/bold green]\n"
+        r"[bold green] | _ \| _|| .` | _| [/bold green]\n"
+        r"[bold white] |___/|___|_|\_|___|[/bold white]\n"
+        r"\n[dim]// Configurons votre profil pour commencer.[/dim]"
     )
 
     console.print("\n")
