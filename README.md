@@ -1,4 +1,4 @@
-# 🌿 Todo Bene
+# 🌿 Todo Bene [![Tests](https://github.com/PhilFiftyEight/todo_bene/actions/workflows/tests.yml/badge.svg)](https://github.com/PhilFiftyEight/todo_bene/actions/workflows/tests.yml)
 
 **Todo Bene** est une application de gestion de tâches (Todo List) en ligne de commande ( CLI pour l'instant mais ouverte pour GUI ou autre). 
 
