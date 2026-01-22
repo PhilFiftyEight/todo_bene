@@ -9,8 +9,8 @@ runner = CliRunner()
 
 def test_cli_register_success(monkeypatch, test_config_env):
     """Vérifie le succès de l'enregistrement."""
-    monkeypatch.setattr("getpass.getuser", lambda: "philippe")
-
+    #monkeypatch.setattr("getpass.getuser", lambda: "philippe")
+    
     # Act
     result = runner.invoke(app, ["register"], input="phil@exemple.com\n")
 

@@ -42,3 +42,5 @@ jobs:
           TZ: Europe/Paris          # <--- Force l'heure de Paris
           COLUMNS: 120              # <--- Force une largeur de terminal suffisante
           TERM: xterm-256color     # <--- Simule un terminal riche
+          USER: philippe        # Pour les test
+          USERNAME: philippe
