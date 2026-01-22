@@ -45,7 +45,7 @@ def ensure_user_setup() -> UUID:
 
     # --- EN-TÊTE STYLISÉ (Style image) ---
     # On crée un titre imposant
-    banner = """
+    banner = r"""
         [bold cyan]  _____ ___  ___   ___  [/bold cyan]
         [bold cyan] |_   _/ _ \|   \ / _ \ [/bold cyan]
         [bold cyan]   | || (_) | |) | (_) |[/bold cyan]
