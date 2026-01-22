@@ -98,4 +98,3 @@ def test_todo_creation_priority_bool(get_todo_dict: dict):
     # priority is set : priority == True
     todo = Todo(**get_todo_dict, priority=True)
     assert todo.priority is True
-

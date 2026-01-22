@@ -32,10 +32,11 @@ from todo_bene.application.use_cases.todo_complete import TodoCompleteUseCase
 app = typer.Typer()
 console = Console()
 
+
 # --- UTILITAIRES ---
 def ensure_user_setup() -> UUID:
     """
-    Vérifie si un utilisateur est configuré. 
+    Vérifie si un utilisateur est configuré.
     Sinon, lance un wizard avec un en-tête stylisé 'TODO BENE'.
     """
     console.clear()
@@ -58,14 +59,16 @@ def ensure_user_setup() -> UUID:
     """
 
     console.print("\n")
-    console.print(Align.center(
-        Panel(
-            Align.center(banner),
-            border_style="green",
-            box=box.DOUBLE_EDGE,
-            padding=(1, 5)
+    console.print(
+        Align.center(
+            Panel(
+                Align.center(banner),
+                border_style="green",
+                box=box.DOUBLE_EDGE,
+                padding=(1, 5),
+            )
         )
-    ))
+    )
     console.print("\n")
 
     email = Prompt.ask("[bold]Quel est votre email ?[/bold]")
@@ -73,19 +76,24 @@ def ensure_user_setup() -> UUID:
     with get_repository() as repo:
         # 1. On vérifie si cet email est déjà connu en BDD
         existing_user = repo.get_user_by_email(email)
-        
+
         if existing_user:
-            console.print(f"[yellow]Restauration du profil existant pour : {existing_user.name}[/yellow]")
+            console.print(
+                f"[yellow]Restauration du profil existant pour : {existing_user.name}[/yellow]"
+            )
             save_user_config(existing_user.uuid)
             return existing_user.uuid
-        
+
         # 2. Sinon, on continue la création classique
-        name = Prompt.ask("Email inconnu. Quel est votre nom ?", default=getpass.getuser())
+        name = Prompt.ask(
+            "Email inconnu. Quel est votre nom ?", default=getpass.getuser()
+        )
         new_user = UserCreateUseCase(repo).execute(name, email)
-        
+
         save_user_config(new_user.uuid)
         console.print(f"\n[bold green]Bienvenue {name} ! Profil créé.[/bold green]")
-        return new_user.uuid   
+        return new_user.uuid
+
 
 @contextmanager
 def get_repository():
@@ -213,10 +221,14 @@ def ask_validate_parents_recursive(repo, newly_pending_ids: list, user_id: UUID)
 def _display_detail_view(todo: Todo, children: list[Todo], repo):
     """S'occupe uniquement du rendu visuel des détails."""
     if sys.stdin.isatty():
-                console.clear()
+        console.clear()
     # 1. État et Couleur
-    state_label = "[bold green]✅ COMPLÉTÉE[/bold green]" if todo.state else "[bold red]⏳ À FAIRE[/bold red]"
-    
+    state_label = (
+        "[bold green]✅ COMPLÉTÉE[/bold green]"
+        if todo.state
+        else "[bold red]⏳ À FAIRE[/bold red]"
+    )
+
     # 2. Titre et Priorité
     prio_mark = "[yellow]🔥 [/yellow]" if todo.priority else ""
     header = f"{prio_mark}[bold white]{todo.title}[/bold white]"
@@ -240,10 +252,10 @@ def _display_detail_view(todo: Todo, children: list[Todo], repo):
     panel = Panel(
         Align.center(content, vertical="middle"),
         title=state_label,
-        border_style="grey37", # Couleur grise
+        border_style="grey37",  # Couleur grise
         box=box.ROUNDED,
         width=60,
-        #expand=False
+        # expand=False
     )
     console.print("\n")
     console.print(Align.center(panel))
@@ -309,8 +321,8 @@ def _handle_action(
     # 4. Ajout de sous-tâche
     if choice == "n":
         Prompt.ask("Action à venir, merci d'utiliser la ligne de commande!")
-        #title = Prompt.ask("Titre de la sous-tâche")
-        #TodoCreateUseCase(repo).execute(title, todo.user, parent=todo.uuid)
+        # title = Prompt.ask("Titre de la sous-tâche")
+        # TodoCreateUseCase(repo).execute(title, todo.user, parent=todo.uuid)
         # On retourne False, False pour rafraîchir l'affichage et voir le nouvel enfant
         return False, False
 
@@ -476,7 +488,7 @@ def main(ctx: typer.Context):
     """
     if ctx.invoked_subcommand == "register":
         return
-    
+
     # On lance le wizard automatiquement si besoin
     ensure_user_setup()
 

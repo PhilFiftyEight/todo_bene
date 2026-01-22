@@ -3,19 +3,21 @@ from uuid import UUID, uuid4
 from typing import Optional, Union, Tuple
 import pendulum
 
+
 # Utils
 def _parse_flexible_date(date_val: Union[str, int, float, None]) -> int:
-     """Transforme une entrée date flexible en timestamp entier."""
-     if not date_val:
-         return 0
-     if isinstance(date_val, (int, float)):
-         return int(date_val)
+    """Transforme une entrée date flexible en timestamp entier."""
+    if not date_val:
+        return 0
+    if isinstance(date_val, (int, float)):
+        return int(date_val)
 
-     tz = pendulum.local_timezone()
-     try:
-         return pendulum.parse(date_val, strict=False, tz=tz).int_timestamp
-     except pendulum.ParserError:
-         return 0
+    tz = pendulum.local_timezone()
+    try:
+        return pendulum.parse(date_val, strict=False, tz=tz).int_timestamp
+    except pendulum.ParserError:
+        return 0
+
 
 @dataclass
 class Todo:
@@ -36,15 +38,15 @@ class Todo:
         # 1. On délègue les conversions d'IDs et de fréquence
         self._init_identifiers()
         self._init_frequency()
-        
+
         # 2. On centralise la logique métier des dates
         self._init_dates()
 
     def _init_identifiers(self):
         """Conversion des UUIDs (Note Radon: A)."""
-        if isinstance(self.user, str): 
+        if isinstance(self.user, str):
             self.user = UUID(self.user)
-        if isinstance(self.uuid, str): 
+        if isinstance(self.uuid, str):
             self.uuid = UUID(self.uuid)
         if isinstance(self.parent, str) and self.parent:
             self.parent = UUID(self.parent)
@@ -61,7 +63,7 @@ class Todo:
     def _init_dates(self):
         """Logique métier des dates (Note Radon: A)."""
         tz = pendulum.local_timezone()
-        
+
         # Parsing initial
         ts_start = _parse_flexible_date(self.date_start)
         ts_due = _parse_flexible_date(self.date_due)
@@ -82,4 +84,3 @@ class Todo:
 
         self.date_start = ts_start
         self.date_due = ts_due
-  

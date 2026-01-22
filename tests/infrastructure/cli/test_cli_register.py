@@ -9,7 +9,7 @@ runner = CliRunner()
 
 def test_cli_register_success(monkeypatch, test_config_env):
     """Vérifie le succès de l'enregistrement."""
-    #monkeypatch.setattr("getpass.getuser", lambda: "philippe")
+    # monkeypatch.setattr("getpass.getuser", lambda: "philippe")
 
     # Act
     result = runner.invoke(app, ["register"], input="phil@exemple.com\n")
@@ -17,12 +17,14 @@ def test_cli_register_success(monkeypatch, test_config_env):
     # Assert
     assert result.exit_code == 0
     import getpass
+
     assert f"Bienvenue {getpass.getuser()}" in result.stdout
     assert test_config_env.exists()
 
     with open(test_config_env, "r") as f:
         data = json.load(f)
         assert "user_id" in data
+
 
 def test_commands_blocked_when_unregistered(test_config_env):
     """Vérifie que le wizard se lance si pas de profil."""

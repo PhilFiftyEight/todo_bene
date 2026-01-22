@@ -184,22 +184,22 @@ class DuckDBTodoRepository(TodoRepository):
     def get_user_by_email(self, email: str):
         """Recherche un utilisateur par son email."""
         result = self._conn.execute(
-            "SELECT uuid, name, email FROM users WHERE email = ?",
-            (email,)
+            "SELECT uuid, name, email FROM users WHERE email = ?", (email,)
         ).fetchone()
-        
+
         if result:
             from todo_bene.domain.entities.user import User
+
             # result[0] est déjà un objet UUID grâce à DuckDB
-            user_uuid = result[0] 
-            
+            user_uuid = result[0]
+
             # Sécurité : si jamais c'est une string, on la convertit, sinon on garde l'objet
             if isinstance(user_uuid, str):
                 user_uuid = UUID(user_uuid)
-                
+
             return User(uuid=user_uuid, name=result[1], email=result[2])
         return None
-    
+
     def save_user(self, user):
         """Sauvegarde un utilisateur (Crée ou met à jour par UUID)."""
         self._conn.execute(
