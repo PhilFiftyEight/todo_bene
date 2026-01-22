@@ -47,7 +47,7 @@ Le projet utilise `uv` pour une gestion simplifiée et ultra-rapide des dépenda
 Lancez simplement n'importe quelle commande pour démarrer le Wizard de configuration :
 
 ```bash
-$ uv run todo_bene list
+$ uv run todo_bene list # uv run tb list <- la version abrégée
 
 
 ╔═════════════════════════════════════════════════════╗
