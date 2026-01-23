@@ -2,6 +2,7 @@ from uuid import UUID
 from typing import Optional
 import pendulum
 from todo_bene.domain.entities.todo import Todo
+from todo_bene.domain.entities.category import Category
 
 
 class TodoCreateUseCase:
@@ -38,9 +39,12 @@ class TodoCreateUseCase:
         date_due: str = "",
         parent: Optional[UUID] = None,
     ) -> Todo:
+        if category not in Category.ALL:
+            raise ValueError("Catégorie non autorisée")
+
         tz = pendulum.local_timezone()
 
-        # 1. Dates
+        # Dates
         if date_start:
             dt_start = self._parse_flexible(date_start, tz)
             if len(date_start) <= 10:
@@ -55,7 +59,7 @@ class TodoCreateUseCase:
         else:
             dt_due = dt_start.at(23, 59, 59)
 
-        # 2. Vérification Règle n°1 (Parentalité)
+        # Vérification Règle n°1 (Parentalité)
         if parent:
             parent_todo = self.repository.get_by_id(parent)
             if parent_todo:
