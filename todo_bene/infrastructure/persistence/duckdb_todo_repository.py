@@ -110,12 +110,10 @@ class DuckDBTodoRepository(TodoRepository):
 
     def find_all_by_user(self, user_id: UUID) -> list[Todo]:
         """Récupère tous les todos de l'utilisateur, sans filtre hiérarchique."""
-        with duckdb.connect(self.db_path) as conn:
-            res = conn.execute(
-                "SELECT * FROM todos WHERE user_id = ? ORDER BY date_start ASC",
+        res = self._conn.execute("SELECT * FROM todos WHERE user_id = ? ORDER BY date_start ASC",
                 [str(user_id)],
             ).fetchall()
-        # On utilise ta méthode de mapping existante
+        # On utilise la méthode de mapping existante
         return [self._row_to_todo(row) for row in res]
 
     def count_all_descendants(self, todo_uuid: UUID) -> int:
