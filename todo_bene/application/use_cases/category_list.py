@@ -20,10 +20,3 @@ class CategoryListUseCase:
         # est déjà censé empêcher les doublons.
         # Retourner la liste triée alphabétiquement
         return sorted(list(set(system_categories + custom_categories)))
-    
-"""
-feat: implement category listing with system and custom merge
- - Create CategoryListUseCase to aggregate universal and user-defined categories.
- - Ensure alphabetical sorting and uniqueness of the merged list.
- - Add unit tests for category list merging and sorting.
-(#2)
