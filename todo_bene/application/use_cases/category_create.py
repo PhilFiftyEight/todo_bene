@@ -8,16 +8,11 @@ class CategoryCreateUseCase:
         self.repo = repo
 
     def execute(self, name: str, user_id: UUID) -> Category:
-        # Normalisation de l'entrée (nettoyage des espaces)
-        #clean_name = name.strip()
-
         # Validation du domaine (vérifie si le nom est vide via __post_init__)
         # On passe le user_id à l'entité comme défini dans le fichier category.py
-        #category = Category(name=clean_name, user_id=user_id)
         category = Category(name=name, user_id=user_id)
 
         # Vérification des doublons avec les catégories système(=universelles) (insensible à la casse)
-        #is_system = any(clean_name.lower() == system_cat.lower() for system_cat in Category.ALL)
         is_system = any(category.name == system_cat for system_cat in Category.ALL)
         if is_system:
             raise ValueError("Cette catégorie existe déjà")
