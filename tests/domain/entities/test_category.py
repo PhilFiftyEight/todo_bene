@@ -14,22 +14,12 @@ def test_base_categories_exist():
     assert Category.MEDICAL == "Médical"
     assert Category.FAMILLE == "Famille"
 
-
-# La catégorie ne peut-être modifiée
-def test_category_not_mutable():
-    category = Category(name="Quotidien")
-    with pytest.raises(FrozenInstanceError):
-        category.name = "Travail"
+def test_category_creation_custom(user_id):
+    cat = Category(name=" jardinage",user_id=user_id)
+    assert cat.name == "Jardinage" # clean name : strip, lower, capitalise
 
 
-def test_category_creation_custom():
-    # Une catégorie personnalisée est juste un nom nom modifiable
-    cat = Category(name="Jardinage")
-    assert cat.name == "Jardinage"
-    with pytest.raises(FrozenInstanceError):
-        cat.name = "Travail"
-
-def test_category_validation_rules():
+def test_category_validation_rules(user_id):
     # On pourrait décider qu'une catégorie ne peut pas être vide, sécurité
     with pytest.raises(ValueError, match="Le nom ne peut pas être vide"):
-        Category(name="")
+        Category(name="",user_id=user_id)

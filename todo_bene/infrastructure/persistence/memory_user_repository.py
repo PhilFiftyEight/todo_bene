@@ -3,7 +3,7 @@ from todo_bene.domain.entities.user import User
 from todo_bene.application.interfaces.user_repository import UserRepository
 
 
-class MemoryUserRepository(UserRepository):  # Ou le nom exact dans ton fichier de test
+class MemoryUserRepository(UserRepository):
     def __init__(self):
         self.users = {}
 
