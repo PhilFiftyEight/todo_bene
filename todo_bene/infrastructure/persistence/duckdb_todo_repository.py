@@ -6,10 +6,10 @@ from todo_bene.application.interfaces.todo_repository import TodoRepository
 
 
 class DuckDBTodoRepository(TodoRepository):
-    def __init__(self, db_path: str):
-        self.db_path = db_path
-        self._conn = duckdb.connect(self.db_path)
-        self._init_db()
+    def __init__(self, connection):
+        # On utilise la connexion 
+        # fournie par le manager DuckDBConnectionManager
+        self._conn = connection
 
     def _init_db(self):
         self._conn.execute("""

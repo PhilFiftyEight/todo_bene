@@ -1,13 +1,10 @@
-from contextlib import contextmanager
 import pytest
 from uuid import uuid4
-from todo_bene.infrastructure.persistence.duckdb_todo_repository import (
-    DuckDBTodoRepository,
-)
+from todo_bene.infrastructure.persistence.duckdb_connection_manager import DuckDBConnectionManager
+from todo_bene.infrastructure.persistence.duckdb_todo_repository import DuckDBTodoRepository
+from todo_bene.infrastructure.persistence.duckdb_category_repository import DuckDBCategoryRepository
 
-# import os
-
-
+# ... (garde tes fixtures setup_test_env, test_config_env, user_id telles quelles)
 @pytest.fixture(autouse=True)
 def setup_test_env(tmp_path, monkeypatch):
     """Isole totalement la config et la DB pour chaque test."""
@@ -32,33 +29,36 @@ def user_id():
     """Génère un UUID unique pour l'utilisateur du test."""
     return uuid4()
 
-
-# @pytest.fixture
-# def repository():
-#     """Initialise un repository en mémoire pour les tests."""
-#     return DuckDBTodoRepository(db_path=":memory:")
 @pytest.fixture
-def repo():
-    """Initialise un repository DuckDB en mémoire pour les tests."""
-    # On crée l'instance manuellement pour le test
-    repo = DuckDBTodoRepository(db_path=":memory:")
-    yield repo  # Le test utilise le repo ici
-    repo.close()  # Pytest exécute ceci APRÈS le test
+def db_manager():
+    """Gère la connexion DuckDB pour les tests (en mémoire)."""
+    # On utilise :memory: pour que les tests soient rapides et isolés
+    manager = DuckDBConnectionManager(":memory:")
+    yield manager
+    manager.close()
 
+@pytest.fixture
+def repo(db_manager):
+    """Fixture pour le DuckDBTodoRepository (utilisée par les tests d'intégration)."""
+    return DuckDBTodoRepository(db_manager.get_connection())
+
+@pytest.fixture
+def category_repo(db_manager):
+    """Nouvelle fixture pour tester le DuckDBCategoryRepository."""
+    return DuckDBCategoryRepository(db_manager.get_connection())
 
 @pytest.fixture
 def repository(monkeypatch, repo):
     """
-    Automatise le monkeypatch du repository pour la CLI.
-    Utilise 'repository' (la fixture existante) et la rend compatible
-    avec le pattern 'with get_repository()'.
+    Assure la compatibilité avec le code de la CLI qui utilise 'with get_repository()'.
     """
+    from contextlib import contextmanager
 
     @contextmanager
-    def _mock_context():
+    def mock_get_repository():
         yield repo
 
-    monkeypatch.setattr(
-        "todo_bene.infrastructure.cli.main.get_repository", _mock_context
-    )
+    # On patche l'endroit où la CLI va chercher son repository
+    # Attention à bien vérifier le chemin du patch selon ton arborescence
+    monkeypatch.setattr("todo_bene.infrastructure.cli.main.get_repository", mock_get_repository)
     return repo

@@ -23,6 +23,7 @@ from todo_bene.application.use_cases.user_create import UserCreateUseCase
 from todo_bene.application.use_cases.todo_get import TodoGetUseCase
 from todo_bene.domain.entities.todo import Todo
 from todo_bene.infrastructure.config import load_user_config, save_user_config
+from todo_bene.infrastructure.persistence.duckdb_connection_manager import DuckDBConnectionManager
 from todo_bene.infrastructure.persistence.duckdb_todo_repository import (
     DuckDBTodoRepository,
 )
@@ -100,10 +101,20 @@ def ensure_user_setup() -> UUID:
 @contextmanager
 def get_repository():
     db_path = os.getenv("TODO_BENE_DB_PATH", str(Path.home() / ".todo_bene.db"))
-    repo = DuckDBTodoRepository(db_path)
+    
+    # On initialise le manager (qui ouvre la connexion et crée les tables)
+    manager = DuckDBConnectionManager(db_path)
+    
+    # On instancie le repository avec la connexion fournie par le manager
+    repo = DuckDBTodoRepository(manager.get_connection())
+    
     try:
+        # On yield le REPOSITORY
         yield repo
     finally:
+        # 4. On ferme proprement via le manager
+        manager.close()
+
         repo.close()
 
 
