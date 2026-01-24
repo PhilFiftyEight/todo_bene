@@ -2,9 +2,15 @@ name: Tests
 
 on:
   push:
-    branches: [ main ]
+    branches: 
+      - main
+      - develop
+      - 'feat/**'  # Inclut toutes tes branches d'issues (ex: feat/issue-1-categories)
+      - 'fix/**'
   pull_request:
-    branches: [ main ]
+    branches: 
+      - main
+      - develop
 
 jobs:
   run-tests:
