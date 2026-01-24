@@ -4,7 +4,7 @@ from todo_bene.application.use_cases.todo_create import TodoCreateUseCase
 from todo_bene.infrastructure.persistence.memory_todo_repository import (
     MemoryTodoRepository,
 )
-
+from todo_bene.domain.entities.category import Category
 
 def test_todo_create_use_case():
     # Arrange
@@ -16,7 +16,7 @@ def test_todo_create_use_case():
     todo_data = {
         "title": "Apprendre la Clean Architecture",
         "user": user_id,
-        "category": "travail",
+        "category": Category.TRAVAIL,
         "description": "Pratiquer le TDD avec Gemini",
     }
 
@@ -40,7 +40,7 @@ def test_todo_create_root_success():
     new_todo = use_case.execute(
         title="Acheter du pain",
         user=user_id,
-        category="Courses",
+        category=Category.QUOTIDIEN,
         description="Au levain de préférence",
     )
 
@@ -58,14 +58,14 @@ def test_todo_create_child_success():
 
     # On crée d'abord un parent
     parent_todo = use_case.execute(
-        "Projet Vacances", user_id, "Perso", "Organiser l'été"
+        "Projet Vacances", user_id, Category.QUOTIDIEN, "Organiser l'été"
     )
 
     # Act: On crée un enfant en passant l'UUID du parent
     child_todo = use_case.execute(
         title="Réserver l'hôtel",
         user=user_id,
-        category="Perso",
+        category=Category.LOISIRS,
         description="Vérifier l'annulation gratuite",
         parent=parent_todo.uuid,
     )
@@ -83,7 +83,7 @@ def test_todo_create_with_extra_fields():
 
     # Act: On teste le passage via **kwargs (ex: priority)
     todo = use_case.execute(
-        "Urgent", user_id, "Test", "...", priority=True, date_due="2026-12-31 23:59:59"
+        "Urgent", user_id, Category.TRAVAIL, "...", priority=True, date_due="2026-12-31 23:59:59"
     )
 
     # Assert
@@ -102,7 +102,7 @@ def test_create_todo_with_parent_success(repository, user_id):
                 uuid4(),
                 "Parent",
                 "",
-                "Cat",
+                "",
                 False,
                 False,
                 1000,
@@ -147,3 +147,24 @@ def test_create_todo_with_parent_date_error(repository, user_id):
             parent=parent_id,
             date_due="31/12/2099",
         )
+
+
+def test_todo_create_assigns_default_category_if_none(repository):
+    # GIVEN
+    use_case = TodoCreateUseCase(repository)
+    user_id = uuid4()
+    
+    # WHEN: Quand category n'est pas donné
+    todo = use_case.execute(title="Test défaut", user=user_id)
+    
+    # THEN: On vérifie que c'est "Quotidien" (via la constante de l'entité)
+    assert todo.category == Category.QUOTIDIEN
+
+def test_todo_create_with_unauthorized_category_raises_error(repository):
+    # GIVEN
+    use_case = TodoCreateUseCase(repository)
+    user_id = uuid4()
+    
+    # WHEN / THEN: Une catégorie qui n'est pas dans les 6 de base
+    with pytest.raises(ValueError, match="Catégorie non autorisée"):
+        use_case.execute(title="Test", user=user_id, category="Inconnue")

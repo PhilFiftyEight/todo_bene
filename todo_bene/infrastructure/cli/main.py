@@ -4,6 +4,7 @@ import os
 import sys
 import getpass
 from typing import Optional
+from typing_extensions import Annotated
 from contextlib import contextmanager
 import locale
 from uuid import UUID
@@ -28,6 +29,7 @@ from todo_bene.infrastructure.persistence.duckdb_todo_repository import (
 from todo_bene.application.use_cases.todo_create import TodoCreateUseCase
 from todo_bene.application.use_cases.todo_delete import TodoDeleteUseCase
 from todo_bene.application.use_cases.todo_complete import TodoCompleteUseCase
+from todo_bene.domain.entities.category import Category
 
 app = typer.Typer()
 console = Console()
@@ -473,13 +475,6 @@ def show_details(todo_uuid: UUID, user_id: UUID) -> bool:
                 return exit_cascade
 
 
-# @app.callback()
-# def main(ctx: typer.Context):
-#     if ctx.invoked_subcommand == "register":
-#         return
-#     if load_user_config() is None:
-#         console.print("[red]Erreur : Aucun utilisateur enregistré.[/red]")
-#         raise typer.Exit(code=1)
 @app.callback()
 def main(ctx: typer.Context):
     """
@@ -505,11 +500,20 @@ def register(
     console.print(f"[bold green]Bienvenue {name} ![/bold green]")
 
 
+# --- CALLBACK DE COMPLÉTION ---
+def complete_category(incomplete: str):
+    """Retourne les catégories dont le nom commence par 'incomplete'."""
+    return [name for name in Category.ALL if name.lower().startswith(incomplete.lower())]
+
+
 @app.command(name="add")
 def create(
     title: str,
     user_id: Optional[UUID] = typer.Option(None),
-    category: str = typer.Option("Quotidien"),
+    category: Annotated[
+        str, 
+        typer.Option(help="Catégorie du Todo", autocompletion=complete_category)
+    ] = Category.QUOTIDIEN,
     description: str = typer.Option(""),
     priority: bool = typer.Option(False, "--priority", "-p"),
     start: str = typer.Option("", "--start"),

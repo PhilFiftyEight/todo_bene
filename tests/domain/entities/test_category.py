@@ -5,12 +5,18 @@ import pytest  # noqa: F401
 from todo_bene.domain.entities.category import Category
 
 
-def test_category_creation():
-    category = Category(name="quotidien")
-    assert category.name == "quotidien"
+# Test que les catégories de base existent
+def test_base_categories_exist():
+    assert Category.QUOTIDIEN == "Quotidien"
+    assert Category.TRAVAIL == "Travail"
+    assert Category.LOISIRS == "Loisirs"
+    assert Category.SPORT == "Sport"
+    assert Category.MEDICAL == "Médical"
+    assert Category.FAMILLE == "Famille"
 
 
+# La catégorie ne peut-être modifiée
 def test_category_not_mutable():
-    category = Category(name="quotidien")
-    with pytest.raises(FrozenInstanceError, match=r"cannot assign to field 'name'"):
-        category.name = "mensuel"
+    category = Category(name="Quotidien")
+    with pytest.raises(FrozenInstanceError):
+        category.name = "Travail"
