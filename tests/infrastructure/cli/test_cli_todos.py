@@ -1,10 +1,8 @@
 import pytest
-from rich.console import Console
 from typer.testing import CliRunner
 from todo_bene.infrastructure.cli.main import app
 from todo_bene.infrastructure.config import save_user_config
 import os
-# from pathlib import Path
 
 runner = CliRunner()
 
