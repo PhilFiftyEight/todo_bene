@@ -40,43 +40,58 @@ class TodoCreateUseCase:
     ) -> Todo:
         tz = pendulum.local_timezone()
 
-        # Dates
+        # Récupération du parent pour les règles de gestion
+        parent_todo = None
+        if parent:
+            parent_todo = self.repository.get_by_id(parent)
+            if not parent_todo:
+                raise ValueError("Parent introuvable.")
+
+        # 2. Gestion de la date de début
         if date_start:
             dt_start = self._parse_flexible(date_start, tz)
             if len(date_start) <= 10:
                 dt_start = dt_start.at(0, 0, 0)
+            
+            # Vérification date_start: Enfant >= Parent 
+            if parent_todo and int(dt_start.timestamp()) < parent_todo.date_start:
+                raise ValueError(
+                    "La date de début de l'enfant ne peut pas être antérieure à celle du parent."
+                )
+        elif parent_todo:
+            # Règle Héritage de la date du parent si non fournie
+            dt_start = pendulum.from_timestamp(parent_todo.date_start, tz=tz)
         else:
+            # Cas racine par défaut
             dt_start = pendulum.now(tz)
 
+        # 3. Gestion de la date d'échéance
         if date_due:
             dt_due = self._parse_flexible(date_due, tz)
             if len(date_due) <= 10:
                 dt_due = dt_due.at(23, 59, 59)
         else:
+            # Par défaut, l'échéance est la fin de journée de la date de début
             dt_due = dt_start.at(23, 59, 59)
 
-        # Vérification Règle n°1 (Parentalité)
-        if parent:
-            parent_todo = self.repository.get_by_id(parent)
-            if parent_todo:
-                # On compare les timestamps (car l'entité stocke des int)
-                if int(dt_due.timestamp()) > parent_todo.date_due:
-                    raise ValueError(
-                        "La date d'échéance de l'enfant ne peut pas dépasser celle du parent."
-                    )
+        # 4. Vérification Règle existante (Echéance Enfant <= Echéance Parent)
+        if parent_todo:
+            if int(dt_due.timestamp()) > parent_todo.date_due:
+                raise ValueError(
+                    "La date d'échéance de l'enfant ne peut pas dépasser celle du parent."
+                )
 
-        # 3. Création de l'entité
-        # ATTENTION : On passe les dates en string ISO pour que
-        # le __post_init__ de Todo fasse le parsing vers timestamp.
+        # 5. Création de l'entité
         todo = Todo(
             title=title,
-            user=user,  # Objet UUID
+            user=user,
             category=category,
             description=description,
             priority=priority,
             date_start=dt_start.to_datetime_string(),
             date_due=dt_due.to_datetime_string(),
-            parent=parent,  # Objet UUID ou None
+            parent=parent,
         )
+        
         self.repository.save(todo)
         return todo
