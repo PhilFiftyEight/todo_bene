@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Optional
 from uuid import UUID
 from todo_bene.domain.entities.todo import Todo
 
@@ -17,7 +18,8 @@ class TodoRepository(ABC):
         pass
 
     @abstractmethod
-    def find_top_level_by_user(self, user_id: UUID) -> list[Todo]:
+    def find_top_level_by_user(self, user_id: UUID, category: Optional[str] = None) -> list[Todo]:
+        """Récupère les tâches racines, avec un filtre optionnel par catégorie."""
         pass
 
     @abstractmethod

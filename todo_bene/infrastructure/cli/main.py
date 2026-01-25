@@ -630,13 +630,16 @@ def create(
 
 
 @app.command(name="list")
-def list_todos():
+def list_todos(category: Annotated[ Optional[str], typer.Option("--category", "-c", autocompletion=complete_category)] = None,):
     user_id = load_user_config()
     with get_repository() as repo:
         while True:
-            roots = repo.find_top_level_by_user(user_id)
+            roots = repo.find_top_level_by_user(user_id, category=category)
             if not roots:
-                console.print("[yellow]Aucun Todo trouvé.[/yellow]")
+                msg = "Aucun Todo trouvé"
+                if category:
+                    msg += f" pour la catégorie {category}"
+                console.print(f"[yellow]{msg}.[/yellow]")                       
                 return
 
             if sys.stdin.isatty():

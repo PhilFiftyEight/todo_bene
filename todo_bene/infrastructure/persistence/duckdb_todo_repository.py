@@ -78,15 +78,20 @@ class DuckDBTodoRepository(TodoRepository):
             return self._row_to_todo(res)
         return None
 
-    def find_top_level_by_user(self, user_id: UUID) -> List[Todo]:
-        query = """
-            SELECT * FROM todos 
-            WHERE user_id = ? 
-            AND parent_id IS NULL 
-            AND state = false 
-            ORDER BY date_start ASC
-        """
-        rows = self._conn.execute(query, (user_id,)).fetchall()
+
+    def find_top_level_by_user(self, user_id: UUID, category: Optional[str] = None) -> List[Todo]:
+    # Base de la requête existante
+        query = "SELECT * FROM todos WHERE user_id = ? AND parent_id IS NULL AND state = false"
+        params = [user_id]
+    
+        # Injection dynamique du filtre
+        if category:
+            query += " AND category = ?"
+            params.append(category)
+        
+        query += " ORDER BY date_start ASC"
+    
+        rows = self._conn.execute(query, params).fetchall()
         return [self._row_to_todo(row) for row in rows]
 
     def find_by_parent(self, parent_id: UUID) -> List[Todo]:

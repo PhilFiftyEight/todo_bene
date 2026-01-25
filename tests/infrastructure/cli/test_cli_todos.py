@@ -122,3 +122,24 @@ def test_cli_create_with_various_separators(test_config_env):
     result_list = runner.invoke(app, ["list"])
     assert expected_slash1 in result_list.stdout
     assert expected_slash2 in result_list.stdout
+
+
+def test_cli_list_filter_by_category(test_config_env):
+    """
+    Vérifie que la commande 'list --category' filtre correctement les résultats.
+    """
+    user_id = "550e8400-e29b-41d4-a716-446655440000"
+    save_user_config(user_id)
+
+    # 1. Création de deux tâches dans des catégories différentes
+    runner.invoke(app, ["add", "Tâche Travail", "--category", "Travail"])
+    runner.invoke(app, ["add", "Tâche Maison", "--category", "Quotidien"])
+
+    # 2. Test du filtre : On ne veut voir que "Pro"
+    result = runner.invoke(app, ["list", "--category", "Travail"])
+    from rich.console import Console
+    Console().print(result.stdout)
+    # Assertions
+    assert result.exit_code == 0
+    assert "Tâche Travail" in result.stdout
+    assert "Tâche Maison" not in result.stdout

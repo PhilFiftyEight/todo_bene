@@ -1,3 +1,4 @@
+from typing import Optional
 from uuid import UUID
 from todo_bene.domain.entities.todo import Todo
 from todo_bene.application.interfaces.todo_repository import TodoRepository
@@ -16,12 +17,24 @@ class MemoryTodoRepository(TodoRepository):
     def find_by_parent(self, parent_id: UUID) -> list[Todo]:
         return [todo for todo in self.todos.values() if todo.parent == parent_id]
 
-    def find_top_level_by_user(self, user_id: UUID) -> list[Todo]:
-        return [
-            todo
-            for todo in self.todos.values()
-            if todo.user == user_id and todo.parent is None and not todo.state
+    def find_top_level_by_user(self, user_id: UUID, category: Optional[str] = None) -> list[Todo]:
+        """
+        Récupère les tâches racines en mémoire avec un filtre optionnel.
+        """
+        # On filtre les racines de l'utilisateur qui ne sont pas complétées
+        roots = [
+            todo for todo in self.todos.values()
+            if todo.user == user_id 
+            and todo.parent is None 
+            and todo.state is False
         ]
+
+        # On applique le filtre de catégorie si présent
+        if category:
+            roots = [todo for todo in roots if todo.category == category]
+
+        # 3. On trie par date de début (comme dans l'implémentation DuckDB)
+        return sorted(roots, key=lambda x: x.date_start)
 
     def search_by_title(self, user_id: UUID, search_term: str) -> list[Todo]:
         return [
