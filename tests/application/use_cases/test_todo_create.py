@@ -159,12 +159,3 @@ def test_todo_create_assigns_default_category_if_none(repository):
     
     # THEN: On vérifie que c'est "Quotidien" (via la constante de l'entité)
     assert todo.category == Category.QUOTIDIEN
-
-def test_todo_create_with_unauthorized_category_raises_error(repository):
-    # GIVEN
-    use_case = TodoCreateUseCase(repository)
-    user_id = uuid4()
-    
-    # WHEN / THEN: Une catégorie qui n'est pas dans les 6 de base
-    with pytest.raises(ValueError, match="Catégorie non autorisée"):
-        use_case.execute(title="Test", user=user_id, category="Inconnue")

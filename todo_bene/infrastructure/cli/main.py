@@ -31,6 +31,9 @@ from todo_bene.application.use_cases.todo_create import TodoCreateUseCase
 from todo_bene.application.use_cases.todo_delete import TodoDeleteUseCase
 from todo_bene.application.use_cases.todo_complete import TodoCompleteUseCase
 from todo_bene.domain.entities.category import Category
+from todo_bene.application.use_cases.category_create import CategoryCreateUseCase
+from todo_bene.application.use_cases.category_list import CategoryListUseCase
+from todo_bene.infrastructure.persistence.duckdb_category_repository import DuckDBCategoryRepository
 
 app = typer.Typer()
 console = Console()
@@ -511,28 +514,118 @@ def register(
     console.print(f"[bold green]Bienvenue {name} ![/bold green]")
 
 
-# --- CALLBACK DE COMPLÉTION ---
+# # --- CALLBACK DE COMPLÉTION ---
+# def complete_category(incomplete: str):
+#     """Retourne les catégories dont le nom commence par 'incomplete'."""
+#     return [name for name in Category.ALL if name.lower().startswith(incomplete.lower())]
+
+
+# @app.command(name="add")
+# def create(
+#     title: str,
+#     user_id: Optional[UUID] = typer.Option(None),
+#     category: Annotated[
+#         str, 
+#         typer.Option(help="Catégorie du Todo", autocompletion=complete_category)
+#     ] = Category.QUOTIDIEN,
+#     description: str = typer.Option(""),
+#     priority: bool = typer.Option(False, "--priority", "-p"),
+#     start: str = typer.Option("", "--start"),
+#     due: str = typer.Option("", "--due"),
+#     parent: Optional[str] = typer.Option(
+#         None, "--parent", help="UUID ou partie du titre du parent"
+#     ),
+# ):
+#     effective_user_id = user_id or load_user_config()
+
+#     with get_repository() as repo:
+#         # Résolution simplifiée du parent
+#         selected_parent_uuid = _resolve_parent_uuid(repo, effective_user_id, parent)
+
+#         use_case = TodoCreateUseCase(repo)
+
+#         try:
+#             todo = use_case.execute(
+#                 title=title,
+#                 user=effective_user_id,
+#                 category=category,
+#                 description=description,
+#                 priority=priority,
+#                 date_start=start,
+#                 date_due=due,
+#                 parent=selected_parent_uuid,
+#             )
+#             msg = f"Todo créé : [cyan]{todo.title}[/cyan]"
+#             if todo.priority:
+#                 msg += " [yellow](prioritaire)[/yellow]"
+#             console.print(f"[bold green]Succès ![/bold green] {msg}")
+#         except ValueError as e:
+#             console.print(f"[bold red]Erreur : {e}[/bold red]")
+#             raise typer.Exit(code=1)
+#def complete_category(ctx: typer.Context, incomplete: str):
 def complete_category(incomplete: str):
-    """Retourne les catégories dont le nom commence par 'incomplete'."""
-    return [name for name in Category.ALL if name.lower().startswith(incomplete.lower())]
+    """Auto-complétion dynamique : Système + DuckDB."""
+    user_id = load_user_config()
+    if not user_id:
+        return [name for name in Category.ALL if name.lower().startswith(incomplete.lower())]
+
+    # On récupère les catégories en base
+    with get_repository() as repo:
+        cat_repo = DuckDBCategoryRepository(repo._conn)
+        list_use_case = CategoryListUseCase(cat_repo)
+        all_categories = list_use_case.execute(user_id)
+        
+    return [name for name in all_categories if name.lower().startswith(incomplete.lower())]
 
 
 @app.command(name="add")
 def create(
-    title: str,
-    user_id: Optional[UUID] = typer.Option(None),
+    title: Annotated[str, typer.Argument(help="Titre du todo")],
     category: Annotated[
-        str, 
-        typer.Option(help="Catégorie du Todo", autocompletion=complete_category)
-    ] = Category.QUOTIDIEN,
-    description: str = typer.Option(""),
-    priority: bool = typer.Option(False, "--priority", "-p"),
-    start: str = typer.Option("", "--start"),
-    due: str = typer.Option("", "--due"),
-    parent: Optional[str] = typer.Option(
-        None, "--parent", help="UUID ou partie du titre du parent"
-    ),
+        Optional[str], 
+        typer.Option("--category", "-c", autocompletion=complete_category)
+    ] = "Quotidien",
+    description: Annotated[Optional[str], typer.Option("--description", "-d")] = None,
+    priority: Annotated[bool, typer.Option("--priority", "-p")] = False,
+    start: Annotated[Optional[str], typer.Option("--start", "-s")] = None,
+    due: Annotated[Optional[str], typer.Option("--due", "-e")] = None,
+    parent: Annotated[Optional[str], typer.Option("--parent")] = None,
 ):
+    """Crée un nouveau Todo avec support des catégories personnalisées."""
+    user_id = ensure_user_setup()
+
+    with get_repository() as repo:
+        cat_repo = DuckDBCategoryRepository(repo._conn)
+        
+        # Logique de vérification/création à la volée
+        list_use_case = CategoryListUseCase(cat_repo)
+        all_allowed = list_use_case.execute(user_id)
+        
+        # Normalisation via l'entité
+        temp_cat = Category(name=category, user_id=user_id)
+        formatted_name = temp_cat.name
+        
+        if formatted_name not in all_allowed:
+            console.print(f"[yellow]La catégorie {formatted_name} n'existe pas.[/yellow]")
+            if typer.confirm(f"Voulez-vous créer la catégorie {formatted_name} ?"):
+                CategoryCreateUseCase(cat_repo).execute(formatted_name, user_id)
+                console.print(f"[green]Catégorie {formatted_name} créée.[/green]")
+                category = formatted_name
+            else:
+                console.print("[blue]Utilisation de la catégorie par défaut : 'Quotidien'[/blue]")
+                category = "Quotidien"
+        else:
+            category = formatted_name
+
+        # --- RESTE DU CODE (Parent & Création Todo) ---
+        # ... (identique à ton code précédent) ...
+        # use_case = TodoCreateUseCase(repo)
+        # use_case.execute(
+        #     title=title, user=user_id, category=category,
+        #     description=description, priority=priority,
+        #     date_start=start, date_due=due, parent=None # Simplifié pour l'exemple
+        # )
+        # console.print(f"[bold green]✅ Todo {title} créé avec succès ![/bold green]")
     effective_user_id = user_id or load_user_config()
 
     with get_repository() as repo:

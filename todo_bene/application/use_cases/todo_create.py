@@ -2,7 +2,6 @@ from uuid import UUID
 from typing import Optional
 import pendulum
 from todo_bene.domain.entities.todo import Todo
-from todo_bene.domain.entities.category import Category
 
 
 class TodoCreateUseCase:
@@ -39,9 +38,6 @@ class TodoCreateUseCase:
         date_due: str = "",
         parent: Optional[UUID] = None,
     ) -> Todo:
-        if category not in Category.ALL:
-            raise ValueError("Catégorie non autorisée")
-
         tz = pendulum.local_timezone()
 
         # Dates

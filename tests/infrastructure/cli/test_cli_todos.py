@@ -1,4 +1,5 @@
 import pytest
+from rich.console import Console
 from typer.testing import CliRunner
 from todo_bene.infrastructure.cli.main import app
 from todo_bene.infrastructure.config import save_user_config
@@ -38,7 +39,7 @@ def test_cli_priority_creation_and_display(test_config_env):
     # Création avec le flag priority
     result = runner.invoke(app, ["add", "Urgent !", "--priority"])
     assert result.exit_code == 0
-    assert "prioritaire" in result.stdout.lower()
+    assert "prioritaire" in result.stdout#.lower()
 
     # Vérification de l'étoile dans la liste
     result_list = runner.invoke(app, ["list"])
