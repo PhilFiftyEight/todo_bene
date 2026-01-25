@@ -39,6 +39,7 @@ class TodoCreateUseCase:
         parent: Optional[UUID] = None,
     ) -> Todo:
         tz = pendulum.local_timezone()
+        now = pendulum.now(tz)
 
         # Récupération du parent pour les règles de gestion
         parent_todo = None
@@ -47,13 +48,18 @@ class TodoCreateUseCase:
             if not parent_todo:
                 raise ValueError("Parent introuvable.")
 
-        # 2. Gestion de la date de début
+        # Gestion de la date de début
         if date_start:
             dt_start = self._parse_flexible(date_start, tz)
             if len(date_start) <= 10:
                 dt_start = dt_start.at(0, 0, 0)
             
-            # Vérification date_start: Enfant >= Parent 
+            # Validation Racine dans le passé ---
+            if not parent:
+                if dt_start.start_of('day') < now.start_of('day'):
+                    raise ValueError("Une tâche racine ne peut pas commencer dans le passé.")
+            
+            # Vérification date_start: Enfant >= Parent
             if parent_todo and int(dt_start.timestamp()) < parent_todo.date_start:
                 raise ValueError(
                     "La date de début de l'enfant ne peut pas être antérieure à celle du parent."
@@ -63,7 +69,7 @@ class TodoCreateUseCase:
             dt_start = pendulum.from_timestamp(parent_todo.date_start, tz=tz)
         else:
             # Cas racine par défaut
-            dt_start = pendulum.now(tz)
+            dt_start = now
 
         # 3. Gestion de la date d'échéance
         if date_due:

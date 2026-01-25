@@ -1,3 +1,4 @@
+import pendulum
 import pytest
 from typer.testing import CliRunner
 from todo_bene.infrastructure.cli.main import app
@@ -49,19 +50,20 @@ def test_cli_create_with_french_dates(test_config_env):
     """Vérifie que la CLI accepte et affiche correctement le format français JJ/MM/AAAA."""
     user_id = "550e8400-e29b-41d4-a716-446655440000"
     save_user_config(user_id)
-
+    start_str = pendulum.now().add(days=30).format("DD/MM/YYYY")
+    due_str = pendulum.now().add(days=45).format("DD/MM/YYYY")
     # Utilisation du format FR à la création
     result = runner.invoke(
         app,
-        ["add", "Réserver vacances", "--start", "01/06/2025", "--due", "15/06/2025"],
+        ["add", "Réserver vacances", "--start", start_str, "--due", due_str],
     )
     assert result.exit_code == 0
     assert "Succès" in result.stdout
 
     # Vérification de l'affichage localisé dans la liste
     result_list = runner.invoke(app, ["list"])
-    assert "01/06/2025 00:00" in result_list.stdout
-    assert "15/06/2025 23:59" in result_list.stdout
+    assert start_str+" 00:00" in result_list.stdout
+    assert due_str+" 23:59" in result_list.stdout
 
 
 def test_cli_default_date_logic(test_config_env, time_machine):
@@ -105,13 +107,18 @@ def test_cli_create_with_various_separators(test_config_env):
     """Vérifie que la CLI accepte les slashs ET les tirets pour le format FR."""
     user_id = "550e8400-e29b-41d4-a716-446655440000"
     save_user_config(user_id)
-
+    # Dates futures relatives
+    pendulum.travel(freeze=True)
+    date_tiret = pendulum.now().format("DD-MM-YYYY HH:mm")
+    date_slash = pendulum.now().add(days=1).format("DD/MM/YYYY HH:mm")
+    expected_slash1 =  pendulum.now().format("DD/MM/YYYY HH:mm")
+    expected_slash2 =  pendulum.now().add(days=1).format("DD/MM/YYYY HH:mm")
     # Test avec tirets (ton cas d'erreur)
-    runner.invoke(app, ["add", "Tiret test", "--start", "11-01-2026 13:00"])
+    runner.invoke(app, ["add", "Tiret test", "--start", date_tiret])
 
     # Test avec slashs
-    runner.invoke(app, ["add", "Slash test", "--start", "12/01/2026 14:00"])
-
+    runner.invoke(app, ["add", "Slash test", "--start", date_slash])
+    pendulum.travel_back()
     result_list = runner.invoke(app, ["list"])
-    assert "11/01/2026 13:00" in result_list.stdout
-    assert "12/01/2026 14:00" in result_list.stdout
+    assert expected_slash1 in result_list.stdout
+    assert expected_slash2 in result_list.stdout

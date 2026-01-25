@@ -1,3 +1,4 @@
+import pendulum
 import pytest  # noqa: F401
 from uuid import uuid4
 from todo_bene.application.use_cases.todo_create import TodoCreateUseCase
@@ -159,3 +160,23 @@ def test_todo_create_assigns_default_category_if_none(repository):
     
     # THEN: On vérifie que c'est "Quotidien" (via la constante de l'entité)
     assert todo.category == Category.QUOTIDIEN
+
+def test_root_todo_cannot_start_in_the_past(test_config_env):
+    """
+    Une tâche racine ne peut pas commencer dans le passé.
+    """
+    from todo_bene.infrastructure.cli.main import get_repository
+    
+    with get_repository() as repo:
+        use_case = TodoCreateUseCase(repo)
+        user_id = uuid4()
+        
+        # Date hier
+        past_date = pendulum.now().subtract(days=1).format("DD/MM/YYYY")
+        
+        with pytest.raises(ValueError, match="Une tâche racine ne peut pas commencer dans le passé"):
+            use_case.execute(
+                title="Tâche fantôme",
+                user=user_id,
+                date_start=past_date
+            )

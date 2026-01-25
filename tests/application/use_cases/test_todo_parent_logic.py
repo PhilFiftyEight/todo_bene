@@ -1,28 +1,26 @@
 import pendulum
 import pytest
-
-# import pendulum
 from uuid import uuid4
 from todo_bene.application.use_cases.todo_create import TodoCreateUseCase
-# from todo_bene.domain.entities.todo import Todo
 
 
 def test_child_cannot_end_after_parent(test_config_env, monkeypatch):
-    """
-    Règle 1 : L'enfant ne peut pas finir après le parent.
-    """
     from todo_bene.infrastructure.cli.main import get_repository
 
-    # repo = get_repository()
     with get_repository() as repo:
         use_case = TodoCreateUseCase(repo)
         user_id = uuid4()
 
-        # 1. Créer un parent qui finit le 15 Janvier
+        # Utiliser une date dans le futur (ex: dans 10 jours)
+        future_date = pendulum.now().add(days=10).format("DD/MM/YYYY")
+
+        # Créer un parent qui finit dans 10 jours
         parent = use_case.execute(
-            title="Parent", user=user_id, date_start="15/01/2026", date_due="15/01/2026"
+            title="Parent", user=user_id, date_start=future_date, date_due=future_date
         )
-        # 2. Tenter de créer un enfant qui finit le 20 Janvier (DOIT LEVER UNE ERREUR)
+        
+        # Tenter de créer un enfant qui finit après (J+11)
+        too_late = pendulum.now().add(days=11).format("DD/MM/YYYY")
         with pytest.raises(
             ValueError,
             match=r"La date d'échéance de l'enfant ne peut pas dépasser celle du parent\.",
@@ -31,13 +29,13 @@ def test_child_cannot_end_after_parent(test_config_env, monkeypatch):
                 title="Enfant rebelle",
                 user=user_id,
                 parent=parent.uuid,
-                date_due="20/01/2026",
+                date_due=too_late,
             )
 
 
 def test_multi_generational_children(test_config_env):
     """
-    Règle 2 : Un enfant peut avoir des enfants (Sous-sous-tâche).
+    Règle: Un enfant peut avoir des enfants (Sous-sous-tâche).
     """
     from todo_bene.infrastructure.cli.main import get_repository
 

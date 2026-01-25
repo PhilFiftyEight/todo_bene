@@ -544,58 +544,89 @@ def create(
     due: Annotated[Optional[str], typer.Option("--due", "-e")] = None,
     parent: Annotated[Optional[str], typer.Option("--parent")] = None,
 ):
-    """Crée un nouveau Todo avec support des catégories personnalisées."""
+    """Crée un nouveau Todo avec gestion interactive des erreurs de date."""
     user_id = ensure_user_setup()
+    # On s'assure d'avoir l'ID utilisateur pour la suite
+    effective_user_id = user_id or load_user_config()
 
     with get_repository() as repo:
         cat_repo = DuckDBCategoryRepository(repo._conn)
         
-        # Logique de vérification/création à la volée
+        # --- Gestion de la catégorie ---
         list_use_case = CategoryListUseCase(cat_repo)
-        all_allowed = list_use_case.execute(user_id)
+        all_allowed = list_use_case.execute(effective_user_id)
         
-        # Normalisation via l'entité
-        temp_cat = Category(name=category, user_id=user_id)
+        # Normalisation du nom de la catégorie via l'entité
+        temp_cat = Category(name=category or "Quotidien", user_id=effective_user_id)
         formatted_name = temp_cat.name
         
         if formatted_name not in all_allowed:
             console.print(f"[yellow]La catégorie {formatted_name} n'existe pas.[/yellow]")
             if typer.confirm(f"Voulez-vous créer la catégorie {formatted_name} ?"):
-                CategoryCreateUseCase(cat_repo).execute(formatted_name, user_id)
+                CategoryCreateUseCase(cat_repo).execute(formatted_name, effective_user_id)
                 console.print(f"[green]Catégorie {formatted_name} créée.[/green]")
                 category = formatted_name
             else:
-                console.print("[blue]Utilisation de la catégorie par défaut : 'Quotidien'[/blue]")
                 category = "Quotidien"
         else:
             category = formatted_name
 
-    effective_user_id = user_id or load_user_config()
-
-    with get_repository() as repo:
-        # Résolution simplifiée du parent
+        # Résolution du parent (recherche par titre ou UUID)
         selected_parent_uuid = _resolve_parent_uuid(repo, effective_user_id, parent)
-
         use_case = TodoCreateUseCase(repo)
 
-        try:
-            todo = use_case.execute(
-                title=title,
-                user=effective_user_id,
-                category=category,
-                description=description,
-                priority=priority,
-                date_start=start,
-                date_due=due,
-                parent=selected_parent_uuid,
-            )
-            msg = f"Todo créé : [cyan]{todo.title}[/cyan]"
-            if todo.priority:
-                msg += " [yellow](prioritaire)[/yellow]"
-            console.print(f"[bold green]Succès ![/bold green] {msg}")
-        except ValueError as e:
-            console.print(f"[bold red]Erreur : {e}[/bold red]")
-            raise typer.Exit(code=1)
+        # --- BOUCLE DE CRÉATION INTERACTIVE ---
+        current_start = start
+        current_due = due
+        
+        while True:
+            try:
+                # Tentative d'exécution du Use Case avec les dates actuelles
+                todo = use_case.execute(
+                    title=title,
+                    user=effective_user_id,
+                    category=category,
+                    description=description or "",
+                    priority=priority,
+                    date_start=current_start or "",
+                    date_due=current_due or "",
+                    parent=selected_parent_uuid,
+                )
+                
+                # Message de succès
+                msg = f"Todo créé : [cyan]{todo.title}[/cyan]"
+                if todo.priority:
+                    msg += " [yellow](prioritaire)[/yellow]"
+                console.print(f"[bold green]Succès ![/bold green] {msg}")
+                break # On sort de la boucle si la création réussit
+
+            except ValueError as e:
+                # Affichage de l'erreur du Domaine (ex: Date dans le passé)
+                #console.print(f"\n[bold red]⚠ Erreur : {e}[/bold red]")
+                console.print(f"\n[bold red]🙅‍♂️ Erreur de validation : {e}[/bold red]")
+                
+                # Sécurité pour les tests automatisés : on ne bloque pas sur un prompt
+                if not sys.stdin.isatty():
+                    raise typer.Exit(code=1)
+
+                # Dialogue de rattrapage pour l'utilisateur
+                console.print("[dim]Il y a un problème avec les dates fournies.[/dim]")
+                # Configuration du prompt avec raccourcis (d/e/a)
+                action = Prompt.ask(
+                    "Que voulez-vous corriger ? r",
+                    choices=["d", "e", "a", "début", "échéance", "annuler"],
+                    default="d"
+                )
+                if action in ["d", "début"]:
+                    current_start = Prompt.ask("Nouvelle date de début")
+                elif action in ["e", "échéance"]:
+                    current_due = Prompt.ask("Nouvelle date d'échéance")
+                elif action in ["a", "annuler"]:
+                    console.print("[yellow]Bye ![/yellow]")
+                    raise typer.Exit(code=0)
+                else:
+                    console.print("[yellow]Erreur saisie, Bye ![/yellow]")
+                    raise typer.Exit(code=0)  # TODO: Il faut proposer une nouvelle saisie
 
 
 @app.command(name="list")
