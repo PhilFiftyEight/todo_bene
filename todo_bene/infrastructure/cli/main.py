@@ -45,11 +45,12 @@ def ensure_user_setup() -> UUID:
     Vérifie si un utilisateur est configuré.
     Sinon, lance un wizard avec un en-tête stylisé 'TODO BENE'.
     """
-    console.clear()
     user_id = load_user_config()
     if user_id:
         return user_id
-
+    
+    # On n'efface l'écran QUE si on doit lancer le wizard
+    console.clear()
     # --- EN-TÊTE STYLISÉ (Style image) ---
     # On crée un titre imposant
     banner = r"""
