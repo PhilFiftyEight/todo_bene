@@ -137,8 +137,6 @@ def test_cli_list_filter_by_category(test_config_env):
 
     # 2. Test du filtre : On ne veut voir que "Pro"
     result = runner.invoke(app, ["list", "--category", "Travail"])
-    from rich.console import Console
-    Console().print(result.stdout)
     # Assertions
     assert result.exit_code == 0
     assert "Tâche Travail" in result.stdout

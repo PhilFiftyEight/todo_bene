@@ -16,6 +16,13 @@ class MemoryTodoRepository(TodoRepository):
 
     def find_by_parent(self, parent_id: UUID) -> list[Todo]:
         return [todo for todo in self.todos.values() if todo.parent == parent_id]
+    
+    def find_all_active_by_user(self, user_id: UUID) -> list[Todo]:
+        """Récupère toutes les tâches non terminées (actives) d'un utilisateur."""
+        return [
+        todo for todo in self.todos.values() 
+        if todo.user == user_id and not todo.state
+    ]
 
     def find_top_level_by_user(self, user_id: UUID, category: Optional[str] = None) -> list[Todo]:
         """

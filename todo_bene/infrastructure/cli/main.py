@@ -19,6 +19,7 @@ from rich.align import Align
 import pendulum
 
 # Imports Internes
+from todo_bene.application.use_cases.todo_find_top_level_by_user import TodoGetAllRootsByUserUseCase
 from todo_bene.application.use_cases.user_create import UserCreateUseCase
 from todo_bene.application.use_cases.todo_get import TodoGetUseCase
 from todo_bene.domain.entities.todo import Todo
@@ -239,25 +240,25 @@ def _display_detail_view(todo: Todo, children: list[Todo], repo):
     """S'occupe uniquement du rendu visuel des détails."""
     if sys.stdin.isatty():
         console.clear()
-    # 1. État et Couleur
+    # État et Couleur
     state_label = (
         "[bold green]✅ COMPLÉTÉE[/bold green]"
         if todo.state
         else "[bold red]⏳ À FAIRE[/bold red]"
     )
 
-    # 2. Titre et Priorité
+    # Titre et Priorité
     prio_mark = "[yellow]🔥 [/yellow]" if todo.priority else ""
     header = f"{prio_mark}[bold white]{todo.title}[/bold white]"
 
-    # 3. Information Parent
+    # Information Parent
     parent_line = ""
     if todo.parent:
         p_obj = repo.get_by_id(todo.parent)
         p_name = p_obj.title if p_obj else str(todo.parent)[:8]
         parent_line = f"[dim] → {p_name}[/dim]"
 
-    # 4. Construction du contenu du Panel
+    # Construction du contenu du Panel
     content = f"{header}{parent_line}\n"
     content += f"\n[italic]{todo.description or 'Pas de description'}[/italic]"
     tz = pendulum.local_timezone()
@@ -316,11 +317,11 @@ def _handle_action(
             - exit_cascade (bool): Si True, demande aux parents dans la pile
               récursive de se fermer aussi (utilisé après une complétude réussie).
     """
-    # 1. Retour simple
+    # Retour simple
     if choice == "r":
         return True, False
 
-    # 2. Complétude (Le point complexe)
+    # Complétude (Le point complexe)
     if choice == "t":
         # On délègue à une mini-fonction dédiée (Étape 2.1)
         finished = _execute_completion_logic(todo, repo, user_id)
@@ -328,14 +329,14 @@ def _handle_action(
             # On casse la boucle ET on demande aux parents de se fermer
             return True, True
 
-    # 3. Suppression
+    # Suppression
     if choice == "s":
         if typer.confirm(f"Supprimer {todo.title} ?"):
             TodoDeleteUseCase(repo).execute(todo.uuid, user_id)
             console.print("[green]Supprimé avec succès.[/green]")
             return True, False  # On quitte car l'objet n'existe plus
 
-    # 4. Ajout de sous-tâche
+    # Ajout de sous-tâche
     if choice == "n":
         Prompt.ask("Action à venir, merci d'utiliser la ligne de commande!")
         # title = Prompt.ask("Titre de la sous-tâche")
@@ -634,7 +635,9 @@ def list_todos(category: Annotated[ Optional[str], typer.Option("--category", "-
     user_id = load_user_config()
     with get_repository() as repo:
         while True:
-            roots = repo.find_top_level_by_user(user_id, category=category)
+            #roots = repo.find_top_level_by_user(user_id, category=category)
+            use_case = TodoGetAllRootsByUserUseCase(repo)
+            roots = use_case.execute(user_id, category=category)
             if not roots:
                 msg = "Aucun Todo trouvé"
                 if category:
@@ -677,9 +680,11 @@ def list_todos(category: Annotated[ Optional[str], typer.Option("--category", "-
 def list_dev():
     """Vue technique détaillée avec encadrement minimaliste (style list)."""
     user_id = load_user_config()
-    # repo = get_repository()
     with get_repository() as repo:
-        todos = repo.find_all_by_user(user_id)
+        # todos = repo.find_all_by_user(user_id)
+        query = "SELECT * FROM todos"
+        params = list()
+        todos = [repo._row_to_todo(todo) for todo in repo._conn.execute(query).fetchall()]
 
         if not todos:
             console.print("[yellow]La base est vide pour cet utilisateur.[/yellow]")

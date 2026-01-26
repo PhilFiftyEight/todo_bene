@@ -113,9 +113,9 @@ class DuckDBTodoRepository(TodoRepository):
         rows = self._conn.execute(query, (user_id, f"%{search_term}%")).fetchall()
         return [self._row_to_todo(row) for row in rows]
 
-    def find_all_by_user(self, user_id: UUID) -> list[Todo]:
+    def find_all_active_by_user(self, user_id: UUID) -> list[Todo]:
         """Récupère tous les todos de l'utilisateur, sans filtre hiérarchique."""
-        res = self._conn.execute("SELECT * FROM todos WHERE user_id = ? ORDER BY date_start ASC",
+        res = self._conn.execute("SELECT * FROM todos WHERE user_id = ? AND state = false ORDER BY date_start ASC",
                 [str(user_id)],
             ).fetchall()
         # On utilise la méthode de mapping existante

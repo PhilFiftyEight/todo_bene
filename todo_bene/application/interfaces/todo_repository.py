@@ -18,6 +18,11 @@ class TodoRepository(ABC):
         pass
 
     @abstractmethod
+    def find_all_active_by_user(self, user_id: UUID) -> list[Todo]:
+        """Récupère toutes les tâches non terminées (actives) d'un utilisateur."""
+        pass
+
+    @abstractmethod
     def find_top_level_by_user(self, user_id: UUID, category: Optional[str] = None) -> list[Todo]:
         """Récupère les tâches racines, avec un filtre optionnel par catégorie."""
         pass
