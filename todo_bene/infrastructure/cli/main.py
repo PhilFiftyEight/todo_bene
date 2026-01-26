@@ -637,7 +637,17 @@ def list_todos(category: Annotated[ Optional[str], typer.Option("--category", "-
         while True:
             #roots = repo.find_top_level_by_user(user_id, category=category)
             use_case = TodoGetAllRootsByUserUseCase(repo)
-            roots = use_case.execute(user_id, category=category)
+            roots, postponed_count = use_case.execute(user_id, category=category)
+            # 2. On affiche la notification si nécessaire
+            if postponed_count > 0:
+                console.print(
+                    Panel(
+                        f"[bold blue]ℹ[/bold blue] {postponed_count} tâche{'s' if postponed_count > 1 else ''} en retard {'ont été reportées' if postponed_count > 1 else 'a été reportée'} à ce soir.",
+                        border_style="blue",
+                        padding=(0, 1)
+                    )
+            )
+
             if not roots:
                 msg = "Aucun Todo trouvé"
                 if category:
@@ -679,11 +689,10 @@ def list_todos(category: Annotated[ Optional[str], typer.Option("--category", "-
 @app.command(name="list-dev")
 def list_dev():
     """Vue technique détaillée avec encadrement minimaliste (style list)."""
-    user_id = load_user_config()
+    #user_id = load_user_config()
     with get_repository() as repo:
         # todos = repo.find_all_by_user(user_id)
         query = "SELECT * FROM todos"
-        params = list()
         todos = [repo._row_to_todo(todo) for todo in repo._conn.execute(query).fetchall()]
 
         if not todos:

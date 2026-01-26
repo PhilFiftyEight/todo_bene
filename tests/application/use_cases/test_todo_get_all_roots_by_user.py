@@ -49,9 +49,9 @@ def test_todo_find_top_level_by_user_success():
     repo.save(other_todo)
 
     # Act
-    found_todos = use_case.execute(user_id)
-
+    found_todos, postponedcount = use_case.execute(user_id)
     # Assert
+    assert postponedcount == 0 # postponedcount sert à préciser le nombre de todos reporté car non terminé (voir règle métier)
     assert len(found_todos) == 1
     assert found_todos[0].uuid == root_todo.uuid
     assert found_todos[0].user == user_id
@@ -60,7 +60,7 @@ def test_todo_find_top_level_by_user_success():
     # 4. Verify todo with state == True not visible
     todo_completed = Todo(title="Tâche finie", user=user_id, state=True)
     repo.save(todo_completed)
-    found_todos = use_case.execute(user_id)
+    found_todos, postponedcount = use_case.execute(user_id)
     assert (
         len(found_todos) == 1
     )  # found_todos not contain todo_completed, only root_todo
@@ -74,7 +74,8 @@ def test_todo_find_top_level_by_user_empty_when_none():
     user_id = uuid4()
 
     # Act
-    found_todos = use_case.execute(user_id)
+    found_todos, postponedcount = use_case.execute(user_id)
 
     # Assert
     assert found_todos == []
+    assert postponedcount == 0 
