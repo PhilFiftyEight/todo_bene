@@ -1,4 +1,4 @@
-from uuid import UUID
+from uuid import UUID, uuid4
 import pendulum
 import pytest  # noqa: F401
 from todo_bene.domain.entities.todo import Todo
@@ -98,3 +98,38 @@ def test_todo_creation_priority_bool(get_todo_dict: dict):
     # priority is set : priority == True
     todo = Todo(**get_todo_dict, priority=True)
     assert todo.priority is True
+
+
+def test_todo_update_valid_fields(): # except start and due
+    todo = Todo(title="Ancien", user=uuid4(), category="Quotidien", description="")
+    todo.update(title="Nouveau", priority=True, description="Ajout desc.", category="Travail")
+    
+    assert todo.title == "Nouveau"
+    assert todo.priority is True
+    assert todo.category == "Travail"
+    assert todo.description == "Ajout desc."
+
+
+def test_todo_update_basic_validation():
+    # GIVEN
+    todo = Todo(title="Initial", user=uuid4())
+    
+    # WHEN / THEN (Règle : Due >= Start)
+    with pytest.raises(ValueError, match="L'échéance doit être après le début"):
+        todo.update(
+            date_start=pendulum.now().add(days=2).timestamp(),
+            date_due=pendulum.now().add(days=1).timestamp()
+        )
+
+    # WHEN / THEN (Règle : Pas de start dans le passé pour une modif)
+    # Note: On utilise time_machine pour être précis
+    with pytest.raises(ValueError, match="La date de début ne peut pas être dans le passé"):
+        todo.update(date_start=pendulum.now().subtract(days=1).timestamp())
+
+def test_todo_update_forbiden_fields():
+    # GIVEN : Forbiden user, uuid, parent, state, date_final
+    todo = Todo(title="Initial", user=uuid4())
+    expected = ["uuid", "user", "parent", "state", "date_final"]
+
+    result = todo.update(uuid=None,user=None, parent=None,state=None,date_final=None)
+    assert result == expected

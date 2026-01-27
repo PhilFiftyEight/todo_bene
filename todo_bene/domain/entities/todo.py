@@ -43,7 +43,7 @@ class Todo:
         self._init_dates()
 
     def _init_identifiers(self):
-        """Conversion des UUIDs (Note Radon: A)."""
+        """Conversion des UUIDs."""
         if isinstance(self.user, str):
             self.user = UUID(self.user)
         if isinstance(self.uuid, str):
@@ -52,7 +52,7 @@ class Todo:
             self.parent = UUID(self.parent)
 
     def _init_frequency(self):
-        """Gestion de la fréquence (Note Radon: A)."""
+        """Gestion de la fréquence."""
         if isinstance(self.frequency, str) and "," in self.frequency:
             parts = self.frequency.split(",")
             try:
@@ -61,7 +61,7 @@ class Todo:
                 pass
 
     def _init_dates(self):
-        """Logique métier des dates (Note Radon: A)."""
+        """Logique métier des dates."""
         tz = pendulum.local_timezone()
 
         # Parsing initial
@@ -84,3 +84,35 @@ class Todo:
 
         self.date_start = ts_start
         self.date_due = ts_due
+
+    def update(self, **kwargs):
+        """
+        Met à jour les attributs autorisés avec validation de la 'génétique'.
+        """
+        # Liste blanche des champs modifiables (Sécurité)
+        allowed_fields = {'title', 'description', 'category', 'priority', 'date_start', 'date_due'}
+        
+        # On extrait les valeurs pour la validation croisée
+        # On prend la nouvelle valeur si fournie, sinon la valeur actuelle
+        new_start = kwargs.get('date_start', self.date_start)
+        new_due = kwargs.get('date_due', self.date_due)
+        
+        # Règle : Pas de date_start dans le passé (UNIQUEMENT si on tente de la modifier)
+        if 'date_start' in kwargs:
+            now_ts = pendulum.now().timestamp()
+            # On garde une marge de 10s pour les tests/exécution
+            if kwargs['date_start'] < (now_ts - 10):
+                raise ValueError("La date de début ne peut pas être dans le passé")
+
+        # Règle : Cohérence temporelle intrinsèque (Due >= Start)
+        if new_due < new_start:
+            raise ValueError("L'échéance doit être après le début")
+
+        # Modification limitée aux champs autorisés
+        forbiden_fields = []
+        for key, value in kwargs.items():
+            if key in allowed_fields:
+                setattr(self, key, value)
+            else:
+               forbiden_fields.append(key)
+        return forbiden_fields
