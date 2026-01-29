@@ -3,6 +3,7 @@
 import os
 import sys
 import getpass
+from time import sleep
 from typing import Optional
 from typing_extensions import Annotated
 from contextlib import contextmanager
@@ -20,6 +21,7 @@ import pendulum
 
 # Imports Internes
 from todo_bene.application.use_cases.todo_find_top_level_by_user import TodoGetAllRootsByUserUseCase
+from todo_bene.application.use_cases.todo_update import TodoUpdateUseCase
 from todo_bene.application.use_cases.user_create import UserCreateUseCase
 from todo_bene.application.use_cases.todo_get import TodoGetUseCase
 from todo_bene.domain.entities.todo import Todo
@@ -290,9 +292,9 @@ def _display_detail_view(todo: Todo, children: list[Todo], repo):
     # Menu d'actions
     console.print("\n[bold]Actions :[/bold]")
     console.print(
-        "  [b]t[/b]: Terminer | [b]s[/b]: Supprimer | [b]n[/b]: Nouvelle sous-tâche"
+        " [b]m[/b]: Modifier | [b][N°][/b]: Voir sous-tâche | [b]n[/b]: Nouvelle sous-tâche "
     )
-    console.print("  [b]r[/b]: Retour | [b][N°][/b]: Voir sous-tâche")
+    console.print(" [b]t[/b]: Terminer | [b]s[/b]: Supprimer |  [b]r[/b]: Retour ")
 
 
 def _handle_action(
@@ -336,12 +338,81 @@ def _handle_action(
             console.print("[green]Supprimé avec succès.[/green]")
             return True, False  # On quitte car l'objet n'existe plus
 
+    if choice == "m":
+        console.print("\n[bold blue]📝 Modification du Todo[/bold blue]")
+        console.print("[dim]Laissez vide pour conserver la valeur actuelle[/dim]\n")
+        
+        # 1. Champs simples
+        new_title = Prompt.ask(f"Titre [dim]({todo.title})[/dim]", default=todo.title, show_default=False)
+        current_desc = todo.description if todo.description else ""
+        new_desc = Prompt.ask(f"Description [dim]({current_desc or 'aucune'})[/dim]", default=current_desc, show_default=False)
+        current_priority = todo.priority
+        new_priority = typer.confirm(f"Prioritaire ? ({'Oui' if current_priority else 'Non'})", default=current_priority)
+        # 2. Catégorie (avec autocomplétion si possible)
+        new_cat = Prompt.ask(f"Catégorie [dim]({todo.category})[/dim]", default=todo.category, show_default=False)
+
+        # 3. Gestion des Dates avec Parsing
+        def ask_date(label: str, default_ts: Optional[int] = None) -> int:
+            # Préparer la chaîne par défaut proprement
+            default_str = ""
+            if default_ts:
+                # On s'assure que le format affiché est EXACTEMENT celui attendu en entrée
+                default_str = pendulum.from_timestamp(default_ts, tz=pendulum.local_timezone()).format("DD/MM/YYYY HH:mm")
+
+            val = Prompt.ask(f"{label}", default=default_str)
+
+            # Si l'utilisateur a laissé vide (ou validé le défaut), on rend le timestamp d'origine
+            if val == default_str and default_ts is not None:
+                return int(default_ts)
+
+            # Sinon, on parse la nouvelle saisie
+            try:
+                # On force la timezone locale pour le parsing
+                dt = pendulum.from_format(val, "DD/MM/YYYY HH:mm", tz=pendulum.local_timezone())
+                return int(dt.timestamp())
+            except ValueError:
+                console.print("[bold red]❌ Format de date invalide.[/bold red] Utilisez : DD/MM/YYYY HH:mm")
+                # On propage l'erreur pour que le try/except du menu la capture
+                raise ValueError("String does not match format DD/MM/YYYY HH:mm")
+
+        try:
+            new_start = ask_date("Début", todo.date_start)
+            new_due = ask_date("Échéance", todo.date_due)
+
+            updates = {
+                "title": new_title,
+                "description": new_desc,
+                "priority": new_priority,
+                "category": new_cat,
+                "date_start": new_start,
+                "date_due": new_due
+            }
+            # Exécution Use Case
+            use_case = TodoUpdateUseCase(repo)
+            forbiden = use_case.execute(todo.uuid, **updates)
+            
+            if forbiden:
+                # On ne montre que ce qui est pertinent pour l'utilisateur
+                visible = [f for f in forbiden if f in ['title', 'description', 'category', 'date_start', 'date_due']]
+                if visible:
+                    console.print(f"[yellow]⚠ Champs non modifiables : {', '.join(visible)}[/yellow]")
+                
+                # Feedback spécifique pour le test de sécurité (user/uuid)
+                tech_forbiden = [f for f in forbiden if f in ['user', 'uuid']]
+                if tech_forbiden:
+                    console.print(f"[dim yellow]Champs non modifiables : {', '.join(tech_forbiden)}[/dim yellow]")
+
+            console.print("[bold green]✔ Todo mis à jour avec succès ![/bold green]")
+            sleep(1) # pour la lecture du message précédent
+            return False, False # Rafraîchissement
+            
+        except ValueError as e:
+            console.print(f"[bold red]❌ Erreur : {e}[/bold red]")
+            return False, False
+
     # Ajout de sous-tâche
     if choice == "n":
         Prompt.ask("Action à venir, merci d'utiliser la ligne de commande!")
-        # title = Prompt.ask("Titre de la sous-tâche")
-        # TodoCreateUseCase(repo).execute(title, todo.user, parent=todo.uuid)
-        # On retourne False, False pour rafraîchir l'affichage et voir le nouvel enfant
         return False, False
 
     return False, False
@@ -475,7 +546,7 @@ def show_details(todo_uuid: UUID, user_id: UUID) -> bool:
             # 2. Affichage (Extrait à l'étape 1)
             _display_detail_view(todo, children, repo)
 
-            choice = Prompt.ask("\nVotre choix").lower().strip()
+            choice = Prompt.ask("\nVotre choix", default="r ").lower().strip()
 
             # 3. Navigation numérique (Extrait à l'étape 4)
             if choice.isdigit():

@@ -5,7 +5,7 @@ class TodoUpdateUseCase:
     def __init__(self, repository):
         self.repository = repository
 
-    def execute(self, todo_id: UUID, **kwargs):
+    def execute(self, todo_id: UUID, **updates):
         todo = self.repository.get_by_id(todo_id)
         if not todo:
             raise ValueError("Todo non trouvé")
@@ -15,18 +15,18 @@ class TodoUpdateUseCase:
             parent = self.repository.get_by_id(todo.parent)
             
             # Verrou de catégorie
-            if 'category' in kwargs and kwargs['category'] != parent.category:
+            if 'category' in updates and updates['category'] != parent.category:
                 raise ValueError("La catégorie d'un enfant est verrouillée sur celle du parent")
             
             # Verrou de date_due
-            new_due = kwargs.get('date_due', todo.date_due)
+            new_due = updates.get('date_due', todo.date_due)
             if new_due > parent.date_due:
                 raise ValueError("L'échéance de l'enfant ne peut pas dépasser celle du parent")
 
-        # 2. On délègue la validation génétique à l'entité
-        forbiden = todo.update(**kwargs)
+        # On délègue la validation "génétique" à l'entité
+        forbiden = todo.update(**updates)
         
-        # 3. Persistance
+        # Persistance
         self.repository.save(todo)
         
         return forbiden

@@ -90,19 +90,21 @@ class Todo:
         Met à jour les attributs autorisés avec validation de la 'génétique'.
         """
         # Liste blanche des champs modifiables (Sécurité)
-        allowed_fields = {'title', 'description', 'category', 'priority', 'date_start', 'date_due'}
+        allowed_fields = {'title', 'description', 'priority','category', 'date_start', 'date_due'}
         
         # On extrait les valeurs pour la validation croisée
         # On prend la nouvelle valeur si fournie, sinon la valeur actuelle
-        new_start = kwargs.get('date_start', self.date_start)
         new_due = kwargs.get('date_due', self.date_due)
-        
+        new_start= self.date_start
         # Règle : Pas de date_start dans le passé (UNIQUEMENT si on tente de la modifier)
         if 'date_start' in kwargs:
-            now_ts = pendulum.now().timestamp()
-            # On garde une marge de 10s pour les tests/exécution
-            if kwargs['date_start'] < (now_ts - 10):
-                raise ValueError("La date de début ne peut pas être dans le passé")
+            new_start = kwargs['date_start']
+            # On ne valide que si la nouvelle date est DIFFÉRENTE de l'ancienne
+            if new_start != self.date_start:
+                now_ts = pendulum.now().timestamp()
+                # On garde une marge de 10s pour les tests/exécution
+                if kwargs['date_start'] < (now_ts - 10):
+                    raise ValueError("La date de début ne peut pas être dans le passé")
 
         # Règle : Cohérence temporelle intrinsèque (Due >= Start)
         if new_due < new_start:
@@ -112,7 +114,9 @@ class Todo:
         forbiden_fields = []
         for key, value in kwargs.items():
             if key in allowed_fields:
-                setattr(self, key, value)
+                # On ne met à jour QUE si la valeur change vraiment
+                if getattr(self, key) != value:
+                    setattr(self, key, value)
             else:
                forbiden_fields.append(key)
         return forbiden_fields
