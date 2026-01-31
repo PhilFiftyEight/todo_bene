@@ -297,7 +297,7 @@ def _display_detail_view(todo: Todo, children: list[Todo], repo):
     console.print(" [b]t[/b]: Terminer | [b]s[/b]: Supprimer |  [b]r[/b]: Retour ")
 
 
-def _handle_action(
+def _handle_action( 
     choice: str, todo: Todo, children: list[Todo], repo, user_id
 ) -> tuple[bool, bool]:
     """
@@ -562,11 +562,12 @@ def show_details(todo_uuid: UUID, user_id: UUID) -> bool:
                 return exit_cascade
 
 
+# Callback principal : s'assure que l'environnement est prêt,
+# sauf pour la commande 'register' qui est manuelle.
 @app.callback()
 def main(ctx: typer.Context):
     """
-    Callback principal : s'assure que l'environnement est prêt,
-    sauf pour la commande 'register' qui est manuelle.
+    Pour une organisation simplifiée et lutter contre la procrastination
     """
     if ctx.invoked_subcommand == "register":
         return

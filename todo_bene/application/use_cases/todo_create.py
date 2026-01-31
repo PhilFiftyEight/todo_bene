@@ -47,6 +47,8 @@ class TodoCreateUseCase:
             parent_todo = self.repository.get_by_id(parent)
             if not parent_todo:
                 raise ValueError("Parent introuvable.")
+            # Forçage silencieux : l'enfant hérite toujours de la catégorie du parent
+            category = parent_todo.category   
 
         # Gestion de la date de début
         if date_start:

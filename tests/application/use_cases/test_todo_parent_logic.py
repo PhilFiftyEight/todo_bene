@@ -2,6 +2,7 @@ import pendulum
 import pytest
 from uuid import uuid4
 from todo_bene.application.use_cases.todo_create import TodoCreateUseCase
+from todo_bene.domain.entities.todo import Todo
 
 
 def test_child_cannot_end_after_parent(test_config_env, monkeypatch):
@@ -115,3 +116,43 @@ def test_child_start_date_cannot_be_before_parent_start_date(test_config_env):
                 parent=parent.uuid,
                 date_start=invalid_child_start
             )
+
+def test_create_child_forces_parent_category(repository, user_id):
+    """
+    Comportement attendu : 
+    Le Use Case doit ignorer la catégorie fournie si un parent est spécifié
+    et forcer l'héritage de la catégorie du parent.
+    """
+    # GIVEN : Un parent dans 'Travail'
+    # On utilise des dates formatées comme attendu par le Use Case
+    date_start_str = "2026-02-01 08:00"
+    date_due_str = "2026-02-01 18:00"
+    
+    parent = Todo(
+        title="Parent", 
+        user=user_id, 
+        category="Travail",
+        # date_start=pendulum.parse(date_start_str).timestamp(),
+        # date_due=pendulum.parse(date_due_str).timestamp()
+        date_start = date_start_str,
+        date_due=date_due_str
+
+    )
+    repository.save(parent)
+    
+    use_case = TodoCreateUseCase(repository)
+
+    # WHEN : On tente l'injection d'une catégorie différente
+    child = use_case.execute(
+        user=user_id,          # Argument correct : 'user' et non 'user_id'
+        title="Enfant",
+        category="Personnel",  # Devrait être ignoré
+        parent=parent.uuid,
+        date_start=date_start_str,
+        date_due=date_due_str
+    )
+
+    # THEN : L'assertion échouera car le Use Case prendra 'Personnel' pour l'instant
+    assert child.category == "Travail"
+    assert repository.get_by_id(child.uuid).category == "Travail"
+    
