@@ -82,7 +82,7 @@ class TodoCreateUseCase:
             # Par défaut, l'échéance est la fin de journée de la date de début
             dt_due = dt_start.at(23, 59, 59)
 
-        # 4. Vérification Règle existante (Echéance Enfant <= Echéance Parent)
+        # 4. Vérification Règle existante (Échéance Enfant <= Échéance Parent)
         if parent_todo:
             if int(dt_due.timestamp()) > parent_todo.date_due:
                 raise ValueError(

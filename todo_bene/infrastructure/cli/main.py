@@ -14,7 +14,7 @@ import typer
 from rich.table import Table
 from rich.console import Console
 from rich import box
-from rich.prompt import Prompt
+from rich.prompt import Confirm, Prompt
 from rich.panel import Panel
 from rich.align import Align
 import pendulum
@@ -403,7 +403,7 @@ def _handle_action(
                     console.print(f"[dim yellow]Champs non modifiables : {', '.join(tech_forbiden)}[/dim yellow]")
 
             console.print("[bold green]✔ Todo mis à jour avec succès ![/bold green]")
-            sleep(1) # pour la lecture du message précédent
+            sleep(0.2) # pour la lecture du message précédent
             return False, False # Rafraîchissement
             
         except ValueError as e:
@@ -411,8 +411,56 @@ def _handle_action(
             return False, False
 
     # Ajout de sous-tâche
+    # 1. Ajoute cette fonction (Placehaolder visuel pour l'étape 1)
+    def menu_nouvelle_sous_tache(parent: Todo, repo):
+        console.print(Panel(f"[bold blue]🆕 Nouvelle sous-tâche pour : {parent.title}[/bold blue]"))
+        console.print(f"[dim]Catégorie héritée : {parent.category}[/dim]")
+
+        title = Prompt.ask("Titre de la sous-tâche")
+        
+        description = Prompt.ask("Description (optionnelle)", default="")
+        
+        priority = Confirm.ask("Prioritaire ?", default=False)
+
+        # --- GESTION DES DATES HÉRITÉES ---
+        # On transforme les timestamps du parent en objets pendulum pour le formatage
+        fmt = "DD/MM/YYYY HH:mm:ss"
+        tz = pendulum.local_timezone() # On récupère la TZ locale
+
+        def_start = pendulum.from_timestamp(parent.date_start, tz=tz).format(fmt)
+        def_due = pendulum.from_timestamp(parent.date_due, tz=tz).format(fmt)
+
+        # On demande les dates en proposant celles du parent par défaut
+        new_start = Prompt.ask("Date de début", default=def_start)
+        new_due = Prompt.ask("Échéance", default=def_due)
+
+        # 2. Parsing STRICT avec la même TZ pour éviter l'inversion jour/mois
+        try:
+            new_start = pendulum.from_format(new_start, fmt, tz=tz).timestamp()
+            new_due = pendulum.from_format(new_due, fmt, tz=tz).timestamp()
+        except ValueError:
+            console.print("[bold red]Format de date invalide ![/bold red]")
+            return False
+        
+        # Création de la sous-tâche avec le lien de parenté
+        subtask = Todo(
+            title=title,
+            description=description,
+            user=parent.user,       # Héritage
+            category=parent.category, # Héritage
+            priority=priority,
+            date_start=new_start,
+            date_due=new_due,
+            parent=parent.uuid     # <-- Le lien crucial
+        )
+        # Sauvegarde
+        repo.save(subtask)
+        console.print(f"[bold green]✔ Sous-tâche '{title}' créée avec succès ![/bold green]")
+        return True
+
     if choice == "n":
-        Prompt.ask("Action à venir, merci d'utiliser la ligne de commande!")
+        menu_nouvelle_sous_tache(todo, repo)
+        # On simule un retour immédiat pour que le test lise l'output
         return False, False
 
     return False, False
@@ -467,7 +515,7 @@ def _display_root_list(roots: list[Todo], repo):
     table.add_column("Titre", style="blue")
     table.add_column("Description", style="white")
     table.add_column("Début", style="green")
-    table.add_column("Echéance", style="magenta")
+    table.add_column("Échéance", style="magenta")
 
     for idx, todo in enumerate(roots, 1):
         prio_mark = "🔥" if todo.priority else ""
