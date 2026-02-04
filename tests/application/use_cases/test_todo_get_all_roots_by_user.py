@@ -9,7 +9,7 @@ from todo_bene.application.use_cases.todo_find_top_level_by_user import (
 )
 
 
-def test_todo_find_top_level_by_user_success():
+def test_todo_find_top_level_by_user_success(user_id):
     # Arrange
     repo = MemoryTodoRepository()
     use_case = TodoGetAllRootsByUserUseCase(repo)
@@ -67,11 +67,10 @@ def test_todo_find_top_level_by_user_success():
     assert found_todos[0].uuid == root_todo.uuid
 
 
-def test_todo_find_top_level_by_user_empty_when_none():
+def test_todo_find_top_level_by_user_empty_when_none(user_id):
     # Arrange
     repo = MemoryTodoRepository()
     use_case = TodoGetAllRootsByUserUseCase(repo)
-    user_id = uuid4()
 
     # Act
     found_todos, postponedcount = use_case.execute(user_id)

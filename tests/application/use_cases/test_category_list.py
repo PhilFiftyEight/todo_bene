@@ -1,13 +1,11 @@
-from uuid import uuid4
 from todo_bene.application.use_cases.category_list import CategoryListUseCase
 from todo_bene.infrastructure.persistence.memory_category_repository import MemoryCategoryRepository
 from todo_bene.domain.entities.category import Category
 
-def test_category_list_merges_system_and_custom():
+def test_category_list_merges_system_and_custom(user_id):
     # Arrange
     repo = MemoryCategoryRepository()
     use_case = CategoryListUseCase(repo)
-    user_id = uuid4()
     
     # On ajoute une catégorie perso
     repo.save_category(Category(name="Jardinage", user_id=user_id))

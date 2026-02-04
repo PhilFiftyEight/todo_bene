@@ -48,3 +48,8 @@ class TodoRepository(ABC):
         sont complétés (et qui ont au moins un enfant).
         """
         pass
+
+    @abstractmethod
+    def _row_to_todo(self, row: list) -> Todo:
+        """Returns a Todo item from a list of data"""
+        pass

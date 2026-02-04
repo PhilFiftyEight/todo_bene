@@ -6,12 +6,12 @@ from typer.testing import CliRunner
 runner = CliRunner()
 
 
-def test_cli_terminer_change_state_in_db(monkeypatch, repository):
+def test_cli_terminer_change_state_in_db(monkeypatch, repository, test_config_env):
     # GIVEN
     user_id = uuid4()
-    # 1. On mocke load_user_config PARTOUT où il est utilisé dans main
+    # 1. On mocke load_user_info PARTOUT où il est utilisé dans main
     monkeypatch.setattr(
-        "todo_bene.infrastructure.cli.main.load_user_config", lambda: user_id
+        "todo_bene.infrastructure.cli.main.load_user_info", lambda: (user_id, "dev.db", "test_profile")
     )
 
     todo = Todo(title="Tâche à finir", user=user_id)
@@ -23,7 +23,7 @@ def test_cli_terminer_change_state_in_db(monkeypatch, repository):
     # n (réponse à la question de répétition)
     # r (retour si jamais le return ne s'exécute pas)
     # WHEN
-    result = runner.invoke(app, ["list"], input="1\nt\nn\nr\n")
+    result = runner.invoke(app, ["list"], input="1\nt\nn\nr\n", env={"TODO_BENE_CONFIG_PATH": str(test_config_env)})
 
     # THEN
     # On force une relecture propre depuis le repository
@@ -34,11 +34,11 @@ def test_cli_terminer_change_state_in_db(monkeypatch, repository):
     assert "terminée" in result.stdout.lower()
 
 
-def test_cli_proposes_force_complete_when_children_active(repository, monkeypatch):
+def test_cli_proposes_force_complete_when_children_active(repository, monkeypatch, test_config_env):
     # GIVEN
     user_id = uuid4()
     monkeypatch.setattr(
-        "todo_bene.infrastructure.cli.main.load_user_config", lambda: user_id
+        "todo_bene.infrastructure.cli.main.load_user_info", lambda: (user_id, "dev.db", "test_profile")
     )
 
     p = Todo(title="Parent Bloqué", user=user_id)
@@ -53,7 +53,7 @@ def test_cli_proposes_force_complete_when_children_active(repository, monkeypatc
     inputs = "1\nt\ny\n"
 
     # WHEN
-    result = runner.invoke(app, ["list"], input=inputs)
+    result = runner.invoke(app, ["list"], input=inputs, env={"TODO_BENE_CONFIG_PATH": str(test_config_env)})
 
     # THEN
     assert "⚠ Blocage :" in result.stdout

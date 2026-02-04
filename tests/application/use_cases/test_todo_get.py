@@ -7,10 +7,9 @@ from todo_bene.infrastructure.persistence.memory_todo_repository import (
 from todo_bene.domain.entities.todo import Todo
 
 
-def test_todo_get_use_case_success():
+def test_todo_get_use_case_success(user_id):
     # Arrange
     repo = MemoryTodoRepository()
-    user_id = uuid4()
     # On crée et sauvegarde manuellement un Todo pour simuler une donnée existante
     existing_todo = Todo(
         title="Tâche existante",
@@ -31,24 +30,23 @@ def test_todo_get_use_case_success():
     assert found_todo.title == "Tâche existante"
 
 
-def test_todo_get_use_case_not_found():
+def test_todo_get_use_case_not_found(user_id):
     # Arrange
     repo = MemoryTodoRepository()
     use_case = TodoGetUseCase(repo)
 
     # Act
     # On explicite que même avec un user_id valide, si le Todo n'existe pas, c'est None
-    found_todo, _ = use_case.execute(todo_id=uuid4(), user_id=uuid4())
+    found_todo, _ = use_case.execute(todo_id=uuid4(), user_id=user_id)
 
     # Assert
     assert found_todo is None
 
 
-def test_todo_get_with_children():
+def test_todo_get_with_children(user_id):
     # Arrange
     repo = MemoryTodoRepository()
     use_case = TodoGetUseCase(repo)
-    user_id = uuid4()
 
     # Création du parent
     parent = Todo(title="Parent", user=user_id, category="test", description="...")

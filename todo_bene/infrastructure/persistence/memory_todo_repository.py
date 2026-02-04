@@ -74,3 +74,17 @@ class MemoryTodoRepository(TodoRepository):
             if children and all(c.state for c in children):
                 results.append(p)
         return results
+
+    def _row_to_todo(self, row) -> Todo:
+        return Todo(
+            uuid=row[0],
+            title=row[1],
+            description=row[2],
+            category=row[3],
+            state=row[4],
+            priority=row[5],
+            date_start=row[6],
+            date_due=row[7],
+            user=row[8],
+            parent=row[9],
+        )

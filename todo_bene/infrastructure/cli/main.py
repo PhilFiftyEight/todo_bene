@@ -1,10 +1,8 @@
 # Copyright (c) 2026 PhilFiftyEight
 # Licensed under the MIT License.
-import os
 import sys
-import getpass
 from time import sleep
-from typing import Optional
+from typing import Optional, Tuple
 from typing_extensions import Annotated
 from contextlib import contextmanager
 import locale
@@ -25,7 +23,7 @@ from todo_bene.application.use_cases.todo_update import TodoUpdateUseCase
 from todo_bene.application.use_cases.user_create import UserCreateUseCase
 from todo_bene.application.use_cases.todo_get import TodoGetUseCase
 from todo_bene.domain.entities.todo import Todo
-from todo_bene.infrastructure.config import load_user_config, save_user_config
+from todo_bene.infrastructure.config import get_base_paths, load_user_info, save_user_config
 from todo_bene.infrastructure.persistence.duckdb_connection_manager import DuckDBConnectionManager
 from todo_bene.infrastructure.persistence.duckdb_todo_repository import (
     DuckDBTodoRepository,
@@ -42,87 +40,106 @@ app = typer.Typer()
 console = Console()
 
 
-# --- UTILITAIRES ---
-def ensure_user_setup() -> UUID:
+def ensure_user_setup() -> Tuple[UUID, str]:
     """
-    Vérifie si un utilisateur est configuré.
-    Sinon, lance un wizard avec un en-tête stylisé 'TODO BENE'.
+    Gère le cycle de vie initial du profil utilisateur.
     """
-    user_id = load_user_config()
-    if user_id:
-        return user_id
-    
-    # On n'efface l'écran QUE si on doit lancer le wizard
-    console.clear()
-    # --- EN-TÊTE STYLISÉ (Style image) ---
-    # On crée un titre imposant
-    banner = r"""
-        [bold cyan]  _____ ___  ___   ___  [/bold cyan]
-        [bold cyan] |_   _/ _ \|   \ / _ \ [/bold cyan]
-        [bold cyan]   | || (_) | |) | (_) |[/bold cyan]
-        [bold white]   |_| \___/|___/ \___/ [/bold white]
-        [bold green]  ___  ___ _  _ ___ [/bold green]
-        [bold green] | _ )| __| \| | __|[/bold green]
-        [bold green] | _ \| _|| .` | _| [/bold green]
-        [bold white] |___/|___|_|\_|___|[/bold white]
-        [dim]// Configurons votre profil pour commencer.[/dim]
-    """
+    # 1. On charge les infos du user
+    user_id, db_path, profile_name = load_user_info()
 
-    console.print("\n")
-    console.print(
-        Align.center(
-            Panel(
-                Align.center(banner),
-                border_style="green",
-                box=box.DOUBLE_EDGE,
-                padding=(1, 5),
+    # 2. Premier lancement : pas de base, pas de config user_id vaut None
+    if user_id is None:
+        # 2.1 Affichage de la bannière (le wizard commence)
+        console.clear()
+        banner = r"""
+            [bold cyan]  _____ ___  ___   ___  [/bold cyan]
+            [bold cyan] |_   _/ _ \|   \ / _ \ [/bold cyan]
+            [bold cyan]   | || (_) | |) | (_) |[/bold cyan]
+            [bold white]   |_| \___/|___/ \___/ [/bold white]
+            [bold green]  ___  ___ _  _ ___ [/bold green]
+            [bold green] | _ )| __| \| | __|[/bold green]
+            [bold green] | _ \| _|| .` | _| [/bold green]
+            [bold white] |___/|___|_|\_|___|[/bold white]
+            [dim]// Configurons votre profil pour commencer.[/dim]
+        """
+
+        console.print("\n")
+        console.print(
+            Align.center(
+                Panel(
+                    Align.center(banner),
+                    border_style="green",
+                    box=box.DOUBLE_EDGE,
+                    padding=(1, 5),
+                )
             )
         )
-    )
-    console.print("\n")
+        console.print("\n")
 
-    email = Prompt.ask("[bold]Quel est votre email ?[/bold]")
+        # 2.2 Création du user (email, nom)
+        email = typer.prompt("Veuillez saisir votre email")
+        import getpass
+        default_name = getpass.getuser()
+        name = typer.prompt("Veuillez saisir votre nom", default=default_name)
 
-    with get_repository() as repo:
-        # 1. On vérifie si cet email est déjà connu en BDD
-        existing_user = repo.get_user_by_email(email)
+        # 2.3 Demander si c'est un environnement de développement
+        is_dev = typer.confirm("Est-ce un environnement de développement ?", default=False)
+        
+        if is_dev:
+            # 2.3.1 OUI : Mode DEV
+            # Création du .env (pour les lancements futurs)
+            import os
+            final_profile_name = f"{name}_dev"
+            os.environ["TODO_BENE_DEV_MODE"] = "1"
+            with open(Path(".env"), "w") as f:
+                f.write(f"TODO_BENE_PROFILE={final_profile_name}\n")
+            db_path_final = str(Path.cwd() / "dev.db")
+        else:
+            # 2.3.2 NON : Mode PROD
+            final_profile_name = f"{name}_prod"
+            _, data_dir = get_base_paths()
+            db_path_final = str(data_dir / ".todo_bene.db")
 
-        if existing_user:
-            console.print(
-                f"[yellow]Restauration du profil existant pour : {existing_user.name}[/yellow]"
-            )
-            save_user_config(existing_user.uuid)
-            return existing_user.uuid
+        # 2.4 Créer le user et sauver dans sa base (via db_path_final)        
+        # On initialise la base immédiatement avec ce user
+        with DuckDBTodoRepository(DuckDBConnectionManager(db_path_final).get_connection()) as repo:
+            new_user=UserCreateUseCase(repo).execute(name, email)
 
-        # 2. Sinon, on continue la création classique
-        name = Prompt.ask(
-            "Email inconnu. Quel est votre nom ?", default=getpass.getuser()
-        )
-        new_user = UserCreateUseCase(repo).execute(name, email)
+        # 2.5 On sauve la config globale
+        save_user_config(new_user.uuid, db_path_final, final_profile_name)
+        
+        # Mise à jour des variables pour le return final
+        user_id = new_user.uuid
+        db_path = db_path_final
 
-        save_user_config(new_user.uuid)
-        console.print(f"\n[bold green]Bienvenue {name} ! Profil créé.[/bold green]")
-        return new_user.uuid
-
+    # 3. Retourne les infos (soit chargées, soit créées)
+    return user_id, db_path
 
 @contextmanager
 def get_repository():
-    db_path = os.getenv("TODO_BENE_DB_PATH", str(Path.home() / ".todo_bene.db"))
+    # 1. On récupère dynamiquement le chemin selon le profil détecté
+    # (load_user_info vient de ton nouveau config.py)
+    _, db_path, _ = load_user_info()
     
-    # On initialise le manager (qui ouvre la connexion et crée les tables)
+    # Fallback de sécurité si le wizard n'est pas encore passé
+    if not db_path:
+        raise RuntimeError("Configuration introuvable. Veuillez lancer 'tb' pour configurer votre profil.")
+        # db_path = os.getenv("TODO_BENE_DB_PATH", str(Path.home() / ".todo_bene.db"))
+    
+    # 2. On initialise le manager avec le bon chemin
     manager = DuckDBConnectionManager(db_path)
     
-    # On instancie le repository avec la connexion fournie par le manager
+    # 3. On instancie le repository
     repo = DuckDBTodoRepository(manager.get_connection())
     
     try:
-        # On yield le REPOSITORY
         yield repo
     finally:
-        # 4. On ferme proprement via le manager
         manager.close()
-
-        repo.close()
+        # Note: repo.close() n'est souvent pas nécessaire si manager.close() 
+        # ferme déjà la connexion partagée, mais on le garde par sécurité.
+        if hasattr(repo, 'close'):
+            repo.close()
 
 
 def get_date_format():
@@ -612,7 +629,7 @@ def show_details(todo_uuid: UUID, user_id: UUID) -> bool:
 
 # Callback principal : s'assure que l'environnement est prêt,
 # sauf pour la commande 'register' qui est manuelle.
-@app.callback()
+@app.callback(invoke_without_command=True)
 def main(ctx: typer.Context):
     """
     Pour une organisation simplifiée et lutter contre la procrastination
@@ -621,25 +638,20 @@ def main(ctx: typer.Context):
         return
 
     # On lance le wizard automatiquement si besoin
-    ensure_user_setup()
+    user_id, db_path = ensure_user_setup()
+    # On peut stocker ces infos dans ctx.obj pour les sous-commandes
+    ctx.obj = {"user_id": user_id, "db_path": db_path}
 
-
-@app.command()
-def register(
-    name: str = typer.Option(default_factory=getpass.getuser),
-    email: str = typer.Option(..., prompt="Votre email"),
-):
-    from todo_bene.domain.entities.user import User
-
-    new_user = User(name=name, email=email)
-    save_user_config(new_user.uuid)
-    console.print(f"[bold green]Bienvenue {name} ![/bold green]")
+    # Si aucune commande n'est tapée, on affiche l'aide manuellement
+    if ctx.invoked_subcommand is None:
+        typer.echo(ctx.get_help())
+        raise typer.Exit()
 
 
 # # --- CALLBACK DE COMPLÉTION ---
 def complete_category(incomplete: str):
     """Auto-complétion dynamique : Système + DuckDB."""
-    user_id = load_user_config()
+    user_id, _, _ = load_user_info()
     if not user_id:
         return [name for name in Category.ALL if name.lower().startswith(incomplete.lower())]
 
@@ -666,9 +678,12 @@ def create(
     parent: Annotated[Optional[str], typer.Option("--parent")] = None,
 ):
     """Crée un nouveau Todo avec gestion interactive des erreurs de date."""
-    user_id = ensure_user_setup()
+    user_id, _ = ensure_user_setup()
     # On s'assure d'avoir l'ID utilisateur pour la suite
-    effective_user_id = user_id or load_user_config()
+    if user_id:
+        effective_user_id = user_id
+    else:
+        effective_user_id, _, _ = load_user_info()
 
     with get_repository() as repo:
         cat_repo = DuckDBCategoryRepository(repo._conn)
@@ -752,7 +767,7 @@ def create(
 
 @app.command(name="list")
 def list_todos(category: Annotated[ Optional[str], typer.Option("--category", "-c", autocompletion=complete_category)] = None,):
-    user_id = load_user_config()
+    user_id, _, _ = load_user_info()
     with get_repository() as repo:
         while True:
             #roots = repo.find_top_level_by_user(user_id, category=category)
@@ -809,7 +824,6 @@ def list_todos(category: Annotated[ Optional[str], typer.Option("--category", "-
 @app.command(name="list-dev")
 def list_dev():
     """Vue technique détaillée avec encadrement minimaliste (style list)."""
-    #user_id = load_user_config()
     with get_repository() as repo:
         # todos = repo.find_all_by_user(user_id)
         query = "SELECT * FROM todos"

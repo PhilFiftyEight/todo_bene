@@ -6,11 +6,11 @@ from typer.testing import CliRunner
 runner = CliRunner()
 
 
-def test_cli_recursive_parent_validation_cascade(repository, monkeypatch):
+def test_cli_recursive_parent_validation_cascade(repository, monkeypatch,test_config_env):
     # GIVEN
     user_id = uuid4()
     monkeypatch.setattr(
-        "todo_bene.infrastructure.cli.main.load_user_config", lambda: user_id
+        "todo_bene.infrastructure.cli.main.load_user_info", lambda: (user_id, "dev.db", "test_profile")
     )
 
     # Création de la chaîne : G (racine) -> P -> E
@@ -31,7 +31,7 @@ def test_cli_recursive_parent_validation_cascade(repository, monkeypatch):
     inputs = "1\n1\n1\nt\ny\ny\nn\n"
 
     # WHEN
-    result = runner.invoke(app, ["list"], input=inputs)
+    result = runner.invoke(app, ["list"], input=inputs, env={"TODO_BENE_CONFIG_PATH": str(test_config_env)})
 
     # THEN
     # Vérification des états en base de données

@@ -38,6 +38,13 @@ docs/
 *.duckdb
 *.tmp
 
+# Base de données locale de développement
+dev.db
+dev.db.wal
+
+# Fichier de configuration d'environnement local
+.env
+
 # Configuration locale
 .todo_bene.json
 
@@ -47,4 +54,5 @@ audit/
 # fichiers divers
 calendar.ics
 issuesAcrreer.txt
-
+context_*_*.py
+context_*_*.txt

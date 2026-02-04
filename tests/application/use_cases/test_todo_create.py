@@ -10,8 +10,8 @@ from todo_bene.domain.entities.category import Category
 def test_todo_create_use_case():
     # Arrange
     # On prépare un repo spécifique pour les todos
-    todo_repo = MemoryTodoRepository()
-    use_case = TodoCreateUseCase(todo_repo)
+    repo = MemoryTodoRepository()
+    use_case = TodoCreateUseCase(repo)
 
     user_id = uuid4()
     todo_data = {
@@ -28,7 +28,7 @@ def test_todo_create_use_case():
     assert todo.title == todo_data["title"]
     assert todo.user == user_id
     # On vérifie que le Use Case a bien demandé au repo de sauvegarder
-    assert todo_repo.get_by_id(todo.uuid) == todo
+    assert repo.get_by_id(todo.uuid) == todo
 
 
 def test_todo_create_root_success():
@@ -93,12 +93,13 @@ def test_todo_create_with_extra_fields():
     assert isinstance(todo.date_due, int)
 
 
-def test_create_todo_with_parent_success(repository, user_id):
+def test_create_todo_with_parent_success(user_id):
     # GIVEN
-    use_case = TodoCreateUseCase(repository)
+    repo = MemoryTodoRepository()
+    use_case = TodoCreateUseCase(repo)
     # On crée d'abord un parent en base avec une date lointaine
-    repository.save(
-        repository._row_to_todo(
+    repo.save(
+        repo._row_to_todo(
             [
                 uuid4(),
                 "Parent",
@@ -114,27 +115,28 @@ def test_create_todo_with_parent_success(repository, user_id):
         )
     )
     # Récupérons l'ID généré ou injecté
-    parent_id = repository.find_top_level_by_user(user_id)[0].uuid
+    parent_id = repo.find_top_level_by_user(user_id)[0].uuid
 
     # WHEN
     new_todo = use_case.execute(title="Sous-tâche", user=user_id, parent=parent_id)
 
     # THEN
     assert new_todo.parent == parent_id
-    saved_todo = repository.get_by_id(new_todo.uuid)
+    saved_todo = repo.get_by_id(new_todo.uuid)
     assert saved_todo.parent == parent_id
 
 
-def test_create_todo_with_parent_date_error(repository, user_id):
+def test_create_todo_with_parent_date_error(user_id):
     # GIVEN
-    use_case = TodoCreateUseCase(repository)
+    repo = MemoryTodoRepository()
+    use_case = TodoCreateUseCase(repo)
     # On crée un parent qui finit très tôt (timestamp 1000)
     parent_id = uuid4()
     # import todo_bene.domain.entities.todo as todo_mod
     from todo_bene.domain.entities.todo import Todo
 
     p = Todo(title="Parent", user=user_id, uuid=parent_id, date_due=1000)
-    repository.save(p)
+    repo.save(p)
 
     # WHEN / THEN : On essaie de créer un enfant qui finit demain
     # Cela doit lever une ValueError à cause de ta règle n°2 dans le Use Case
@@ -150,9 +152,10 @@ def test_create_todo_with_parent_date_error(repository, user_id):
         )
 
 
-def test_todo_create_assigns_default_category_if_none(repository):
+def test_todo_create_assigns_default_category_if_none():
     # GIVEN
-    use_case = TodoCreateUseCase(repository)
+    repo = MemoryTodoRepository()
+    use_case = TodoCreateUseCase(repo)
     user_id = uuid4()
     
     # WHEN: Quand category n'est pas donné
@@ -161,22 +164,20 @@ def test_todo_create_assigns_default_category_if_none(repository):
     # THEN: On vérifie que c'est "Quotidien" (via la constante de l'entité)
     assert todo.category == Category.QUOTIDIEN
 
-def test_root_todo_cannot_start_in_the_past(test_config_env):
+def test_root_todo_cannot_start_in_the_past(user_id):
     """
     Une tâche racine ne peut pas commencer dans le passé.
     """
-    from todo_bene.infrastructure.cli.main import get_repository
-    
-    with get_repository() as repo:
-        use_case = TodoCreateUseCase(repo)
-        user_id = uuid4()
+    repo = MemoryTodoRepository()   
+   
+    use_case = TodoCreateUseCase(repo)
         
-        # Date hier
-        past_date = pendulum.now().subtract(days=1).format("DD/MM/YYYY")
+    # Date yesterday
+    past_date = pendulum.now().subtract(days=1).format("DD/MM/YYYY")
         
-        with pytest.raises(ValueError, match="Une tâche racine ne peut pas commencer dans le passé"):
-            use_case.execute(
-                title="Tâche fantôme",
-                user=user_id,
-                date_start=past_date
-            )
+    with pytest.raises(ValueError, match="Une tâche racine ne peut pas commencer dans le passé"):
+        use_case.execute(
+            title="Tâche fantôme",
+            user=user_id,
+            date_start=past_date
+        )

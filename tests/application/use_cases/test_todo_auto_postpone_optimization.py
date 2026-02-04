@@ -1,12 +1,12 @@
 import pytest  # noqa: F401
 import pendulum
-from uuid import uuid4
 from todo_bene.application.use_cases.todo_find_top_level_by_user import TodoGetAllRootsByUserUseCase, apply_auto_postpone
 from todo_bene.domain.entities.todo import Todo
+from todo_bene.infrastructure.persistence.memory_todo_repository import MemoryTodoRepository
 
-def test_auto_postpone_only_executes_once_per_day(repository, time_machine, mocker):
+def test_auto_postpone_only_executes_once_per_day(user_id, time_machine, mocker):
     # --- SETUP ---
-    user_id = uuid4()
+    repo = MemoryTodoRepository()
     
     # 1. On part de MAINTENANT (Lundi)
     # start_time = pendulum.datetime(2026, 1, 26, 10, 0, 0)
@@ -25,13 +25,13 @@ def test_auto_postpone_only_executes_once_per_day(repository, time_machine, mock
         date_start=start_time.timestamp(),
         date_due=due_today
     )
-    repository.save(valid_todo)
+    repo.save(valid_todo)
     
     # Espions
-    spy_find = mocker.spy(repository, "find_all_active_by_user")
-    spy_save = mocker.spy(repository, "save")
+    spy_find = mocker.spy(repo, "find_all_active_by_user")
+    spy_save = mocker.spy(repo, "save")
 
-    use_case = TodoGetAllRootsByUserUseCase(repository)
+    use_case = TodoGetAllRootsByUserUseCase(repo)
 
     # 3. ON VOYAGE DANS LE FUTUR (Mardi)
     # La tâche est maintenant en retard
@@ -59,9 +59,9 @@ def test_auto_postpone_only_executes_once_per_day(repository, time_machine, mock
     assert mock_update.call_count == 1
 
 
-def test_auto_postpone_returns_count_of_affected_todos(repository, time_machine, mocker):
+def test_auto_postpone_returns_count_of_affected_todos(user_id, time_machine, mocker):
     # --- SETUP ---
-    user_id = uuid4()
+    repo = MemoryTodoRepository()
     
     # 1. On part de MAINTENANT (Lundi)
     start_time = pendulum.datetime(2026, 1, 26, 10, 0, 0)
@@ -73,7 +73,7 @@ def test_auto_postpone_returns_count_of_affected_todos(repository, time_machine,
 
     # 2. On crée un Todo qui sera en retard demain
     due_today = start_time.at(23, 59, 59).timestamp()
-    repository.save(Todo(
+    repo.save(Todo(
         title="Tâche à reporter",
         user=user_id,
         date_start=start_time.timestamp(),
@@ -86,7 +86,7 @@ def test_auto_postpone_returns_count_of_affected_todos(repository, time_machine,
 
     # --- ACTION 1 : Premier appel ---
     # On teste directement la fonction apply_auto_postpone
-    count = apply_auto_postpone(repository, user_id)
+    count = apply_auto_postpone(repo, user_id)
 
     # --- ASSERT 1 ---
     # On s'attend à ce que la fonction nous dise qu'elle a modifié 1 tâche
@@ -96,7 +96,7 @@ def test_auto_postpone_returns_count_of_affected_todos(repository, time_machine,
     # On change le mock pour simuler que le fichier config contient la date du jour
     mocker.patch("todo_bene.application.use_cases.todo_find_top_level_by_user.get_last_postpone_date", return_value=tomorrow.to_date_string())
     
-    count_opti = apply_auto_postpone(repository, user_id)
+    count_opti = apply_auto_postpone(repo, user_id)
 
     # --- ASSERT 2 ---
     # L'optimisation doit renvoyer 0 (aucune tâche traitée car court-circuit)

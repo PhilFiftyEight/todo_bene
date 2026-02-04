@@ -7,34 +7,33 @@ from todo_bene.infrastructure.persistence.memory_todo_repository import (
 from todo_bene.domain.entities.todo import Todo
 
 
-def test_todo_delete_use_case_success():
+def test_todo_delete_use_case_success(user_id):
     # GIVEN
-    repository = MemoryTodoRepository()
-    use_case = TodoDeleteUseCase(repository)
-    user_id = uuid4()
+    repo = MemoryTodoRepository()
+    use_case = TodoDeleteUseCase(repo)
     todo = Todo(title="À supprimer", user=user_id)
-    repository.save(todo)
+    repo.save(todo)
 
     # WHEN
     use_case.execute(todo_id=todo.uuid, user_id=user_id)
 
     # THEN
-    assert repository.get_by_id(todo.uuid) is None
+    assert repo.get_by_id(todo.uuid) is None
 
 
 def test_todo_delete_fails_for_wrong_user():
     # GIVEN
-    repository = MemoryTodoRepository()
-    use_case = TodoDeleteUseCase(repository)
+    repo = MemoryTodoRepository()
+    use_case = TodoDeleteUseCase(repo)
     owner_id = uuid4()
     stranger_id = uuid4()
 
     todo = Todo(title="Pas à toi", user=owner_id)
-    repository.save(todo)
+    repo.save(todo)
 
     # WHEN / THEN
     with pytest.raises(ValueError, match="Vous n'avez pas l'autorisation"):
         use_case.execute(todo_id=todo.uuid, user_id=stranger_id)
 
     # La tâche ne doit pas avoir été supprimée
-    assert repository.get_by_id(todo.uuid) is not None
+    assert repo.get_by_id(todo.uuid) is not None

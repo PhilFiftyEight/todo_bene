@@ -7,11 +7,11 @@ runner = CliRunner()
 
 
 def test_create_todo_with_interactive_parent_selection(
-    repository, user_id, monkeypatch
+    repository, user_id, monkeypatch, test_config_env
 ):
     # 1. On force le CLI à utiliser l'user de test
     monkeypatch.setattr(
-        "todo_bene.infrastructure.cli.main.load_user_config", lambda: user_id
+        "todo_bene.infrastructure.cli.main.load_user_info", lambda: (user_id, "dev.db", "test_profile")
     )
 
     # 2. GIVEN: Deux parents potentiels en base
@@ -21,7 +21,7 @@ def test_create_todo_with_interactive_parent_selection(
     # 3. WHEN: On simule l'entrée "1" pour choisir "Projet Alpha"
     # Note: On ajoute \n pour valider le choix
     result = runner.invoke(
-        app, ["add", "Sous-tâche", "--parent", "Projet"], input="1\n"
+        app, ["add", "Sous-tâche", "--parent", "Projet"], input="1\n",env={"TODO_BENE_CONFIG_PATH": str(test_config_env)}
     )
 
     # 4. THEN
