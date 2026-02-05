@@ -23,7 +23,7 @@ class TodoCreateUseCase:
             for fmt in formats:
                 try:
                     return pendulum.from_format(date_str, fmt, tz=tz)
-                except (ValueError, pendulum.parsing.exceptions.ParserError):
+                except ValueError, pendulum.parsing.exceptions.ParserError:
                     continue
             raise ValueError(f"Format de date non supporté : {date_str}")
 
@@ -48,19 +48,21 @@ class TodoCreateUseCase:
             if not parent_todo:
                 raise ValueError("Parent introuvable.")
             # Forçage silencieux : l'enfant hérite toujours de la catégorie du parent
-            category = parent_todo.category   
+            category = parent_todo.category
 
         # Gestion de la date de début
         if date_start:
             dt_start = self._parse_flexible(date_start, tz)
             if len(date_start) <= 10:
                 dt_start = dt_start.at(0, 0, 0)
-            
+
             # Validation Racine dans le passé ---
             if not parent:
-                if dt_start.start_of('day') < now.start_of('day'):
-                    raise ValueError("Une tâche racine ne peut pas commencer dans le passé.")
-            
+                if dt_start.start_of("day") < now.start_of("day"):
+                    raise ValueError(
+                        "Une tâche racine ne peut pas commencer dans le passé."
+                    )
+
             # Vérification date_start: Enfant >= Parent
             if parent_todo and int(dt_start.timestamp()) < parent_todo.date_start:
                 raise ValueError(
@@ -100,6 +102,6 @@ class TodoCreateUseCase:
             date_due=dt_due.to_datetime_string(),
             parent=parent,
         )
-        
+
         self.repository.save(todo)
         return todo

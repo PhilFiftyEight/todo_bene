@@ -1,6 +1,7 @@
 # todo_bene/application/use_cases/todo_update.py
 from uuid import UUID
 
+
 class TodoUpdateUseCase:
     def __init__(self, repository):
         self.repository = repository
@@ -13,20 +14,24 @@ class TodoUpdateUseCase:
         # Règle : Si c'est un enfant, vérifications par rapport au parent
         if todo.parent:
             parent = self.repository.get_by_id(todo.parent)
-            
+
             # Verrou de catégorie
-            if 'category' in updates and updates['category'] != parent.category:
-                raise ValueError("La catégorie d'un enfant est verrouillée sur celle du parent")
-            
+            if "category" in updates and updates["category"] != parent.category:
+                raise ValueError(
+                    "La catégorie d'un enfant est verrouillée sur celle du parent"
+                )
+
             # Verrou de date_due
-            new_due = updates.get('date_due', todo.date_due)
+            new_due = updates.get("date_due", todo.date_due)
             if new_due > parent.date_due:
-                raise ValueError("L'échéance de l'enfant ne peut pas dépasser celle du parent")
+                raise ValueError(
+                    "L'échéance de l'enfant ne peut pas dépasser celle du parent"
+                )
 
         # On délègue la validation "génétique" à l'entité
         forbiden = todo.update(**updates)
-        
+
         # Persistance
         self.repository.save(todo)
-        
+
         return forbiden

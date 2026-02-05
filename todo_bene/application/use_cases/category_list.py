@@ -16,7 +16,7 @@ class CategoryListUseCase:
         custom_categories = self.repo.get_all_categories(user_id)
 
         # Fusionner les deux listes
-        # On utilise un set pour garantir l'unicité, même si le UseCase de création 
+        # On utilise un set pour garantir l'unicité, même si le UseCase de création
         # est déjà censé empêcher les doublons.
         # Retourner la liste triée alphabétiquement
         return sorted(list(set(system_categories + custom_categories)))

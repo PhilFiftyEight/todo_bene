@@ -7,7 +7,7 @@ from todo_bene.application.interfaces.todo_repository import TodoRepository
 
 class DuckDBTodoRepository(TodoRepository):
     def __init__(self, connection):
-        # On utilise la connexion 
+        # On utilise la connexion
         # fournie par le manager DuckDBConnectionManager
         self._conn = connection
 
@@ -78,19 +78,20 @@ class DuckDBTodoRepository(TodoRepository):
             return self._row_to_todo(res)
         return None
 
-
-    def find_top_level_by_user(self, user_id: UUID, category: Optional[str] = None) -> List[Todo]:
-    # Base de la requête existante
+    def find_top_level_by_user(
+        self, user_id: UUID, category: Optional[str] = None
+    ) -> List[Todo]:
+        # Base de la requête existante
         query = "SELECT * FROM todos WHERE user_id = ? AND parent_id IS NULL AND state = false"
         params = [user_id]
-    
+
         # Injection dynamique du filtre
         if category:
             query += " AND category = ?"
             params.append(category)
-        
+
         query += " ORDER BY date_start ASC"
-    
+
         rows = self._conn.execute(query, params).fetchall()
         return [self._row_to_todo(row) for row in rows]
 
@@ -115,9 +116,10 @@ class DuckDBTodoRepository(TodoRepository):
 
     def find_all_active_by_user(self, user_id: UUID) -> list[Todo]:
         """Récupère tous les todos de l'utilisateur, sans filtre hiérarchique."""
-        res = self._conn.execute("SELECT * FROM todos WHERE user_id = ? AND state = false ORDER BY date_start ASC",
-                [str(user_id)],
-            ).fetchall()
+        res = self._conn.execute(
+            "SELECT * FROM todos WHERE user_id = ? AND state = false ORDER BY date_start ASC",
+            [str(user_id)],
+        ).fetchall()
         # On utilise la méthode de mapping existante
         return [self._row_to_todo(row) for row in res]
 

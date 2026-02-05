@@ -51,7 +51,9 @@ def test_todo_find_top_level_by_user_success(user_id):
     # Act
     found_todos, postponedcount = use_case.execute(user_id)
     # Assert
-    assert postponedcount == 0 # postponedcount sert à préciser le nombre de todos reporté car non terminé (voir règle métier)
+    assert (
+        postponedcount == 0
+    )  # postponedcount sert à préciser le nombre de todos reporté car non terminé (voir règle métier)
     assert len(found_todos) == 1
     assert found_todos[0].uuid == root_todo.uuid
     assert found_todos[0].user == user_id
@@ -77,4 +79,4 @@ def test_todo_find_top_level_by_user_empty_when_none(user_id):
 
     # Assert
     assert found_todos == []
-    assert postponedcount == 0 
+    assert postponedcount == 0

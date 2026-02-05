@@ -7,6 +7,7 @@ from todo_bene.infrastructure.persistence.memory_todo_repository import (
 )
 from todo_bene.domain.entities.category import Category
 
+
 def test_todo_create_use_case():
     # Arrange
     # On prépare un repo spécifique pour les todos
@@ -84,7 +85,12 @@ def test_todo_create_with_extra_fields():
 
     # Act: On teste le passage via **kwargs (ex: priority)
     todo = use_case.execute(
-        "Urgent", user_id, Category.TRAVAIL, "...", priority=True, date_due="2026-12-31 23:59:59"
+        "Urgent",
+        user_id,
+        Category.TRAVAIL,
+        "...",
+        priority=True,
+        date_due="2026-12-31 23:59:59",
     )
 
     # Assert
@@ -157,27 +163,26 @@ def test_todo_create_assigns_default_category_if_none():
     repo = MemoryTodoRepository()
     use_case = TodoCreateUseCase(repo)
     user_id = uuid4()
-    
+
     # WHEN: Quand category n'est pas donné
     todo = use_case.execute(title="Test défaut", user=user_id)
-    
+
     # THEN: On vérifie que c'est "Quotidien" (via la constante de l'entité)
     assert todo.category == Category.QUOTIDIEN
+
 
 def test_root_todo_cannot_start_in_the_past(user_id):
     """
     Une tâche racine ne peut pas commencer dans le passé.
     """
-    repo = MemoryTodoRepository()   
-   
+    repo = MemoryTodoRepository()
+
     use_case = TodoCreateUseCase(repo)
-        
+
     # Date yesterday
     past_date = pendulum.now().subtract(days=1).format("DD/MM/YYYY")
-        
-    with pytest.raises(ValueError, match="Une tâche racine ne peut pas commencer dans le passé"):
-        use_case.execute(
-            title="Tâche fantôme",
-            user=user_id,
-            date_start=past_date
-        )
+
+    with pytest.raises(
+        ValueError, match="Une tâche racine ne peut pas commencer dans le passé"
+    ):
+        use_case.execute(title="Tâche fantôme", user=user_id, date_start=past_date)

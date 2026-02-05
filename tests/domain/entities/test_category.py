@@ -1,5 +1,3 @@
-from dataclasses import FrozenInstanceError
-
 import pytest  # noqa: F401
 
 from todo_bene.domain.entities.category import Category
@@ -14,12 +12,13 @@ def test_base_categories_exist():
     assert Category.MEDICAL == "Médical"
     assert Category.FAMILLE == "Famille"
 
+
 def test_category_creation_custom(user_id):
-    cat = Category(name=" jardinage",user_id=user_id)
-    assert cat.name == "Jardinage" # clean name : strip, lower, capitalise
+    cat = Category(name=" jardinage", user_id=user_id)
+    assert cat.name == "Jardinage"  # clean name : strip, lower, capitalise
 
 
 def test_category_validation_rules(user_id):
     # On pourrait décider qu'une catégorie ne peut pas être vide, sécurité
     with pytest.raises(ValueError, match="Le nom ne peut pas être vide"):
-        Category(name="",user_id=user_id)
+        Category(name="", user_id=user_id)

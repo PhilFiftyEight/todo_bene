@@ -1,166 +1,223 @@
-# 🌿 Todo Bene [![Tests](https://github.com/PhilFiftyEight/todo_bene/actions/workflows/tests.yml/badge.svg)](https://github.com/PhilFiftyEight/todo_bene/actions/workflows/tests.yml)
-
-**Todo Bene** est une application de gestion de tâches (Todo List) en ligne de commande ( CLI pour l'instant mais ouverte pour GUI ou autre). 
-
-## ✨ Notes de conception
-
-- **Architecture Hexagonale (Clean Architecture)** : Séparation stricte entre le métier (Domain), les cas d'usage (Application) et l'infrastructure (Persistence/CLI).
-- **Stockage avec DuckDB** : Profitez de la puissance d'une base de données relationnelle et analytique locale pour une gestion instantanée des données. L'architecture permet d'ajouter votre BDD préférée.
-- **Démarrage facile** : Un configurateur interactif au premier lancement pour créer ou restaurer votre profil utilisateur via votre email.
-- **Arborescence de tâches** : Support des relations parents/enfants/... pour décomposer des projets complexes en sous-tâches.
-- **Tests first** : Suite de tests pour éviter toute régression et garantissant la fiabilité de chaque fonctionnalité à mesure de l'ajout de nouvelles fonctionnalité.
-- Python, Typer, Rich, Pendulum
-
----
-## 🏗 Architecture & Design
-
-Le projet s'inspire des principes de la **Clean Architecture** :
-
-1. **Domain** : Contient les entités (`Todo`, `User`) et la logique métier pure, sans dépendance externe.
-2. **Application** : Définit les contrats (Interfaces) et implémente les cas d'usage.
-3. **Infrastructure** : Gère les détails techniques comme la persistence DuckDB, le stockage JSON de la session et l'interface cliente Typer/Rich.
 
 ---
 
-## 🚀 Installation rapide
+# 📝 Todo Bene
 
-Le projet utilise `uv` pour une gestion simplifiée et ultra-rapide des dépendances et de l'environnement Python. Le fichier pyproject.toml est disponible pour ceux qui préfèrent un autre gestionnaire.
+[![Version Python](https://img.shields.io/badge/python-3.14%2B-blue)](https://www.python.org/)
+[![Licence: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Tests](https://img.shields.io/badge/tests-86%20pass%C3%A9s-brightgreen)](#)
 
-1. **Cloner le dépôt :**
-    ```
-    $ git clone https://github.com/PhilFiftyEight/todo_bene.git
-    $ cd todo_bene
-    ```
+[Version Française](#-version-française) | [English Version](#-english-version)
 
-2. **Installer l'environnement et les dépendances :**
-    ```bash
-    $ uv sync
+## 🇫🇷 Version Française
 
-    ```
+**Todo Bene** est un gestionnaire de tâches en ligne de commande (CLI) focalisé sur l'efficacité, conçu pour lutter contre la procrastination grâce à une hiérarchie de tâches structurée et un report intelligent automatique.
+
+---
+
+## ✨ Fonctionnalités Clés
+
+* **Hiérarchie Intelligente :** Créez des sous-tâches avec héritage des propriétés (catégorie, dates).
+* **Report Automatique :** Les tâches en retard sont automatiquement replanifiées au soir même pour maintenir la pertinence de votre liste.
+* **Zéro Configuration :** Un assistant de configuration interactif vous guide lors du premier lancement.
+* **Interface UI Riche :** Une superbe interface terminal avec des panneaux d'état, des tableaux et des indicateurs de progression.
+* **Architecture Propre :** Conçu pour la fiabilité et la performance en utilisant DuckDB.
+
+---
+
+## 🚀 Mise en Route
+
+### Installation
+
+```bash
+# Cloner le dépôt
+git clone https://github.com/votre-nom-utilisateur/todo-bene.git
+cd todo-bene
+
+# Installer les dépendances et le package
+uv pip install -e .
+
+```
+
+### Premier Lancement
+
+Oubliez les fichiers de configuration complexes. Tapez simplement :
+
+```bash
+. .venv/bin/activate?(.bat|.csh|.fish|.nu|.ps1)
+tb
+
+```
+
+L'**Assistant Interactif** vous guidera pour créer votre profil et initialiser votre base de données locale.
+
+```
+# exemple de structure :
+~/.config/todo_bene/config.json
+~/.local/share/todo_bene/.todo_bene.db
+
+```
 
 ---
 
 ## 🛠 Utilisation
 
-### Premier lancement
+### Ajouter des tâches
 
-Lancez simplement n'importe quelle commande pour démarrer le Wizard de configuration :
+Créez une tâche principale ou une sous-tâche en toute simplicité :
 
 ```bash
-$ uv run todo_bene list # uv run tb list <- la version abrégée
+tb add "Finir le rapport de projet" --category "Travail" --priority (*)
+# (*) : Le passage à l'anglais est prévu ultérieurement
 
-
-╔═════════════════════════════════════════════════════╗
-║                                                     ║
-║       _____ ___  ___   ___                          ║
-║      |_   _/ _ \|   \ / _ \                         ║
-║        | || (_) | |) | (_) |                        ║
-║        |_| \___/|___/ \___/                         ║
-║       ___  ___ _  _ ___                             ║
-║      | _ )| __| \| | __|                            ║
-║      | _ \| _|| .` | _|                             ║
-║      |___/|___|_|\_|___|                            ║
-║                                                     ║
-║     // Configurons votre profil pour commencer.     ║
-║                                                     ║
-╚═════════════════════════════════════════════════════╝
-
-
-Quel est votre email ?: philippe@home
-Email inconnu. Quel est votre nom ? (philippe): Philippe
-
-Bienvenue Philippe ! Profil créé.
-Aucun Todo trouvé.
 ```
 
-Todo Bene utilise un fichier de configuration JSON, si celui-ci est supprimé mais que la base de données existe, votre profil sera automatiquement restauré grâce à votre email.
-```
-Quel est votre email ?: philippe@home
-Restauration du profil existant pour : Philippe
-Aucun Todo trouvé.
-```
+### Gérer les tâches
 
+Lancez la liste interactive pour naviguer, mettre à jour ou terminer vos tâches :
 
-### Commandes fréquentes
+```bash
+tb list
 
-| Action | Commande |
-| --- | --- |
-| **Lister les tâches** | `uv run tb list` |
-| **Ajouter une tâche** | `uv run tb add "Titre de la tâche" --cat Travail` |
-| **Ajouter une sous-tâche** | `uv run tb add "Sous-tâche" --parent <titre du parent>` |
-
-> `--parent` le mot peut être tronqué, tb va proposer les parents possibles:
->```
->Plusieurs parents possibles trouvés :
->┏━━━━┳━━━━━━━━┳━━━━━━━━━━━┓
->┃ N° ┃ Titre  ┃ Catégorie ┃
->┡━━━━╇━━━━━━━━╇━━━━━━━━━━━┩
->│ 1  │ essai  │ Quotidien │
->│ 2  │ essai2 │ Quotidien │
->│ 3  │ essai3 │ Quotidien │
->└────┴────────┴───────────┘
->Choisissez le numéro du parent (0):
->```
-
-
-**Le reste des commandes est mis en oeuvre par les différents menus de l'application :**
 ```
 
-        ╭─────────────────────── ⏳ À FAIRE ───────────────────────╮
-        │ essai                                                    │
-        │                                                          │
-        │ Pas de description                                       │
-        │                                                          │
-        │ Démarrage: 19/01/2026 22:18 - Échéance: 19/01/2026 23:59 │
-        ╰──────────────────────────────────────────────────────────╯
+* **Naviguer :** Navigation récursive pour plonger dans les sous-tâches.
+* **Terminer :** Marquez les tâches comme faites. Les sous-tâches actives bloquent la complétion à moins de forcer l'action.
+* **Refactoriser :** Modifiez les titres, descriptions, priorités ou dates directement depuis la vue détaillée.
 
-Sous-tâches :
-  1. ⏳ essai2
-  2. ⏳ essai3
+### Vue Debug & Dev
 
-Actions :
-  t: Terminer | s: Supprimer | n: Nouvelle sous-tâche
-  r: Retour | [N°]: Voir sous-tâche
+Visualisez l'état brut de votre base de données locale :
 
-Votre choix:
+```bash
+tb list-dev
+
 ```
----
-### Règles Parent/Enfant (tâche/sous-tâche)
-
-1. Si le parent a une date_due, l'enfant ne peux pas finir après, avant c'est possible
-2. Un enfant peut avoir des enfants
-3. Si parent supprimé l'enfant est supprimé aussi
-4. L'archivage d'un parent entraîne l'archivage des enfants.
-5. Les enfants étant les sous-taches d'un parents elles doivent être terminées pour pouvoir terminer (et archiver qui est la conséquence de la terminaison) un parent.
-6. Lorsqu'un enfant est terminé, si le parent a d'autres enfant non terminés il ne peut pas encore être archivé : c'est l'archivage du parent qui déclenche l'archivage des enfants (Archiver = tâche complété, c'est différent de la suppression: la tâche n'est plus visible mais elle reste en BDD pour l'historique)
 
 ---
-### Description
-La description est optionnelle
 
----
-### Dates
-1. Création : Les dates sont optionnelles (*--date_start, --date_due*), on peut donc créer une tache sans les préciser
-2. Par défaut *date_start = now()*
-3. Par défaut *date_due = date_start à 23:59:59*
----
-### Catégorie
-Par défaut la catégorie est *quotidien*
-
----
 ## 🧪 Tests
 
+Nous prenons la fiabilité au sérieux. Le projet est livré avec une suite de tests complète couvrant la logique métier, les cas d'utilisation et les interactions CLI.
+
 ```bash
-# Le flag -s est indispensable pour permettre l'interaction avec les prompts CLI durant les tests
-$ uv run pytest -s
+pytest -s
 
 ```
 
 ---
-## Licence
 
-Ce projet est concédé sous licence selon les termes de la licence MIT
+## 📄 Licence
+
+Distribué sous licence MIT. Voir le fichier `LICENSE` pour plus d'informations.
+
+Développé avec ❤️ par **PhilFiftyEight** (2026).
+
 
 ---
 
-*Développé avec passion pour un flux de travail organisé et serein.*
+# 📝 Todo Bene
+
+## 🇬🇧 English Version
+
+**Todo Bene** is a focused, CLI-based task manager designed to fight procrastination through structured task hierarchy and automated smart rescheduling.
+
+---
+
+## ✨ Key Features
+
+* **Smart Hierarchy:** Create subtasks with inherited properties (category, dates).
+* **Automatic Postponing:** Overdue tasks are automatically rescheduled to the current evening to keep your list relevant.
+* **Zero Configuration:** Interactive setup wizard on first launch.
+* **Rich UI:** Beautiful terminal interface with status panels, tables, and progress indicators.
+* **Clean Architecture:** Built for reliability and performance using DuckDB.
+
+---
+
+## 🚀 Getting Started
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/your-username/todo-bene.git
+cd todo-bene
+
+# Install dependencies and the package
+uv pip install -e .
+
+```
+
+### First Launch
+
+Forget complex configuration files. Just type:
+
+```bash
+. .venv/bin/activate?(.bat|.csh|.fish|.nu|.ps1)
+tb
+
+```
+
+The **Interactive Wizard** will guide you through creating your profile and initializing your local database.
+
+```
+# example:
+~/.config/todo_bene/config.json
+~/.local/share/todo_bene/.todo_bene.db
+
+```
+
+---
+
+## 🛠 Usage
+
+### Adding Tasks
+
+Create a main task or a subtask with ease:
+
+```bash
+tb add "Finish project report" --category "Travail" --priority (*)
+# (*) : Translation to English is planned for later
+
+```
+
+### Managing Tasks
+
+Launch the interactive list to navigate, update, or complete tasks:
+
+```bash
+tb list
+
+```
+
+* **Navigate:** Recursive navigation to dive into subtasks.
+* **Complete:** Mark tasks as done. Active subtasks will block completion unless forced.
+* **Refactor:** Modify titles, descriptions, priority or dates directly from the detail view.
+
+### Debug & Dev View
+
+View the raw state of your local database:
+
+```bash
+tb list-dev
+
+```
+
+---
+
+## 🧪 Testing
+
+We take reliability seriously. The project comes with a comprehensive test suite covering domain logic, use cases, and CLI interactions.
+
+```bash
+pytest -s
+
+```
+
+---
+
+## 📄 License
+
+Distributed under the MIT License. See `LICENSE` for more information.
+
+Developed with ❤️ by **PhilFiftyEight** (2026).

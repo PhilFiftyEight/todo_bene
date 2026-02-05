@@ -3,6 +3,7 @@ from uuid import UUID
 from typing import List
 from todo_bene.domain.entities.category import Category
 
+
 class CategoryRepository(ABC):
     @abstractmethod
     def save_category(self, category: Category) -> None:
@@ -20,7 +21,7 @@ class CategoryRepository(ABC):
     @abstractmethod
     def get_all_categories(self, user_id: UUID) -> List[str]:
         """
-        Récupère la liste des noms de toutes les catégories personnalisées 
+        Récupère la liste des noms de toutes les catégories personnalisées
         créées par l'utilisateur.
         """
         pass

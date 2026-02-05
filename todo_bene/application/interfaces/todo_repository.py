@@ -23,7 +23,9 @@ class TodoRepository(ABC):
         pass
 
     @abstractmethod
-    def find_top_level_by_user(self, user_id: UUID, category: Optional[str] = None) -> list[Todo]:
+    def find_top_level_by_user(
+        self, user_id: UUID, category: Optional[str] = None
+    ) -> list[Todo]:
         """Récupère les tâches racines, avec un filtre optionnel par catégorie."""
         pass
 

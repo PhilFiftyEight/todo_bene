@@ -1,8 +1,15 @@
 import pytest
 from uuid import uuid4
-from todo_bene.infrastructure.persistence.duckdb_connection_manager import DuckDBConnectionManager
-from todo_bene.infrastructure.persistence.duckdb_todo_repository import DuckDBTodoRepository
-from todo_bene.infrastructure.persistence.duckdb_category_repository import DuckDBCategoryRepository
+from todo_bene.infrastructure.persistence.duckdb_connection_manager import (
+    DuckDBConnectionManager,
+)
+from todo_bene.infrastructure.persistence.duckdb_todo_repository import (
+    DuckDBTodoRepository,
+)
+from todo_bene.infrastructure.persistence.duckdb_category_repository import (
+    DuckDBCategoryRepository,
+)
+
 
 # ... (garde tes fixtures setup_test_env, test_config_env, user_id telles quelles)
 @pytest.fixture(autouse=True)
@@ -29,6 +36,7 @@ def user_id():
     """Génère un UUID unique pour l'utilisateur du test."""
     return uuid4()
 
+
 @pytest.fixture
 def db_manager():
     """Gère la connexion DuckDB pour les tests (en mémoire)."""
@@ -37,15 +45,18 @@ def db_manager():
     yield manager
     manager.close()
 
+
 @pytest.fixture
 def repo(db_manager):
     """Fixture pour le DuckDBTodoRepository (utilisée par les tests d'intégration)."""
     return DuckDBTodoRepository(db_manager.get_connection())
 
+
 @pytest.fixture
 def category_repo(db_manager):
     """Nouvelle fixture pour tester le DuckDBCategoryRepository."""
     return DuckDBCategoryRepository(db_manager.get_connection())
+
 
 @pytest.fixture
 def repository(monkeypatch, repo):
@@ -60,5 +71,7 @@ def repository(monkeypatch, repo):
 
     # On patche l'endroit où la CLI va chercher son repository
     # Attention à bien vérifier le chemin du patch selon ton arborescence
-    monkeypatch.setattr("todo_bene.infrastructure.cli.main.get_repository", mock_get_repository)
+    monkeypatch.setattr(
+        "todo_bene.infrastructure.cli.main.get_repository", mock_get_repository
+    )
     return repo

@@ -1,7 +1,9 @@
 import pytest  # noqa: F401
 from todo_bene.domain.entities.todo import Todo
 from todo_bene.application.use_cases.todo_complete import TodoCompleteUseCase
-from todo_bene.infrastructure.persistence.memory_todo_repository import MemoryTodoRepository
+from todo_bene.infrastructure.persistence.memory_todo_repository import (
+    MemoryTodoRepository,
+)
 
 
 def test_complete_child_identifies_parent_as_pending(user_id):

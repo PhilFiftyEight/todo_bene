@@ -57,7 +57,7 @@ class Todo:
             parts = self.frequency.split(",")
             try:
                 self.frequency = (parts[0], int(parts[1]))
-            except (ValueError, IndexError):
+            except ValueError, IndexError:
                 pass
 
     def _init_dates(self):
@@ -90,20 +90,27 @@ class Todo:
         Met à jour les attributs autorisés avec validation de la 'génétique'.
         """
         # Liste blanche des champs modifiables (Sécurité)
-        allowed_fields = {'title', 'description', 'priority','category', 'date_start', 'date_due'}
-        
+        allowed_fields = {
+            "title",
+            "description",
+            "priority",
+            "category",
+            "date_start",
+            "date_due",
+        }
+
         # On extrait les valeurs pour la validation croisée
         # On prend la nouvelle valeur si fournie, sinon la valeur actuelle
-        new_due = kwargs.get('date_due', self.date_due)
-        new_start= self.date_start
+        new_due = kwargs.get("date_due", self.date_due)
+        new_start = self.date_start
         # Règle : Pas de date_start dans le passé (UNIQUEMENT si on tente de la modifier)
-        if 'date_start' in kwargs:
-            new_start = kwargs['date_start']
+        if "date_start" in kwargs:
+            new_start = kwargs["date_start"]
             # On ne valide que si la nouvelle date est DIFFÉRENTE de l'ancienne
             if new_start != self.date_start:
                 now_ts = pendulum.now().timestamp()
                 # On garde une marge de 10s pour les tests/exécution
-                if kwargs['date_start'] < (now_ts - 10):
+                if kwargs["date_start"] < (now_ts - 10):
                     raise ValueError("La date de début ne peut pas être dans le passé")
 
         # Règle : Cohérence temporelle intrinsèque (Due >= Start)
@@ -118,5 +125,5 @@ class Todo:
                 if getattr(self, key) != value:
                     setattr(self, key, value)
             else:
-               forbiden_fields.append(key)
+                forbiden_fields.append(key)
         return forbiden_fields

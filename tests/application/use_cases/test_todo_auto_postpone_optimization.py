@@ -1,21 +1,32 @@
 import pytest  # noqa: F401
 import pendulum
-from todo_bene.application.use_cases.todo_find_top_level_by_user import TodoGetAllRootsByUserUseCase, apply_auto_postpone
+from todo_bene.application.use_cases.todo_find_top_level_by_user import (
+    TodoGetAllRootsByUserUseCase,
+    apply_auto_postpone,
+)
 from todo_bene.domain.entities.todo import Todo
-from todo_bene.infrastructure.persistence.memory_todo_repository import MemoryTodoRepository
+from todo_bene.infrastructure.persistence.memory_todo_repository import (
+    MemoryTodoRepository,
+)
+
 
 def test_auto_postpone_only_executes_once_per_day(user_id, time_machine, mocker):
     # --- SETUP ---
     repo = MemoryTodoRepository()
-    
+
     # 1. On part de MAINTENANT (Lundi)
     # start_time = pendulum.datetime(2026, 1, 26, 10, 0, 0)
     start_time = pendulum.now(tz="Europe/Paris")
     time_machine.move_to(start_time)
-    
+
     # Mock de la config (fichiers locaux)
-    mock_update = mocker.patch("todo_bene.application.use_cases.todo_find_top_level_by_user.update_last_postpone_date")
-    mock_get = mocker.patch("todo_bene.application.use_cases.todo_find_top_level_by_user.get_last_postpone_date", return_value=None)
+    mock_update = mocker.patch(
+        "todo_bene.application.use_cases.todo_find_top_level_by_user.update_last_postpone_date"
+    )
+    mock_get = mocker.patch(
+        "todo_bene.application.use_cases.todo_find_top_level_by_user.get_last_postpone_date",
+        return_value=None,
+    )
 
     # 2. On crée un Todo VALIDE (échéance ce soir)
     due_today = start_time.at(23, 59, 59).timestamp()
@@ -23,10 +34,10 @@ def test_auto_postpone_only_executes_once_per_day(user_id, time_machine, mocker)
         title="Tâche normale",
         user=user_id,
         date_start=start_time.timestamp(),
-        date_due=due_today
+        date_due=due_today,
     )
     repo.save(valid_todo)
-    
+
     # Espions
     spy_find = mocker.spy(repo, "find_all_active_by_user")
     spy_save = mocker.spy(repo, "save")
@@ -44,17 +55,17 @@ def test_auto_postpone_only_executes_once_per_day(user_id, time_machine, mocker)
     # --- ASSERT 1 ---
     assert spy_find.call_count == 1
     # On vérifie que save a été appelé pour mettre à jour la date_due
-    assert spy_save.call_count >= 1 
+    assert spy_save.call_count >= 1
     mock_update.assert_called_once()
 
     # --- ACTION 2 : Deuxième appel le même jour ---
     mock_get.return_value = tomorrow.to_date_string()
-    
+
     use_case.execute(user_id)
 
     # --- ASSERT 2 ---
     # Pas de nouvel appel à la base de données pour le scan
-    assert spy_find.call_count == 1 
+    assert spy_find.call_count == 1
     # Pas de nouvel appel à l'écriture config
     assert mock_update.call_count == 1
 
@@ -62,24 +73,31 @@ def test_auto_postpone_only_executes_once_per_day(user_id, time_machine, mocker)
 def test_auto_postpone_returns_count_of_affected_todos(user_id, time_machine, mocker):
     # --- SETUP ---
     repo = MemoryTodoRepository()
-    
+
     # 1. On part de MAINTENANT (Lundi)
     start_time = pendulum.datetime(2026, 1, 26, 10, 0, 0)
     time_machine.move_to(start_time)
-    
+
     # Mocks des accès config (on cible le fichier du Use Case pour le patch)
-    mocker.patch("todo_bene.application.use_cases.todo_find_top_level_by_user.get_last_postpone_date", return_value=None)
-    mocker.patch("todo_bene.application.use_cases.todo_find_top_level_by_user.update_last_postpone_date")
+    mocker.patch(
+        "todo_bene.application.use_cases.todo_find_top_level_by_user.get_last_postpone_date",
+        return_value=None,
+    )
+    mocker.patch(
+        "todo_bene.application.use_cases.todo_find_top_level_by_user.update_last_postpone_date"
+    )
 
     # 2. On crée un Todo qui sera en retard demain
     due_today = start_time.at(23, 59, 59).timestamp()
-    repo.save(Todo(
-        title="Tâche à reporter",
-        user=user_id,
-        date_start=start_time.timestamp(),
-        date_due=due_today
-    ))
-    
+    repo.save(
+        Todo(
+            title="Tâche à reporter",
+            user=user_id,
+            date_start=start_time.timestamp(),
+            date_due=due_today,
+        )
+    )
+
     # 3. ON VOYAGE DANS LE FUTUR (Mardi)
     tomorrow = start_time.add(days=1)
     time_machine.move_to(tomorrow)
@@ -94,8 +112,11 @@ def test_auto_postpone_returns_count_of_affected_todos(user_id, time_machine, mo
 
     # --- ACTION 2 : Deuxième appel (simulant l'optimisation) ---
     # On change le mock pour simuler que le fichier config contient la date du jour
-    mocker.patch("todo_bene.application.use_cases.todo_find_top_level_by_user.get_last_postpone_date", return_value=tomorrow.to_date_string())
-    
+    mocker.patch(
+        "todo_bene.application.use_cases.todo_find_top_level_by_user.get_last_postpone_date",
+        return_value=tomorrow.to_date_string(),
+    )
+
     count_opti = apply_auto_postpone(repo, user_id)
 
     # --- ASSERT 2 ---

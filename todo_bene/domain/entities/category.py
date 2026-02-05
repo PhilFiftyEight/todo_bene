@@ -19,12 +19,12 @@ class Category:
     ALL = [QUOTIDIEN, TRAVAIL, LOISIRS, SPORT, MEDICAL, FAMILLE]
 
     def __post_init__(self):
-        """ Règles de domaine : 
-            - une catégorie doit avoir un nom non vide
-            - name est sous la forme : "Essai"
-            - formats corrigés : " Essai", "essai", "ESSAI", "Essai "
+        """Règles de domaine :
+        - une catégorie doit avoir un nom non vide
+        - name est sous la forme : "Essai"
+        - formats corrigés : " Essai", "essai", "ESSAI", "Essai "
         """
         self.name = self.name.strip()
-        if not self.name :
+        if not self.name:
             raise ValueError("Le nom ne peut pas être vide")
         self.name = self.name.lower().capitalize()

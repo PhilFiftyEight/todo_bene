@@ -16,24 +16,26 @@ class MemoryTodoRepository(TodoRepository):
 
     def find_by_parent(self, parent_id: UUID) -> list[Todo]:
         return [todo for todo in self.todos.values() if todo.parent == parent_id]
-    
+
     def find_all_active_by_user(self, user_id: UUID) -> list[Todo]:
         """Récupère toutes les tâches non terminées (actives) d'un utilisateur."""
         return [
-        todo for todo in self.todos.values() 
-        if todo.user == user_id and not todo.state
-    ]
+            todo
+            for todo in self.todos.values()
+            if todo.user == user_id and not todo.state
+        ]
 
-    def find_top_level_by_user(self, user_id: UUID, category: Optional[str] = None) -> list[Todo]:
+    def find_top_level_by_user(
+        self, user_id: UUID, category: Optional[str] = None
+    ) -> list[Todo]:
         """
         Récupère les tâches racines en mémoire avec un filtre optionnel.
         """
         # On filtre les racines de l'utilisateur qui ne sont pas complétées
         roots = [
-            todo for todo in self.todos.values()
-            if todo.user == user_id 
-            and todo.parent is None 
-            and todo.state is False
+            todo
+            for todo in self.todos.values()
+            if todo.user == user_id and todo.parent is None and todo.state is False
         ]
 
         # On applique le filtre de catégorie si présent

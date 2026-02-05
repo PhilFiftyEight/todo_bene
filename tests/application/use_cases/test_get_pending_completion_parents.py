@@ -3,7 +3,9 @@ from todo_bene.domain.entities.todo import Todo
 from todo_bene.application.use_cases.get_pending_completion_parents import (
     GetPendingCompletionParentsUseCase,
 )
-from todo_bene.infrastructure.persistence.memory_todo_repository import MemoryTodoRepository
+from todo_bene.infrastructure.persistence.memory_todo_repository import (
+    MemoryTodoRepository,
+)
 
 
 def test_get_pending_completion_parents(user_id):
