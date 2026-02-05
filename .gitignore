@@ -42,6 +42,9 @@ docs/
 dev.db
 dev.db.wal
 
+# Logs
+*.log
+
 # Fichier de configuration d'environnement local
 .env
 
