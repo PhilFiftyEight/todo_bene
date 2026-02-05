@@ -1,6 +1,6 @@
 import pytest
 from todo_bene.application.use_cases.category_create import CategoryCreateUseCase
-from todo_bene.infrastructure.persistence.memory_category_repository import (
+from todo_bene.infrastructure.persistence.memory.memory_category_repository import (
     MemoryCategoryRepository,
 )
 from todo_bene.domain.entities.category import Category

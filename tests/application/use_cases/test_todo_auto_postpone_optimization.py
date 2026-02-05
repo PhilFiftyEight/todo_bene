@@ -5,7 +5,7 @@ from todo_bene.application.use_cases.todo_find_top_level_by_user import (
     apply_auto_postpone,
 )
 from todo_bene.domain.entities.todo import Todo
-from todo_bene.infrastructure.persistence.memory_todo_repository import (
+from todo_bene.infrastructure.persistence.memory.memory_todo_repository import (
     MemoryTodoRepository,
 )
 

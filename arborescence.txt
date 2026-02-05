@@ -1,0 +1,52 @@
+[01;34mtodo_bene[0m
+├── [00m__init__.py[0m
+├── [00m.DS_Store[0m
+├── [01;34mapplication[0m
+│   ├── [00m__init__.py[0m
+│   ├── [01;34minterfaces[0m
+│   │   ├── [00m__init__.py[0m
+│   │   ├── [00mcategory_repository.py[0m
+│   │   ├── [00mtodo_repository.py[0m
+│   │   └── [00muser_repository.py[0m
+│   └── [01;34muse_cases[0m
+│       ├── [00m__init__.py[0m
+│       ├── [00mcategory_create.py[0m
+│       ├── [00mcategory_list.py[0m
+│       ├── [00mget_pending_completion_parents.py[0m
+│       ├── [00mtodo_complete.py[0m
+│       ├── [00mtodo_create.py[0m
+│       ├── [00mtodo_delete.py[0m
+│       ├── [00mtodo_find_top_level_by_user.py[0m
+│       ├── [00mtodo_get.py[0m
+│       ├── [00mtodo_update.py[0m
+│       └── [00muser_create.py[0m
+├── [01;34mdomain[0m
+│   ├── [00m__init__.py[0m
+│   └── [01;34mentities[0m
+│       ├── [00m__init__.py[0m
+│       ├── [00mcategory.py[0m
+│       ├── [00mtodo.py[0m
+│       └── [00muser.py[0m
+├── [01;34minfrastructure[0m
+│   ├── [00m__init__.py[0m
+│   ├── [01;34mcli[0m
+│   │   ├── [00m__init__.py[0m
+│   │   └── [00mmain.py[0m
+│   ├── [00mconfig.py[0m
+│   └── [01;34mpersistence[0m
+│       ├── [00m__init__.py[0m
+│       ├── [01;34mduckdb[0m
+│       │   ├── [00m__init__.py[0m
+│       │   ├── [00mduckdb_category_repository.py[0m
+│       │   ├── [00mduckdb_connection_manager.py[0m
+│       │   ├── [00mduckdb_todo_repository.py[0m
+│       │   └── [01;34mmigrations[0m
+│       │       └── [00m__init__.py[0m
+│       └── [01;34mmemory[0m
+│           ├── [00m__init__.py[0m
+│           ├── [00mmemory_category_repository.py[0m
+│           ├── [00mmemory_todo_repository.py[0m
+│           └── [00mmemory_user_repository.py[0m
+└── [00mmain.py[0m
+
+12 directories, 38 files

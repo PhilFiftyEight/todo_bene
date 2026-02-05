@@ -30,10 +30,10 @@ from todo_bene.infrastructure.config import (
     load_user_info,
     save_user_config,
 )
-from todo_bene.infrastructure.persistence.duckdb_connection_manager import (
+from todo_bene.infrastructure.persistence.duckdb.duckdb_connection_manager import (
     DuckDBConnectionManager,
 )
-from todo_bene.infrastructure.persistence.duckdb_todo_repository import (
+from todo_bene.infrastructure.persistence.duckdb.duckdb_todo_repository import (
     DuckDBTodoRepository,
 )
 from todo_bene.application.use_cases.todo_create import TodoCreateUseCase
@@ -42,7 +42,7 @@ from todo_bene.application.use_cases.todo_complete import TodoCompleteUseCase
 from todo_bene.domain.entities.category import Category
 from todo_bene.application.use_cases.category_create import CategoryCreateUseCase
 from todo_bene.application.use_cases.category_list import CategoryListUseCase
-from todo_bene.infrastructure.persistence.duckdb_category_repository import (
+from todo_bene.infrastructure.persistence.duckdb.duckdb_category_repository import (
     DuckDBCategoryRepository,
 )
 

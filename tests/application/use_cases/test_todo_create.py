@@ -2,7 +2,7 @@ import pendulum
 import pytest  # noqa: F401
 from uuid import uuid4
 from todo_bene.application.use_cases.todo_create import TodoCreateUseCase
-from todo_bene.infrastructure.persistence.memory_todo_repository import (
+from todo_bene.infrastructure.persistence.memory.memory_todo_repository import (
     MemoryTodoRepository,
 )
 from todo_bene.domain.entities.category import Category

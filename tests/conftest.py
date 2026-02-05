@@ -1,12 +1,12 @@
 import pytest
 from uuid import uuid4
-from todo_bene.infrastructure.persistence.duckdb_connection_manager import (
+from todo_bene.infrastructure.persistence.duckdb.duckdb_connection_manager import (
     DuckDBConnectionManager,
 )
-from todo_bene.infrastructure.persistence.duckdb_todo_repository import (
+from todo_bene.infrastructure.persistence.duckdb.duckdb_todo_repository import (
     DuckDBTodoRepository,
 )
-from todo_bene.infrastructure.persistence.duckdb_category_repository import (
+from todo_bene.infrastructure.persistence.duckdb.duckdb_category_repository import (
     DuckDBCategoryRepository,
 )
 

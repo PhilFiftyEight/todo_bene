@@ -1,7 +1,7 @@
 import pytest  # noqa: F401
 from todo_bene.domain.entities.todo import Todo
 from todo_bene.application.use_cases.todo_complete import TodoCompleteUseCase
-from todo_bene.infrastructure.persistence.memory_todo_repository import (
+from todo_bene.infrastructure.persistence.memory.memory_todo_repository import (
     MemoryTodoRepository,
 )
 

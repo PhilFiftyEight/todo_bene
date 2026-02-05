@@ -1,6 +1,6 @@
 import pytest  # noqa: F401
 from todo_bene.application.use_cases.user_create import UserCreateUseCase
-from todo_bene.infrastructure.persistence.memory_user_repository import (
+from todo_bene.infrastructure.persistence.memory.memory_user_repository import (
     MemoryUserRepository,
 )
 

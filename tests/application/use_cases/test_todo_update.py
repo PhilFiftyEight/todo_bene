@@ -3,7 +3,7 @@ import pytest
 
 from todo_bene.domain.entities.todo import Todo
 from todo_bene.application.use_cases.todo_update import TodoUpdateUseCase
-from todo_bene.infrastructure.persistence.memory_todo_repository import (
+from todo_bene.infrastructure.persistence.memory.memory_todo_repository import (
     MemoryTodoRepository,
 )
 
