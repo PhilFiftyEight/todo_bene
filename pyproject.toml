@@ -32,6 +32,7 @@ dev = [
 ]
 [project.scripts]
 tb = "todo_bene.infrastructure.cli.main:app"
+gh_issue = "github_utils.gh_issue:main"
 
 [tool.uv]
 package = true
