@@ -84,7 +84,7 @@ def test_menu_detail_dates_subtask(repository, user_id, monkeypatch, test_config
     )
 
     # On fixe des dates précises pour le parent
-    debut_parent = pendulum.datetime(2026, 2, 4, 10, 0, tz=pendulum.local_timezone())
+    debut_parent = pendulum.now(tz=pendulum.local_timezone())
     fin_parent = debut_parent.add(days=2)
     fin_parent = fin_parent.at(23, 59, 59)
 

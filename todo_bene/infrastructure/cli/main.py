@@ -49,18 +49,35 @@ from todo_bene.infrastructure.persistence.duckdb.duckdb_category_repository impo
 app = typer.Typer()
 console = Console()
 
+
 # --- UI TOOLKIT ---
 def show_success(message: str, title: str = "Succès", wait: float = 0):
     """Affiche un message de succès dans un Panel vert."""
-    console.print(Panel(f"[bold green]✔[/bold green] {message}", title=f"[bold green]{title}", border_style="green", expand=False))
+    console.print(
+        Panel(
+            f"[bold green]✔[/bold green] {message}",
+            title=f"[bold green]{title}",
+            border_style="green",
+            expand=False,
+        )
+    )
     if wait:
         sleep(wait)
 
+
 def show_error(message: str, title: str = "Erreur", wait: float = 0):
     """Affiche un message d'erreur dans un Panel rouge."""
-    console.print(Panel(f"[bold red]✘[/bold red] {message}", title=f"[bold red]{title}", border_style="red", expand=False))
+    console.print(
+        Panel(
+            f"[bold red]✘[/bold red] {message}",
+            title=f"[bold red]{title}",
+            border_style="red",
+            expand=False,
+        )
+    )
     if wait:
         sleep(wait)
+
 
 def ensure_user_setup() -> Tuple[UUID, str]:
     """
@@ -83,18 +100,31 @@ def ensure_user_setup() -> Tuple[UUID, str]:
         """
 
         console.print("\n")
-        console.print(Align.center(Panel(Align.center(banner), border_style="green", box=box.DOUBLE_EDGE, padding=(1, 5))))
+        console.print(
+            Align.center(
+                Panel(
+                    Align.center(banner),
+                    border_style="green",
+                    box=box.DOUBLE_EDGE,
+                    padding=(1, 5),
+                )
+            )
+        )
         console.print("\n")
 
         email = typer.prompt("Veuillez saisir votre email")
         import getpass
+
         default_name = getpass.getuser()
         name = typer.prompt("Veuillez saisir votre nom", default=default_name)
 
-        is_dev = typer.confirm("Est-ce un environnement de développement ?", default=False)
+        is_dev = typer.confirm(
+            "Est-ce un environnement de développement ?", default=False
+        )
 
         if is_dev:
             import os
+
             final_profile_name = f"{name}_dev"
             os.environ["TODO_BENE_DEV_MODE"] = "1"
             with open(Path(".env"), "w") as f:
@@ -105,7 +135,9 @@ def ensure_user_setup() -> Tuple[UUID, str]:
             _, data_dir = get_base_paths()
             db_path_final = str(data_dir / ".todo_bene.db")
 
-        with DuckDBTodoRepository(DuckDBConnectionManager(db_path_final).get_connection()) as repo:
+        with DuckDBTodoRepository(
+            DuckDBConnectionManager(db_path_final).get_connection()
+        ) as repo:
             new_user = UserCreateUseCase(repo).execute(name, email)
 
         save_user_config(new_user.uuid, db_path_final, final_profile_name)
@@ -114,11 +146,14 @@ def ensure_user_setup() -> Tuple[UUID, str]:
 
     return user_id, db_path
 
+
 @contextmanager
 def get_repository():
     _, db_path, _ = load_user_info()
     if not db_path:
-        raise RuntimeError("Configuration introuvable. Veuillez lancer 'tb' pour configurer votre profil.")
+        raise RuntimeError(
+            "Configuration introuvable. Veuillez lancer 'tb' pour configurer votre profil."
+        )
     manager = DuckDBConnectionManager(db_path)
     repo = DuckDBTodoRepository(manager.get_connection())
     try:
@@ -127,6 +162,7 @@ def get_repository():
         manager.close()
         if hasattr(repo, "close"):
             repo.close()
+
 
 def get_date_format():
     try:
@@ -137,11 +173,17 @@ def get_date_format():
         pass
     return "YYYY-MM-DD HH:mm"
 
+
 def continue_after_invalid(message: str):
     # console.print(f"[red]{message}[/red]")
     show_error(message, title="Invalide")
     if sys.stdin.isatty():
-        Prompt.ask("[dim]Appuyez sur Entrée pour continuer[/dim]", show_default=False, default="")
+        Prompt.ask(
+            "[dim]Appuyez sur Entrée pour continuer[/dim]",
+            show_default=False,
+            default="",
+        )
+
 
 def _resolve_parent_uuid(repo, user_id: UUID, parent_input: str) -> Optional[UUID]:
     if not parent_input:
@@ -179,17 +221,22 @@ def _resolve_parent_uuid(repo, user_id: UUID, parent_input: str) -> Optional[UUI
         console.print("[yellow]Choix invalide, création sans parent.[/yellow]")
     return None
 
+
 def handle_completion_success(repo, result, user_id: UUID):
     should_exit = False
     if result.get("is_root"):
         todo = repo.get_by_id(result["completed_id"])
         title = todo.title if todo else "la racine"
-        Prompt.ask(f"\n[bold cyan]' {title} ' est une tâche racine. Voulez-vous la répéter ?[/bold cyan] (o/N)", default="n")
+        Prompt.ask(
+            f"\n[bold cyan]' {title} ' est une tâche racine. Voulez-vous la répéter ?[/bold cyan] (o/N)",
+            default="n",
+        )
         should_exit = True
     if result.get("newly_pending_ids"):
         ask_validate_parents_recursive(repo, result["newly_pending_ids"], user_id)
         should_exit = True
     return should_exit
+
 
 def ask_validate_parents_recursive(repo, newly_pending_ids: list, user_id: UUID):
     for p_id in newly_pending_ids:
@@ -201,13 +248,20 @@ def ask_validate_parents_recursive(repo, newly_pending_ids: list, user_id: UUID)
             result = use_case.execute(todo_id=p_id, user_id=user_id)
             if result and result.get("success"):
                 # console.print(f"[bold green]✓ Parent '{p_todo.title}' terminé ![/bold green]")
-                show_success(f"Parent '{p_todo.title}' terminé !", title="Cascade", wait=0.5)
+                show_success(
+                    f"Parent '{p_todo.title}' terminé !", title="Cascade", wait=0.5
+                )
                 handle_completion_success(repo, result, user_id)
+
 
 def _display_detail_view(todo: Todo, children: list[Todo], repo):
     if sys.stdin.isatty():
         console.clear()
-    state_label = "[bold green]✅ COMPLÉTÉE[/bold green]" if todo.state else "[bold red]⏳ À FAIRE[/bold red]"
+    state_label = (
+        "[bold green]✅ COMPLÉTÉE[/bold green]"
+        if todo.state
+        else "[bold red]⏳ À FAIRE[/bold red]"
+    )
     prio_mark = "[yellow]🔥 [/yellow]" if todo.priority else ""
     header = f"{prio_mark}[bold white]{todo.title}[/bold white]"
     parent_line = ""
@@ -221,7 +275,13 @@ def _display_detail_view(todo: Todo, children: list[Todo], repo):
     d_start = pendulum.from_timestamp(todo.date_start, tz=tz).format(date_fmt)
     d_due = pendulum.from_timestamp(todo.date_due, tz=tz).format(date_fmt)
     content += f"\n\n[blue]Démarrage: {d_start} - Échéance: {d_due}[/blue]"
-    panel = Panel(Align.center(content, vertical="middle"), title=state_label, border_style="grey37", box=box.ROUNDED, width=60)
+    panel = Panel(
+        Align.center(content, vertical="middle"),
+        title=state_label,
+        border_style="grey37",
+        box=box.ROUNDED,
+        width=60,
+    )
     console.print("\n")
     console.print(Align.center(panel))
     if children:
@@ -232,10 +292,15 @@ def _display_detail_view(todo: Todo, children: list[Todo], repo):
     else:
         console.print("\n[dim]Aucune sous-tâche.[/dim]")
     console.print("\n[bold]Actions :[/bold]")
-    console.print(" [b]m[/b]: Modifier | [b][N°][/b]: Voir sous-tâche | [b]n[/b]: Nouvelle sous-tâche ")
+    console.print(
+        " [b]m[/b]: Modifier | [b][N°][/b]: Voir sous-tâche | [b]n[/b]: Nouvelle sous-tâche "
+    )
     console.print(" [b]t[/b]: Terminer | [b]s[/b]: Supprimer |  [b]r[/b]: Retour ")
 
-def _handle_action(choice: str, todo: Todo, children: list[Todo], repo, user_id) -> tuple[bool, bool]:
+
+def _handle_action(
+    choice: str, todo: Todo, children: list[Todo], repo, user_id
+) -> tuple[bool, bool]:
     if choice == "r":
         return True, False
     if choice == "t":
@@ -251,41 +316,78 @@ def _handle_action(choice: str, todo: Todo, children: list[Todo], repo, user_id)
     if choice == "m":
         console.print("\n[bold blue]📝 Modification du Todo[/bold blue]")
         console.print("[dim]Laissez vide pour conserver la valeur actuelle[/dim]\n")
-        new_title = Prompt.ask(f"Titre [dim]({todo.title})[/dim]", default=todo.title, show_default=False)
+        new_title = Prompt.ask(
+            f"Titre [dim]({todo.title})[/dim]", default=todo.title, show_default=False
+        )
         current_desc = todo.description if todo.description else ""
-        new_desc = Prompt.ask(f"Description [dim]({current_desc or 'aucune'})[/dim]", default=current_desc, show_default=False)
+        new_desc = Prompt.ask(
+            f"Description [dim]({current_desc or 'aucune'})[/dim]",
+            default=current_desc,
+            show_default=False,
+        )
         current_priority = todo.priority
-        new_priority = typer.confirm(f"Prioritaire ? ({'Oui' if current_priority else 'Non'})", default=current_priority)
-        new_cat = Prompt.ask(f"Catégorie [dim]({todo.category})[/dim]", default=todo.category, show_default=False)
+        new_priority = typer.confirm(
+            f"Prioritaire ? ({'Oui' if current_priority else 'Non'})",
+            default=current_priority,
+        )
+        new_cat = Prompt.ask(
+            f"Catégorie [dim]({todo.category})[/dim]",
+            default=todo.category,
+            show_default=False,
+        )
 
         def ask_date(label: str, default_ts: Optional[int] = None) -> int:
             default_str = ""
             if default_ts:
-                default_str = pendulum.from_timestamp(default_ts, tz=pendulum.local_timezone()).format("DD/MM/YYYY HH:mm")
+                default_str = pendulum.from_timestamp(
+                    default_ts, tz=pendulum.local_timezone()
+                ).format("DD/MM/YYYY HH:mm")
             val = Prompt.ask(f"{label}", default=default_str)
             if val == default_str and default_ts is not None:
                 return int(default_ts)
             try:
-                dt = pendulum.from_format(val, "DD/MM/YYYY HH:mm", tz=pendulum.local_timezone())
+                dt = pendulum.from_format(
+                    val, "DD/MM/YYYY HH:mm", tz=pendulum.local_timezone()
+                )
                 return int(dt.timestamp())
             except ValueError:
                 # console.print("[bold red]❌ Format de date invalide.[/bold red] Utilisez : DD/MM/YYYY HH:mm")
-                show_error("Format de date invalide. Utilisez : DD/MM/YYYY HH:mm", title="Date", wait=1)
+                show_error(
+                    "Format de date invalide. Utilisez : DD/MM/YYYY HH:mm",
+                    title="Date",
+                    wait=1,
+                )
                 raise ValueError()
 
         try:
             new_start = ask_date("Début", todo.date_start)
             new_due = ask_date("Échéance", todo.date_due)
-            updates = {"title": new_title, "description": new_desc, "priority": new_priority, "category": new_cat, "date_start": new_start, "date_due": new_due}
+            updates = {
+                "title": new_title,
+                "description": new_desc,
+                "priority": new_priority,
+                "category": new_cat,
+                "date_start": new_start,
+                "date_due": new_due,
+            }
             use_case = TodoUpdateUseCase(repo)
             forbiden = use_case.execute(todo.uuid, **updates)
             if forbiden:
-                visible = [f for f in forbiden if f in ["title", "description", "category", "date_start", "date_due"]]
+                visible = [
+                    f
+                    for f in forbiden
+                    if f
+                    in ["title", "description", "category", "date_start", "date_due"]
+                ]
                 if visible:
-                    console.print(f"[yellow]⚠ Champs non modifiables : {', '.join(visible)}[/yellow]")
+                    console.print(
+                        f"[yellow]⚠ Champs non modifiables : {', '.join(visible)}[/yellow]"
+                    )
                 tech_forbiden = [f for f in forbiden if f in ["user", "uuid"]]
                 if tech_forbiden:
-                    console.print(f"[dim yellow]Champs non modifiables : {', '.join(tech_forbiden)}[/dim yellow]")
+                    console.print(
+                        f"[dim yellow]Champs non modifiables : {', '.join(tech_forbiden)}[/dim yellow]"
+                    )
             # console.print("[bold green]✔ Todo mis à jour avec succès ![/bold green]")
             show_success("Todo mis à jour avec succès !", title="Mise à jour", wait=0.5)
             return False, False
@@ -295,7 +397,11 @@ def _handle_action(choice: str, todo: Todo, children: list[Todo], repo, user_id)
             return False, False
 
     def menu_nouvelle_sous_tache(parent: Todo, repo):
-        console.print(Panel(f"[bold blue]🆕 Nouvelle sous-tâche pour : {parent.title}[/bold blue]"))
+        console.print(
+            Panel(
+                f"[bold blue]🆕 Nouvelle sous-tâche pour : {parent.title}[/bold blue]"
+            )
+        )
         console.print(f"[dim]Catégorie héritée : {parent.category}[/dim]")
         title = Prompt.ask("Titre de la sous-tâche")
         description = Prompt.ask("Description (optionnelle)", default="")
@@ -313,10 +419,21 @@ def _handle_action(choice: str, todo: Todo, children: list[Todo], repo, user_id)
             # console.print("[bold red]Format de date invalide ![/bold red]")
             show_error("Format de date invalide !", title="Date", wait=0.7)
             return False
-        subtask = Todo(title=title, description=description, user=parent.user, category=parent.category, priority=priority, date_start=new_start_ts, date_due=new_due_ts, parent=parent.uuid)
+        subtask = Todo(
+            title=title,
+            description=description,
+            user=parent.user,
+            category=parent.category,
+            priority=priority,
+            date_start=new_start_ts,
+            date_due=new_due_ts,
+            parent=parent.uuid,
+        )
         repo.save(subtask)
         # console.print(f"[bold green]✔ Sous-tâche '{title}' créée avec succès ![/bold green]")
-        show_success(f"Sous-tâche '{title}' créée avec succès !", title="Sous-tâche", wait=0.5)
+        show_success(
+            f"Sous-tâche '{title}' créée avec succès !", title="Sous-tâche", wait=0.5
+        )
         return True
 
     if choice == "n":
@@ -324,12 +441,15 @@ def _handle_action(choice: str, todo: Todo, children: list[Todo], repo, user_id)
         return False, False
     return False, False
 
+
 def _execute_completion_logic(todo: Todo, repo, user_id: UUID) -> bool:
     use_case = TodoCompleteUseCase(repo)
     result = use_case.execute(todo.uuid, user_id)
     if result is None:
         # console.print("[red]Erreur : Tâche introuvable ou accès refusé.[/red]")
-        show_error("Erreur : Tâche introuvable ou accès refusé.", title="Accès", wait=0.5)
+        show_error(
+            "Erreur : Tâche introuvable ou accès refusé.", title="Accès", wait=0.5
+        )
         return False
     if result.get("success"):
         # console.print(f"[green]✔[/green] Tâche '{todo.title}' terminée !")
@@ -338,15 +458,20 @@ def _execute_completion_logic(todo: Todo, repo, user_id: UUID) -> bool:
         return True
     if result.get("reason") == "active_children":
         active_count = result.get("active_count", 0)
-        console.print(f"\n[yellow]⚠ Blocage :[/yellow] {active_count} sous-tâche(s) en cours.")
+        console.print(
+            f"\n[yellow]⚠ Blocage :[/yellow] {active_count} sous-tâche(s) en cours."
+        )
         if typer.confirm("Voulez-vous TOUT terminer (enfants inclus) ?"):
             final_result = use_case.execute(todo.uuid, user_id, force=True)
             if final_result and final_result.get("success"):
                 # console.print(f"[green]✔[/green] {todo.title} a été terminée !")
-                show_success(f"{todo.title} a été terminée !", title="Forçage", wait=0.5)
+                show_success(
+                    f"{todo.title} a été terminée !", title="Forçage", wait=0.5
+                )
                 handle_completion_success(repo, final_result, user_id)
                 return True
     return False
+
 
 def _display_root_list(roots: list[Todo], repo):
     tz = pendulum.local_timezone()
@@ -361,13 +486,25 @@ def _display_root_list(roots: list[Todo], repo):
     for idx, todo in enumerate(roots, 1):
         prio_mark = "🔥" if todo.priority else ""
         children = repo.find_by_parent(todo.uuid)
-        child_signal = f" [bold cyan][{repo.count_all_descendants(todo.uuid)}+][/bold cyan]" if len(children) > 0 else ""
+        child_signal = (
+            f" [bold cyan][{repo.count_all_descendants(todo.uuid)}+][/bold cyan]"
+            if len(children) > 0
+            else ""
+        )
         raw_desc = str(todo.description) if todo.description else ""
         desc = (raw_desc[:20] + "...") if len(raw_desc) > 20 else raw_desc
         d_start = pendulum.from_timestamp(todo.date_start, tz=tz).format(date_fmt)
         d_due = pendulum.from_timestamp(todo.date_due, tz=tz).format(date_fmt)
-        table.add_row(f"{idx:3}", prio_mark, f"{todo.title}{child_signal}", desc or "[dim italic]Pas de description[/dim italic]", d_start, d_due)
+        table.add_row(
+            f"{idx:3}",
+            prio_mark,
+            f"{todo.title}{child_signal}",
+            desc or "[dim italic]Pas de description[/dim italic]",
+            d_start,
+            d_due,
+        )
     console.print(table)
+
 
 def _handle_list_navigation(choice: str, roots: list[Todo], user_id: UUID) -> bool:
     try:
@@ -381,6 +518,7 @@ def _handle_list_navigation(choice: str, roots: list[Todo], user_id: UUID) -> bo
         continue_after_invalid("Saisie invalide.")
     return False
 
+
 def _handle_navigation(choice: str, children: list[Todo], user_id: UUID) -> bool:
     if not choice.isdigit():
         return False
@@ -392,6 +530,7 @@ def _handle_navigation(choice: str, children: list[Todo], user_id: UUID) -> bool
     show_error("Index invalide.", title="Navigation")
     return False
 
+
 def show_details(todo_uuid: UUID, user_id: UUID) -> bool:
     with get_repository() as repo:
         while True:
@@ -402,9 +541,12 @@ def show_details(todo_uuid: UUID, user_id: UUID) -> bool:
                 if _handle_navigation(choice, children, user_id):
                     return True
                 continue
-            should_break, exit_cascade = _handle_action(choice, todo, children, repo, user_id)
+            should_break, exit_cascade = _handle_action(
+                choice, todo, children, repo, user_id
+            )
             if should_break:
                 return exit_cascade
+
 
 @app.callback(invoke_without_command=True)
 def main(ctx: typer.Context):
@@ -417,20 +559,29 @@ def main(ctx: typer.Context):
         typer.echo(ctx.get_help())
         raise typer.Exit()
 
+
 def complete_category(incomplete: str):
     user_id, _, _ = load_user_info()
     if not user_id:
-        return [name for name in Category.ALL if name.lower().startswith(incomplete.lower())]
+        return [
+            name for name in Category.ALL if name.lower().startswith(incomplete.lower())
+        ]
     with get_repository() as repo:
         cat_repo = DuckDBCategoryRepository(repo._conn)
         list_use_case = CategoryListUseCase(cat_repo)
         all_categories = list_use_case.execute(user_id)
-    return [name for name in all_categories if name.lower().startswith(incomplete.lower())]
+    return [
+        name for name in all_categories if name.lower().startswith(incomplete.lower())
+    ]
+
 
 @app.command(name="add")
 def create(
     title: Annotated[str, typer.Argument(help="Titre du todo")],
-    category: Annotated[Optional[str], typer.Option("--category", "-c", autocompletion=complete_category)] = "Quotidien",
+    category: Annotated[
+        Optional[str],
+        typer.Option("--category", "-c", autocompletion=complete_category),
+    ] = "Quotidien",
     description: Annotated[Optional[str], typer.Option("--description", "-d")] = None,
     priority: Annotated[bool, typer.Option("--priority", "-p")] = False,
     start: Annotated[Optional[str], typer.Option("--start", "-s")] = None,
@@ -448,9 +599,13 @@ def create(
         formatted_name = temp_cat.name
 
         if formatted_name not in all_allowed:
-            console.print(f"[yellow]La catégorie {formatted_name} n'existe pas.[/yellow]")
+            console.print(
+                f"[yellow]La catégorie {formatted_name} n'existe pas.[/yellow]"
+            )
             if typer.confirm(f"Voulez-vous créer la catégorie {formatted_name} ?"):
-                CategoryCreateUseCase(cat_repo).execute(formatted_name, effective_user_id)
+                CategoryCreateUseCase(cat_repo).execute(
+                    formatted_name, effective_user_id
+                )
                 # console.print(f"[green]Catégorie {formatted_name} créée.[/green]")
                 show_success(f"Catégorie {formatted_name} créée.", title="Catégorie")
                 category = formatted_name
@@ -465,7 +620,16 @@ def create(
 
         while True:
             try:
-                todo = use_case.execute(title=title, user=effective_user_id, category=category, description=description or "", priority=priority, date_start=current_start or "", date_due=current_due or "", parent=selected_parent_uuid)
+                todo = use_case.execute(
+                    title=title,
+                    user=effective_user_id,
+                    category=category,
+                    description=description or "",
+                    priority=priority,
+                    date_start=current_start or "",
+                    date_due=current_due or "",
+                    parent=selected_parent_uuid,
+                )
                 # Message de succès
                 # console.print(f"[bold green]Succès ![/bold green] {msg}")
                 msg = f"Succès ! [cyan]{todo.title}[/cyan]"
@@ -479,7 +643,11 @@ def create(
                 if not sys.stdin.isatty():
                     raise typer.Exit(code=1)
                 console.print("[dim]Il y a un problème avec les dates fournies.[/dim]")
-                action = Prompt.ask("Que voulez-vous corriger ? r", choices=["d", "e", "a", "début", "échéance", "annuler"], default="d")
+                action = Prompt.ask(
+                    "Que voulez-vous corriger ? r",
+                    choices=["d", "e", "a", "début", "échéance", "annuler"],
+                    default="d",
+                )
                 if action in ["d", "début"]:
                     current_start = Prompt.ask("Nouvelle date de début")
                 elif action in ["e", "échéance"]:
@@ -491,9 +659,13 @@ def create(
                     console.print("[yellow]Erreur saisie, Bye ![/yellow]")
                     raise typer.Exit(code=0)
 
+
 @app.command(name="list")
 def list_todos(
-    category: Annotated[Optional[str], typer.Option("--category", "-c", autocompletion=complete_category)] = None,
+    category: Annotated[
+        Optional[str],
+        typer.Option("--category", "-c", autocompletion=complete_category),
+    ] = None,
 ):
     user_id, _, _ = load_user_info()
     with get_repository() as repo:
@@ -501,7 +673,13 @@ def list_todos(
             use_case = TodoGetAllRootsByUserUseCase(repo)
             roots, postponed_count = use_case.execute(user_id, category=category)
             if postponed_count > 0:
-                console.print(Panel(f"[bold blue]ℹ[/bold blue] {postponed_count} tâche{'s' if postponed_count > 1 else ''} en retard {'ont été reportées' if postponed_count > 1 else 'a été reportée'} à ce soir.", border_style="blue", padding=(0, 1)))
+                console.print(
+                    Panel(
+                        f"[bold blue]ℹ[/bold blue] {postponed_count} tâche{'s' if postponed_count > 1 else ''} en retard {'ont été reportées' if postponed_count > 1 else 'a été reportée'} à ce soir.",
+                        border_style="blue",
+                        padding=(0, 1),
+                    )
+                )
 
             if not roots:
                 msg = "Aucun Todo trouvé"
@@ -516,10 +694,16 @@ def list_todos(
 
             _display_root_list(roots, repo)
             count = len(roots)
-            message = f"{count} tâche racine trouvée" if count <= 1 else f"{count} tâches racines trouvées"
+            message = (
+                f"{count} tâche racine trouvée"
+                if count <= 1
+                else f"{count} tâches racines trouvées"
+            )
             console.print(f"\n[dim] {message}.[/dim]")
             try:
-                choice = Prompt.ask("\nSaisissez l'index (ou 'q' pour quitter)", default="q").lower()
+                choice = Prompt.ask(
+                    "\nSaisissez l'index (ou 'q' pour quitter)", default="q"
+                ).lower()
             except EOFError:
                 break
             if choice == "q":
@@ -528,16 +712,21 @@ def list_todos(
             if not sys.stdin.isatty():
                 break
 
+
 @app.command(name="list-dev")
 def list_dev():
     with get_repository() as repo:
         query = "SELECT * FROM todos"
-        todos = [repo._row_to_todo(todo) for todo in repo._conn.execute(query).fetchall()]
+        todos = [
+            repo._row_to_todo(todo) for todo in repo._conn.execute(query).fetchall()
+        ]
         if not todos:
             # console.print("[yellow]La base est vide pour cet utilisateur.[/yellow]")
             show_error("La base est vide pour cet utilisateur.", title="Debug")
             return
-        table = Table(title="Vue Développeur - Tous les Todos", box=box.MINIMAL_DOUBLE_HEAD)
+        table = Table(
+            title="Vue Développeur - Tous les Todos", box=box.MINIMAL_DOUBLE_HEAD
+        )
         table.add_column("UUID (8)", style="dim", no_wrap=True)
         table.add_column("Structure (Parent)", no_wrap=True)
         table.add_column("Titre", style="bold white")
@@ -546,12 +735,16 @@ def list_dev():
         for t in todos:
             state = "[green]✅[/green]" if t.state else "[red]❌[/red]"
             short_id = f"{str(t.uuid)[:8]}"
-            parent_info = f"[cyan]↳ {str(t.parent)[:8]}[/cyan]" if t.parent else "[dim]• Racine[/dim]"
+            parent_info = (
+                f"[cyan]↳ {str(t.parent)[:8]}[/cyan]"
+                if t.parent
+                else "[dim]• Racine[/dim]"
+            )
             raw_dates = f"S:{t.date_start} | D:{t.date_due}"
             table.add_row(short_id, parent_info, t.title, state, raw_dates)
         console.print(table)
         console.print(f"\n[dim] Total : {len(todos)} items en base.[/dim]")
 
+
 if __name__ == "__main__":
     app()
-

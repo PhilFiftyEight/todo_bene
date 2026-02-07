@@ -4,15 +4,16 @@ import logging
 from sys import modules
 
 # Détermine le nom du fichier log selon le contexte
-log_file = 'todo_bene_test.log' if 'pytest' in modules else 'todo_bene.log'
+log_file = "todo_bene_test.log" if "pytest" in modules else "todo_bene.log"
 
 # Configuration du logging
 logging.basicConfig(
     filename=log_file,
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    format="%(asctime)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
+
 
 class DuckDBConnectionManager:
     def __init__(self, db_path: str):
@@ -33,37 +34,40 @@ class DuckDBConnectionManager:
     def _run_migrations(self):
         """Lit et exécute les fichiers SQL de migration non appliqués."""
         migrations_dir = os.path.join(os.path.dirname(__file__), "migrations")
-        
+
         if not os.path.exists(migrations_dir):
             logger.warning(f"Dossier de migrations non trouvé : {migrations_dir}")
             return
 
-        migration_files = sorted([f for f in os.listdir(migrations_dir) if f.endswith(".sql")])
+        migration_files = sorted(
+            [f for f in os.listdir(migrations_dir) if f.endswith(".sql")]
+        )
         applied_versions = [
-            row[0] for row in self.conn.execute("SELECT version FROM _migrations").fetchall()
+            row[0]
+            for row in self.conn.execute("SELECT version FROM _migrations").fetchall()
         ]
 
         for filename in migration_files:
             try:
-                version = int(filename.split('_')[0])
+                version = int(filename.split("_")[0])
             except ValueError:
                 continue
 
             if version not in applied_versions:
                 logger.info(f"Application de la migration : {filename}")
                 try:
-                    with open(os.path.join(migrations_dir, filename), 'r') as f:
+                    with open(os.path.join(migrations_dir, filename), "r") as f:
                         sql = f.read()
                         self.conn.execute(sql)
-                    
+
                     self.conn.execute(
                         "INSERT INTO _migrations (version, name) VALUES (?, ?)",
-                        [version, filename]
+                        [version, filename],
                     )
                     logger.info(f"Migration {filename} réussie.")
                 except Exception as e:
                     logger.error(f"Erreur lors de la migration {filename} : {e}")
-                    raise # On stoppe tout si une migration échoue
+                    raise  # On stoppe tout si une migration échoue
 
     def get_connection(self):
         return self.conn
