@@ -1,7 +1,6 @@
 import pytest
 import uuid
 import pendulum
-from rich.console import Console
 
 from todo_bene.domain.entities.todo import Todo
 from todo_bene.application.use_cases.todo_repetition import RepetitionTodo

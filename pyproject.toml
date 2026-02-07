@@ -33,6 +33,7 @@ dev = [
 [project.scripts]
 tb = "todo_bene.infrastructure.cli.main:app"
 gh_issue = "github_utils.gh_issue:main"
+gh_check = "github_utils.check_ci:check_status"
 
 [tool.uv]
 package = true
