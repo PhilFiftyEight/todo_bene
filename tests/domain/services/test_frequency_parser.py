@@ -185,3 +185,50 @@ def test_frequency_parser_until_fixed_date_past(frozen_time):
     parser = FrequencyParser(language="fr")
     # On est en février, "jusqu'au 1er janvier" doit viser 2027
     assert parser.parse("Tous les jours jusqu'au 1er janvier") == "today@daily#1d@2027-01-01"
+
+def test_frequency_parser_exception_single_day():
+    parser = FrequencyParser(language="fr")
+    # "Chaque jour sauf le lundi"
+    # Pivot attendu : ! mon
+    assert parser.parse("Chaque jour sauf le lundi") == "today@daily#1d@∞!mon"
+
+def test_frequency_parser_exception_multiple_days():
+    parser = FrequencyParser(language="fr")
+    # "Tous les jours sauf samedi et dimanche"
+    # Pivot attendu : ! sat,sun
+    assert parser.parse("Tous les jours sauf samedi et dimanche") == "today@daily#1d@∞!sat,sun"
+
+def test_frequency_parser_exception_with_duration():
+    parser = FrequencyParser(language="en")
+    # "Every day for 2 weeks but not on Wednesday"
+    # L'ordre ne doit pas importer
+    assert parser.parse("Every day for 2 weeks but not on Wednesday") == "today@daily#1d@+2w!wed"
+
+def test_frequency_parser_exception_before_duration():
+    parser = FrequencyParser(language="en")
+    # "Every day but not on Wednesday for 2 weeks"
+    # L'ordre inversé (Exception avant Durée)
+    assert parser.parse("Every day but not on Wednesday for 2 weeks") == "today@daily#1d@+2w!wed"
+
+def test_frequency_parser_exception_before_duration_fr():
+    parser = FrequencyParser(language="fr")
+    # "Every day but not on Wednesday for 2 weeks"
+    # L'ordre inversé (Exception avant Durée)
+    assert parser.parse("Tous les jours à l'exception du mercredi pendant 2 semaines") == "today@daily#1d@+2w!wed"
+
+def test_frequency_parser_complex_ordinals():
+    parser = FrequencyParser(language="fr")
+    # Test avec un nombre complexe
+    # "Le cent trente-cinquième jour de l'année"
+    assert parser.parse("Le cent trente-cinquième jour de l'année") == "today@yearly#135thday@∞"
+    assert parser.parse("Le vingt-septième jour du trimestre") == "today@quarter#27thday@∞"
+
+def test_frequency_parser_workdays_position():
+    parser = FrequencyParser(language="fr")
+    # "Le deuxième jour ouvré du mois"
+    assert parser.parse("Le deuxième jour ouvré du mois") == "today@monthly#2ndworkday@∞"
+
+def test_frequency_parser_last_friday_year():
+    parser = FrequencyParser(language="en")
+    # "The last friday of the year"
+    assert parser.parse("The last friday of the year") == "today@yearly#lastfri@∞"

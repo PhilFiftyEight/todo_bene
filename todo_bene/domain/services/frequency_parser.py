@@ -1,5 +1,6 @@
 import pendulum
 import re
+from text_to_num import alpha2digit
 from todo_bene.i18n.lexicons import LEXICONS
 from todo_bene.domain.services.extractors import *
 
@@ -12,7 +13,7 @@ class FrequencyParser:
         self._lexicon = LEXICONS[self.language]
         self.extractors = [cls() for cls in sorted(BaseExtractor.__subclasses__(), key=lambda x: x.priority)]
 
-    def _normalize(self, text: str) -> str:
+    def _normalize(self, text: str) -> str:        
         normalized = text.lower().strip()
         translation_keys = [k for k in self._lexicon.keys() if k != "stopwords"]
         sorted_keys = sorted(translation_keys, key=len, reverse=True)
@@ -21,11 +22,11 @@ class FrequencyParser:
             pattern = r'\b' + re.escape(human_word) + r'\b'
             normalized = re.sub(pattern, self._lexicon[human_word], normalized)
         
+        normalized = alpha2digit(normalized, lang=self.language, threshold=0) 
         stopwords = self._lexicon.get("stopwords", [])
         for sw in stopwords:
             pattern = r'\b' + re.escape(sw) + r'\b'
             normalized = re.sub(pattern, "", normalized)
-        
         return " ".join(normalized.split())
 
     def _resolve_relative_end(self, period: str) -> str:
@@ -67,13 +68,12 @@ class FrequencyParser:
 
     def parse(self, text: str, start_date="today", limit="1") -> str:
         normalized = self._normalize(text)
-    
         for extractor in self.extractors:
             result = extractor.extract(normalized)
             if result:
                 cadence_tech, current_limit = result if isinstance(result, tuple) else (result, limit)
                 
-                # 1. DURÉE (FOR/NEXT)
+                # --- 1. DURÉE (FOR/NEXT) ---
                 matches = list(re.finditer(r"(?P<kw>for|next)\s*(?P<val>\d+)\s*(?P<unit>[wdmy])\b|(?P<val2>\d+)\s*(?P<kw2>for|next)\s*(?P<unit2>[wdmy])\b", normalized))
                 if matches:
                     best = next((m for m in matches if (m.group("kw") or m.group("kw2")) == "for"), matches[0])
@@ -82,7 +82,7 @@ class FrequencyParser:
                     kw = best.group("kw") or best.group("kw2")
                     current_limit = val if kw == "next" and "sequence#" in cadence_tech else f"+{val}{unit}"
 
-                # 2. DATE DE FIN (Cas n°7)
+                # --- 2. DATE DE FIN (Cas n°7) ---
                 end_rel_match = re.search(r"until_end\s+(?P<p>w|m|y|quarter|fortnight|semester)", normalized)
                 if end_rel_match:
                     current_limit = self._resolve_relative_end(end_rel_match.group("p"))
@@ -91,9 +91,19 @@ class FrequencyParser:
                 if end_fix_match:
                     current_limit = self._resolve_fixed_date(end_fix_match.group("d"), end_fix_match.group("m"))
 
-                # 3. SÉQUENCES
+                # --- 3. EXCEPTIONS (Cas n°8.1) ---
+                exception_part = ""
+                if "!" in normalized:
+                    # On récupère tout ce qui suit le premier "!"
+                    raw_exception = normalized.split("!", 1)[1]
+                    # On cherche les jours abrégés (mon, tue, etc.)
+                    days_found = re.findall(r"(mon|tue|wed|thu|fri|sat|sun)\b", raw_exception)
+                    if days_found:
+                        exception_part = f"!{','.join(days_found)}"
+
+                # --- 4. SÉQUENCES ---
                 if "sequence#" in cadence_tech and current_limit == "1":
                     current_limit = str(cadence_tech.count(',') + 1)
 
-                return f"{start_date}@{cadence_tech}@{current_limit}"
+                return f"{start_date}@{cadence_tech}@{current_limit}{exception_part}"
         return "unknown"

@@ -1,6 +1,7 @@
 # todo_bene/domain/services/extractors.py
 import re
 
+
 class BaseExtractor:
     priority = 100
     description = "Base extractor"
@@ -62,6 +63,69 @@ class SpecificDayExtractor(BaseExtractor):
             # "Tous les" implique l'infini
             return (f"weekly#1{day}", "∞")
         return None
+
+
+class RelativePositionExtractor(BaseExtractor):
+    priority = 15 
+
+    def extract(self, text: str):
+        #  On définit les briques élémentaires pour la lisibilité
+        POSITIONS = r"last|latest|1er|\d+(?:ème|th|st|nd|rd)"
+        TARGETS = r"mon|tue|wed|thu|fri|sat|sun|d|day|workday|workingday"
+        PERIODS = r"m|y|q|quarter|s|semester|f|fortnight"
+
+        # 2. On assemble avec le mode VERBOSE pour commenter chaque bloc
+        pattern = rf"""
+            \b(?P<pos>{POSITIONS})      # Position (ex: last, 1er, 135ème)
+            \s+                         # Un ou plusieurs espaces
+            (?P<target>{TARGETS})       # Cible (ex: fri, day, workday)
+            \s+                         # Un ou plusieurs espaces
+            (?P<period>{PERIODS})       # Période (ex: m, quarter, y)
+            \b
+        """
+
+        match = re.search(pattern, text, re.VERBOSE)
+        if match:
+            pos = match.group("pos")
+            target = match.group("target")
+            period = match.group("period")
+
+            # --- Normalisation Position ---
+            if pos in ["last", "latest"]:
+                pos = "last"
+            elif pos in ["1er", "1st"]:
+                pos = "1st"
+            elif any(pos.endswith(s) for s in ["ème", "st", "nd", "rd", "th"]):
+                num_match = re.search(r"\d+", pos)
+                if num_match:
+                    val = num_match.group()
+                    # On force le format technique (ex: 27th, 135th)
+                    if val == "1": pos = "1st"
+                    elif val == "2": pos = "2nd"
+                    elif val == "3": pos = "3rd"
+                    else: pos = f"{val}th"
+            
+            # --- Normalisation Cible ---
+            if target == "d": target = "day"
+
+            # --- Normalisation Période (Mapping vers les fréquences) ---
+            period_map = {
+                "m": "monthly",
+                "y": "yearly",
+                "q": "quarter",
+                "quarter": "quarter",
+                "s": "semester",
+                "semester": "semester",
+                "f": "fortnight",
+                "fortnight": "fortnight"
+            }
+            frequency = period_map.get(period, "yearly")
+            
+            # Retourne le tuple pour forcer l'infini (∞) par défaut
+            return (f"{frequency}#{pos}{target}", "∞")
+            
+        return None
+
 
 class SequenceExtractor(BaseExtractor):
     """Gère '1, 2, 4 jours' (Limite par défaut : 1)."""

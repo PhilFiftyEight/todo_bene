@@ -8,6 +8,7 @@ LEXICONS = {
         "tous les": "every",
         
         # Unités de temps
+        "année": "y", "an": "y",
         "semestre": "semester",
         "semaines": "w", 
         "semaine": "w", 
@@ -49,11 +50,29 @@ LEXICONS = {
         "durant": "for",
         "pour": "for",
 
+        # Exceptions Ex: Tous les jours sauf le dimanche
+        "à l'exception de": "!",
+        "à l'exception du": "!",
+        "excepté": "!",
+        "hormis": "!",
+        "sauf": "!",
+        "hors": "!",
+        "sans": "!",
+        "moins": "!",
+        "pas le": "!",
+        "pas de": "!",
+
         # Mois
         "janvier": "01", "février": "02", "mars": "03", "avril": "04", 
         "mai": "05", "juin": "06", "juillet": "07", "août": "08", 
         "septembre": "09", "octobre": "10", "novembre": "11", "décembre": "12",
         "1er": "1",
+
+        # Positions relatives
+        "dernier": "last", "dernière": "last",
+        #"jour": "day",  << existe déjà dans unité de temps
+        "jour ouvré": "workday", "jours ouvrés": "workday",
+        "jour ouvrable": "workingday", "jours ouvrables": "workingday",
 
         # stop words
         "stopwords": ["le", "la", "les", "des", "du", "de", "l'"],
@@ -104,10 +123,26 @@ LEXICONS = {
         "for": "for",
         "during": "for",
 
+        # Exceptions
+        # On privilégie les formes verbales naturelles
+        "except for": "!",
+        "except": "!",
+        "excluding": "!",
+        "but not": "!",
+        "not on": "!",
+        "save for": "!",
+        "minus": "!",
+        "without": "!",
+
         # Months
         "january": "01", "february": "02", "march": "03", "april": "04",
         "may": "05", "june": "06", "july": "07", "august": "08",
         "september": "09", "october": "10", "november": "11", "december": "12",
+
+        # relative positions
+        "last": "last",
+        "business day": "workday", "workday": "workday",
+        "working day": "workingday",
 
         # stop words
         "stopwords": ["the", "a", "an", "of"],
