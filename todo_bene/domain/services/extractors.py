@@ -3,6 +3,7 @@ import re
 
 
 class BaseExtractor:
+    """Classe parente définissant l'interface et la priorité des extracteurs."""
     priority = 100
     description = "Base extractor"
     example = ""
@@ -136,4 +137,79 @@ class SequenceExtractor(BaseExtractor):
             raw_seq = match.group("seq").replace(" ", "").strip(",")
             unit = match.group("unit")
             return f"sequence#{raw_seq}{unit}"
+        return None
+
+
+class SimpleCadenceExtractor(BaseExtractor):
+    """
+    Extrait les formes techniques simplifiées issues de la normalisation.
+    
+    C'est le 'filet de sécurité' qui capture les expressions comme '1 m' ou '5 d'
+    lorsque les mots-clés naturels (comme 'chaque') ont été nettoyés.
+    Gère les formes orphelines après normalisation (ex: '1 m', '5 d', '1 quarter').
+    Ces formes arrivent quand 'every' est absent ou supprimé par les stopwords.
+    """
+    # priority = 25  # Se déclenche juste après les extracteurs complexes
+    
+    # def extract(self, text: str):
+    #     match = re.search(r"^(?P<num>\d+)\s*(?P<unit>w|d|m|y|quarter|semester|fortnight)$", text.strip())
+        
+    #     if match:
+    #         num = match.group("num")
+    #         unit = match.group("unit")
+            
+    #         type_map = {
+    #             "w": "weekly", "d": "daily", "m": "monthly", "y": "yearly",
+    #             "quarter": "quarter", "semester": "semester", "fortnight": "fortnight"
+    #         }
+    #         frequency = type_map.get(unit, "yearly")
+            
+    #         if num == "1":
+    #             pos = "1st"
+    #         elif num == "2":
+    #             pos = "2nd"
+    #         elif num == "3":
+    #             pos = "3rd"
+    #         else:
+    #             pos = f"{num}th"
+    #         if unit in ["m", "y", "quarter", "semester"]:
+    #             # Cycles longs : on cible le jour (ex: monthly#1stday)
+    #             cadence = f"{frequency}#{pos}day"
+    #         else:
+    #             cadence = f"{frequency}#{num}{unit}"
+                
+    #         return (cadence, "∞") # Forcer l'infini pour ces cadences
+    #     return None
+    priority = 25
+    def extract(self, text: str):
+        # Regex capable de capturer : chiffre + espace + unité technique
+        match = re.search(r"^(?P<num>\d+)\s*(?P<unit>w|d|m|y|quarter|semester|fortnight)$", text.strip())
+        
+        if match:
+            num = match.group("num")
+            unit = match.group("unit")
+            
+            
+            # Mapping vers les fréquences techniques de ton système
+            type_map = {
+                "w": "weekly", "d": "daily", "m": "monthly", "y": "yearly",
+                "quarter": "quarter", "semester": "semester", "fortnight": "fortnight"
+            }
+            frequency = type_map.get(unit, "yearly")
+            
+            # Conversion du chiffre en position ordinale (1 -> 1st, 2 -> 2nd...)
+            # Crucial pour le format attendu 'monthly#1stday'
+            # Assemblage selon l'unité
+            if unit in ["m", "y", "quarter", "semester", "fortnight"]:
+                if num == "1": pos = "1st"
+                elif num == "2": pos = "2nd"
+                elif num == "3": pos = "3rd"
+                else: pos = f"{num}th"
+                cadence = f"{frequency}#{pos}day"
+            else:
+                # Cycles courts :
+                # Pour d (daily) et w (weekly), on garde le format chiffre+unité (ex: daily#5d)
+                cadence = f"{frequency}#{num}{unit}"
+                
+            return (cadence, "∞")
         return None

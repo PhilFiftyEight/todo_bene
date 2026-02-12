@@ -73,9 +73,19 @@ LEXICONS = {
         #"jour": "day",  << existe déjà dans unité de temps
         "jour ouvré": "workday", "jours ouvrés": "workday",
         "jour ouvrable": "workingday", "jours ouvrables": "workingday",
+        "non ouvré": "non_workday", "non ouvrable": "non_workday",
+
+        # Logic de report (Shifts)
+        "reporté": "|shift",
+        "reporter": "|shift",
+        "décaler": "|shift",
+        "décalé": "|shift",
+        "si week-end": "|shift",
+        "si férié": "|shift",
+        "si jour non ouvré": "|shift",
 
         # stop words
-        "stopwords": ["le", "la", "les", "des", "du", "de", "l'"],
+        "stopwords": ["le", "la", "les", "des", "du", "de", "l'", "si"],
     },
 
     "en": {
@@ -143,8 +153,17 @@ LEXICONS = {
         "last": "last",
         "business day": "workday", "workday": "workday",
         "working day": "workingday",
+        "non-working day": "non_workday",
+
+        # Shift logic
+        "postponed": "|shift",
+        "postpone": "|shift",
+        "shift": "|shift",
+        "if weekend": "|shift",
+        "if holiday": "|shift",
+        "if non-working day": "|shift",
 
         # stop words
-        "stopwords": ["the", "a", "an", "of"],
+        "stopwords": ["on", "the", "a", "an", "of", "if"],
     }
 }

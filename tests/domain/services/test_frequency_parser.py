@@ -178,3 +178,27 @@ def test_frequency_parser_last_friday_year():
     parser = FrequencyParser(language="en")
     # "The last friday of the year"
     assert parser.parse("The last friday of the year") == "today@yearly#lastfri@∞"
+
+def test_frequency_parser_shift_weekend():
+    parser = FrequencyParser(language="fr")
+    # "Le 1er du mois, reporté si week-end"
+    # On teste la détection du mot "reporté" ou "si week-end"
+    assert parser.parse("Le 1er du mois, reporter si week-end") == "today@monthly#1stday@∞|next_workday"
+
+def test_frequency_parser_shift_business_context():
+    parser = FrequencyParser(language="fr")
+    # Au lieu de Noël, on prend une date de facturation/paie (le 5 du mois)
+    # L'utilisateur demande explicitement le décalage car le système cible ne traite pas les jours non-ouvrables
+    assert parser.parse("Le 5 du mois décaler si jour non ouvré") == "today@monthly#5thday@∞|next_workday"
+
+def test_frequency_parser_shift_explicit_instruction():
+    parser = FrequencyParser(language="fr")
+    # Test d'une position relative avec une instruction de report
+    # "Le dernier vendredi du trimestre, si férié décaler"
+    assert parser.parse("Le dernier vendredi du trimestre, si férié décaler") == "today@quarter#lastfri@∞|next_workday"
+
+def test_frequency_parser_mixed_units_arbitration():
+    parser = FrequencyParser(language="fr")
+    # Cadence : toutes les 2 semaines -> weekly#2w
+    # Limite : pendant 3 mois -> @+3m
+    assert parser.parse("Toutes les 2 semaines pendant 3 mois") == "today@weekly#2w@+3m"

@@ -17,7 +17,7 @@ dependencies = [
     "duckdb>=1.4.3",
     "pendulum[test]>=3.2.0",
     "text2num>=3.0.0",
-    "typer>=0.21.1",
+    "typer>=0.23.0",
 ]
 
 [dependency-groups]

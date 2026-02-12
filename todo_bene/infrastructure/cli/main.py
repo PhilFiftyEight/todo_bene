@@ -3,7 +3,7 @@
 import sys
 from time import sleep
 from typing import Optional, Tuple
-from typing_extensions import Annotated
+from typing import Annotated
 from contextlib import contextmanager
 import locale
 from uuid import UUID
