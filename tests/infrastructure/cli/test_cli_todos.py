@@ -99,18 +99,21 @@ def test_cli_precise_hour_parsing_fr(test_config_env):
     """Vérifie le parsing d'une date française avec heure précise."""
     user_id = "550e8400-e29b-41d4-a716-446655440000"
     save_user_config(user_id, "dev.db", "test_profile")
+    
+    with pendulum.travel_to("2026/02/12", freeze=True):
 
-    runner.invoke(
-        app,
-        ["add", "Rendez-vous dentiste", "--start", "12/02/2026 14:15"],
-        env={"TODO_BENE_CONFIG_PATH": str(test_config_env)},
-    )
-    result_list = runner.invoke(
-        app, ["list"], env={"TODO_BENE_CONFIG_PATH": str(test_config_env)}
-    )
-    assert "12/02/2026 14:15" in result_list.stdout
-    # L'échéance doit suivre sur le même jour à 23:59
-    assert "12/02/2026 23:59" in result_list.stdout
+        runner.invoke(
+            app,
+            ["add", "Rendez-vous dentiste", "--start", "12/02/2026 14:15"],
+            env={"TODO_BENE_CONFIG_PATH": str(test_config_env)},
+        )
+        
+        result_list = runner.invoke(
+            app, ["list"], env={"TODO_BENE_CONFIG_PATH": str(test_config_env)}
+        )
+        assert "12/02/2026 14:15" in result_list.stdout
+        # L'échéance doit suivre sur le même jour à 23:59
+        assert "12/02/2026 23:59" in result_list.stdout
 
 
 def test_cli_create_with_various_separators(test_config_env):
