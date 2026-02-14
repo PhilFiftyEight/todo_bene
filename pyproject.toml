@@ -17,7 +17,7 @@ dependencies = [
     "duckdb>=1.4.3",
     "pendulum[test]>=3.2.0",
     "text2num>=3.0.0",
-    "typer>=0.23.0",
+    "typer>=0.23.1",
 ]
 
 [dependency-groups]
@@ -29,7 +29,7 @@ dev = [
     "pytest-mock>=3.15.1",
     "radon>=6.0.1",
     "requests>=2.32.5",
-    "ruff>=0.15.0",
+    "ruff>=0.15.1",
 ]
 [project.scripts]
 tb = "todo_bene.infrastructure.cli.main:app"
