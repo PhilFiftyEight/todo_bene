@@ -31,16 +31,19 @@ L'Engine doit interpréter le troisième segment selon ces quatre formats :
 
 ---
 
-## 3. Table de Référence des Tests (27 Cas)
+## 3. Table de Référence des Tests (32 Cas)
 
-Voici l'intégralité des comportements validés par la suite de tests :
+Cette section liste les correspondances exactes validées par la suite de tests unitaires et sert de référence pour le comportement attendu du système.
 
 ### A. Intervalles Simples et Séquences
 
 | Entrée (FR/EN) | Résultat Parser | Note Engine |
 | --- | --- | --- |
 | "Chaque jour" | `today@daily#1d@∞` | Répétition quotidienne infinie. |
+| "Toutes les 2 semaines" | `today@weekly#2w@∞` | Intervalle de 2 semaines. |
 | "Every 3 weeks" | `today@weekly#3w@∞` | Saut de 3 semaines. |
+| "1, 2, 3 jours" | `today@sequence#1,2,3d@3` | Séquence unitaire de 3 jours. |
+| "10, 20 jours" | `today@sequence#10,20d@2` | Séquence de 2 dates spécifiques. |
 | "1, 2, 4, 8, 16 jours" | `today@sequence#1,2,4,8,16d@5` | Génère 5 dates précises à J+1, J+2, etc. |
 | "Les 5 prochains jours" | `today@sequence#1,2,3,4,5d@5` | Séquence unitaire de 5 jours. |
 | "Les 3 prochains mois" | `today@sequence#1,2,3m@3` | 1 occurrence par mois pendant 3 mois. |
@@ -58,9 +61,12 @@ Voici l'intégralité des comportements validés par la suite de tests :
 | Entrée | Résultat Parser | Note Engine |
 | --- | --- | --- |
 | "Tous les lundis pour 1 mois" | `today@weekly#1mon@+1m` | Stop après 1 mois calendaire. |
+| "Chaque jour pendant 15 jours" | `today@daily#1d@+15d` | Durée relative en jours. |
+| "Lundi et Mercredi pendant 2 semaines" | `today@weekly#1mon,wed@+2w` | Stop après 2 semaines. |
 | "Toutes les 2 semaines pour 6 mois" | `today@weekly#2w@+6m` | Arbitrage Cadence vs Durée. |
 | "Les 5 prochains jours pendant 2 sem." | `today@sequence#1,2,3,4,5d@+2w` | La durée `+2w` écrase la limite `5`. |
-| "Toutes les 2 sem. pendant 3 mois" | `today@weekly#2w@+3m` | **Test Bonus** : Arbitrage d'unités mixtes. |
+| "Chaque jour les 2 prochaines semaines" | `today@daily#1d@+2w` | Répétition quotidienne sur durée fixe. |
+| "Toutes les 2 sem. pendant 3 mois" | `today@weekly#2w@+3m` | Arbitrage d'unités mixtes. |
 
 ### D. Dates de Fin Dynamiques (Frozen Time: 2026-02-09)
 
@@ -78,20 +84,23 @@ Voici l'intégralité des comportements validés par la suite de tests :
 | "135ème jour de l'année" | `today@yearly#135thday@∞` | Position absolue annuelle. |
 | "27ème jour du trimestre" | `today@quarter#27thday@∞` | Position dans le cycle quarter. |
 | "2ème jour ouvré du mois" | `today@monthly#2ndworkday@∞` | Nécessite calendrier jours ouvrés. |
-| "The last friday of the year" | `today@yearly#lastfri@∞` | Fin de cycle. |
+| "Le dernier vendredi du trimestre" | `today@quarter#lastfri@∞` | Fin de cycle trimestriel. |
+| "Le dernier vendredi de chaque mois" | `today@monthly#lastfri@∞` | Position relative mensuelle. |
+| "The last friday of the year" | `today@yearly#lastfri@∞` | Fin de cycle annuel. |
 
-### F. Exceptions et Reports (Shifts)
+### F. Exceptions, Reports et Robustesse
 
 | Entrée | Résultat Parser | Note Engine |
 | --- | --- | --- |
 | "Chaque jour sauf le lundi" | `... @∞!mon` | Retirer les lundis des occurrences. |
 | "...sauf samedi et dimanche" | `... @∞!sat,sun` | Filtre week-end. |
-| "1er du mois, reporter si WE" | `today@monthly#1stday@∞|next_workday` | Si date=WE -> Lundi suivant. |
-| "Le 5 du mois décaler si non ouvré" | `today@monthly#5thday@∞|next_workday` | Inclut fériés si Engine a la liste. |
-| "1 m," (Virgule traînante) | `today@monthly#1stday@∞` | **Robustesse** : Virgule ignorée. |
-| "5 m" (Forme courte) | `today@monthly#5thday@∞` | **Robustesse** : Forme technique comprise. |
-
-Voici une section **"Engine Implementation Guidelines"** conçue pour faire le pont entre le texte que nous venons de parser et l'exécution réelle des dates.
+| "Every day but not on Wed for 2 weeks" | `daily#1d@+2w!wed` | Exception sur durée limitée. |
+| "Tous les lundis sauf en août" | `today@weekly#1mon@∞!aug` | Exclusion mensuelle (nom long). |
+| "Chaque lundi sauf en 08" | `today@weekly#1mon@∞!aug` | Exclusion mensuelle (numérique). |
+| "1er du mois, reporter si WE" | `today@monthly#1stday@∞ | next_workday` |
+| "Le 5 du mois décaler si non ouvré" | `today@monthly#5thday@∞ | next_workday` |
+| "1 m," (Virgule traînante) | `today@monthly#1stday@∞` | Virgule ignorée. |
+| "5 m" (Forme courte) | `today@monthly#5thday@∞` | Forme technique comprise. |
 
 ---
 
@@ -109,7 +118,6 @@ Le rôle de l'Engine est de transformer la chaîne technique en une liste d'obje
 * Si `limit` est une **durée** (ex: `+3m`) : Calculer `end_date = start_date + duration` au début, puis traiter comme une limite de date fixe.
 
 
-
 ### B. Gestion des Exceptions (`!`)
 
 * Le filtre d'exception doit être appliqué **après** le calcul de la date de cadence mais **avant** le contrôle de limite.
@@ -124,7 +132,6 @@ Le rôle de l'Engine est de transformer la chaîne technique en une liste d'obje
 3. Tant que la condition est vraie, ajouter `+1 day` à la date.
 
 
-
 ### D. Priorité de Calcul (Order of Operations)
 
 Pour chaque occurrence, l'Engine doit suivre cet ordre strict :
@@ -134,18 +141,22 @@ Pour chaque occurrence, l'Engine doit suivre cet ordre strict :
 3. **Shift**: Appliquer le report `|` si nécessaire pour tomber sur un jour ouvré.
 4. **Terminate**: Vérifier si la date finale dépasse la `@limit`.
 
-C'est une excellente idée. En documentation technique, on appelle souvent cela une **"Matrice de Trace"** ou un **"Catalogue de Comportements"**.
 
-Avoir ces 27 tests en annexe permet deux choses :
+### E. Collision de motifs.
 
-1. **Une preuve de vérité** : On sait exactement ce que le code *fait* aujourd'hui.
-2. **Un filet de sécurité** : Si quelqu'un modifie l'Engine demain et que "Le 1er du mois" ne sort plus la bonne date, il pourra remonter à cette annexe pour voir le contrat original.
+Pour éviter les conflits entre expressions (ex: "Every month" qui pourrait voler le match de "Last Friday of every month"), le système repose sur trois piliers :
 
-Voici comment structurer cette **Annexe : Catalogue des Cas de Tests** pour ton fichier `.md`.
+- Priorité Numérique : Les extracteurs complexes (RelativePositionExtractor) ont une priorité plus forte (valeur plus petite, ex: 10) que les extracteurs simples (ex: 15 ou 20).
+La **Spécificité** `gagne` sur la **Généralité** : Un extracteur qui cherche "le dernier vendredi du mois" (RelativePositionExtractor) est plus complexe qu'un extracteur qui cherche "chaque mois" (SimpleIntervalExtractor). Il doit donc avoir une priorité numérique plus faible (ex: 10 vs 15) pour être testé en premier.
+
+- Ancrage Strict : Les extracteurs simples utilisent l'ancrage ^ pour s'assurer qu'ils ne capturent pas une fin de phrase appartenant à une structure plus large.
+L'**Ancrage** est le bouclier : En utilisant ^ (début de chaîne) pour les extracteurs simples, on les empêche de "voler" un morceau de texte situé à la fin d'une commande complexe. Cela force l'extracteur complexe à traiter la phrase dans sa globalité.
+
+- Post-Processing des Exceptions : Les exclusions (après le !) sont nettoyées des stopwords et les codes mois numériques sont convertis en étiquettes techniques (ex: 08 -> aug) pour assurer la cohérence du format final
 
 ---
 
-## Annexe : Catalogue des Cas de Tests (27 scénarios)
+## Annexe : Catalogue des Cas de Tests (32 scénarios)
 
 Cette section liste les correspondances exactes validées par la suite de tests unitaires. Elle sert de référence pour le comportement attendu du système.
 
@@ -197,5 +208,19 @@ Cette section liste les correspondances exactes validées par la suite de tests 
 * **Le 1er du mois, reporter si week-end** : `monthly#1stday@∞|next_workday`
 * **Le 5 du mois décaler si jour non ouvré** : `monthly#5thday@∞|next_workday`
 * **Le dernier vendredi du trimestre, si férié décaler** : `quarter#lastfri@∞|next_workday`
+
+### 7. Positions Relatives Complexes
+Gère les rangs spécifiques au sein d'une période donnée, incluant les jours ouvrés et les ordinaux longs.
+
+* **Le 135ème jour de l'année** :  `today@yearly#135thday@∞`
+* **Le 2ème jour ouvré du mois** :  `today@monthly#2ndworkday@∞`
+* **Le dernier vendredi du trimestre** :  `today@quarter#lastfri@∞`
+* **Le dernier vendredi de chaque mois** :  `today@monthly#lastfri@∞`
+
+### 8. Exclusions et Exceptions (Mois)
+Capacité à exclure des mois complets via leur nom long ou leur code numérique.
+
+* **Tous les lundis sauf en août** : `today@weekly#1mon@∞!aug`
+* **Chaque lundi sauf en 08** : `today@weekly#1mon@∞!aug`
 
 ---

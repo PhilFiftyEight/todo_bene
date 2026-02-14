@@ -202,3 +202,36 @@ def test_frequency_parser_mixed_units_arbitration():
     # Cadence : toutes les 2 semaines -> weekly#2w
     # Limite : pendant 3 mois -> @+3m
     assert parser.parse("Toutes les 2 semaines pendant 3 mois") == "today@weekly#2w@+3m"
+
+# advanced cases
+
+def test_parse_specific_yearly_position():
+    parser = FrequencyParser(language="fr")
+    # "Le 1er lundi d'octobre" -> yearly#1stmon + limite temporelle oct
+    assert parser.parse("Le 1er lundi d'octobre") == "today@yearly#1stmon@oct@∞"
+    assert parser.parse("Le premier lundi d'octobre") == "today@yearly#1stmon@oct@∞"
+
+def test_parse_working_day_position():
+    parser = FrequencyParser(language="fr")
+    # "Le 5ème jour ouvré du mois" -> monthly#5thworkday
+    assert parser.parse("Le 5ème jour ouvré du mois") == "today@monthly#5thworkday@∞"
+
+def test_parse_last_day_of_month():
+    parser = FrequencyParser(language="fr")
+    # "Le dernier vendredi de chaque mois" -> monthly#lastfri
+    assert parser.parse("Le dernier vendredi de chaque mois") == "today@monthly#lastfri@∞"
+
+def test_parse_exclusion_month_long():
+    parser = FrequencyParser(language="fr")
+    # "Tous les lundis sauf en août" -> !aug
+    assert parser.parse("Tous les lundis sauf en août") == "today@weekly#1mon@∞!aug"
+    assert parser.parse("Tous les jours sauf en 05") == "today@daily#1d@∞!may"
+    parser = FrequencyParser(language="en")
+    assert parser.parse("Every Monday except in August") == "today@weekly#1mon@∞!aug"
+
+def test_parse_exclusion_month_short():
+    parser = FrequencyParser(language="fr")
+    # "Tous les lundis sauf août" -> !aug
+    assert parser.parse("Tous les lundis sauf août") == "today@weekly#1mon@∞!aug"
+    parser = FrequencyParser(language="en")
+    assert parser.parse("Every Monday except August") == "today@weekly#1mon@∞!aug"

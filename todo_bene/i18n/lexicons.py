@@ -66,10 +66,24 @@ LEXICONS = {
         "janvier": "01", "février": "02", "mars": "03", "avril": "04", 
         "mai": "05", "juin": "06", "juillet": "07", "août": "08", 
         "septembre": "09", "octobre": "10", "novembre": "11", "décembre": "12",
-        "1er": "1",
-
+        
         # Positions relatives
-        "dernier": "last", "dernière": "last",
+        "1er": "1",
+        "premier": "1", 
+        "première": "1",
+        "2ème": "2",
+        "second": "2",
+        "seconde": "2",
+        "deuxième": "2",
+        "3ème": "3",
+        "troisième": "3",
+        "4ème": "4",
+        "quatrième": "4",
+        "5ème": "5",
+        "cinquième": "5",
+        "dernier": "last",
+        "dernière": "last",
+        
         #"jour": "day",  << existe déjà dans unité de temps
         "jour ouvré": "workday", "jours ouvrés": "workday",
         "jour ouvrable": "workingday", "jours ouvrables": "workingday",
@@ -85,7 +99,7 @@ LEXICONS = {
         "si jour non ouvré": "|shift",
 
         # stop words
-        "stopwords": ["le", "la", "les", "des", "du", "de", "l'", "si"],
+        "stopwords": ["le", "la", "les", "des", "du", "de", "l'", "d'", "si", "en"],
     },
 
     "en": {
@@ -150,6 +164,18 @@ LEXICONS = {
         "september": "09", "october": "10", "november": "11", "december": "12",
 
         # relative positions
+        "1st": "1",
+        "first": "1",
+        "2nd": "2",
+        "second": "2",
+        "3rd": "3",
+        "third": "3",
+        "4th": "4",
+        "fourth": "4",
+        "5th": "5",
+        "fifth": "5",
+        "last": "last",
+        "latest": "last",
         "last": "last",
         "business day": "workday", "workday": "workday",
         "working day": "workingday",
@@ -164,6 +190,6 @@ LEXICONS = {
         "if non-working day": "|shift",
 
         # stop words
-        "stopwords": ["on", "the", "a", "an", "of", "if"],
+        "stopwords": ["on", "the", "a", "an", "of", "if","in"],
     }
 }

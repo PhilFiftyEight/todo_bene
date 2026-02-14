@@ -12,9 +12,15 @@ class FrequencyParser:
         self.language = language if language in self.SUPPORTED_LANGUAGES else self.DEFAULT_LANGUAGE
         self._lexicon = LEXICONS[self.language]
         self.extractors = [cls() for cls in sorted(BaseExtractor.__subclasses__(), key=lambda x: x.priority)]
-
+    
     def _normalize(self, text: str) -> str:        
         normalized = text.lower().strip()
+        
+        # 1. D'abord transformer les nombres écrits en lettres (ex: cent trente-cinquième -> 135ème)
+        # On fait ça avant le lexique pour ne pas casser les groupes de mots
+        normalized = alpha2digit(normalized, lang=self.language, threshold=0) 
+
+        # 2. Substitution via le lexique (ex: 135ème -> 135, jour -> d, année -> y)
         translation_keys = [k for k in self._lexicon.keys() if k != "stopwords"]
         sorted_keys = sorted(translation_keys, key=len, reverse=True)
 
@@ -22,11 +28,12 @@ class FrequencyParser:
             pattern = r'\b' + re.escape(human_word) + r'\b'
             normalized = re.sub(pattern, self._lexicon[human_word], normalized)
         
-        normalized = alpha2digit(normalized, lang=self.language, threshold=0) 
+        # 3. Nettoyage des stopwords (ex: le, de, l')
         stopwords = self._lexicon.get("stopwords", [])
         for sw in stopwords:
             pattern = r'\b' + re.escape(sw) + r'\b'
             normalized = re.sub(pattern, "", normalized)
+            
         return " ".join(normalized.split())
 
     def _resolve_relative_end(self, period: str) -> str:
@@ -168,7 +175,7 @@ class FrequencyParser:
             final_limit = extractor_limit
         # Correction : On ne met ∞ que si "every" est présent OU pour les cycles non-hebdomadaires
         # Cela permet à "Lundi et Jeudi" de rester à @1
-        elif "every" in normalized or any(cycle in cadence_tech for cycle in ["daily#", "monthly#", "yearly#"]):
+        elif "every" in normalized or any(cycle in cadence_tech for cycle in ["daily#", "monthly#", "yearly#", "quarter#", "semester#", "fortnight#"]):
             final_limit = "∞"
         else:
             final_limit = "1"
@@ -176,13 +183,22 @@ class FrequencyParser:
 
         # 7. Gestion des Exceptions (!)
         exception_part = ""
+        MONTHS_MAP = {
+        "01": "jan", "02": "feb", "03": "mar", "04": "apr",
+        "05": "may", "06": "jun", "07": "jul", "08": "aug",
+        "09": "sep", "10": "oct", "11": "nov", "12": "dec"
+        }
+
         if "!" in clean_text:
             raw_exc = clean_text.split("!")[1].strip()
             # On normalise les séparateurs pour éviter sat,,,sun
             words = raw_exc.replace(",", " ").split()
+            # On filtre les stopwords
             filtered = [w for w in words if w not in self._lexicon.get("stopwords", [])]
-            if filtered:
-                exception_part = "!" + ",".join(filtered)
+            # Traduction des mois numériques (08 -> aug) ---
+            translated = [MONTHS_MAP.get(w, w) for w in filtered]
+            if translated:
+                exception_part = "!" + ",".join(translated)
 
         # 8. Assemblage
         shift_suffix = "|next_workday" if has_shift else ""
