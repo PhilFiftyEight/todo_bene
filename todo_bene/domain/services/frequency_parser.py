@@ -78,6 +78,23 @@ class FrequencyParser:
         5. Passage dans la boucle des extracteurs prioritaires.
         6. Assemblage final.
         """
+        # 0. Gestion des dates ISO (Compatibilité)
+        # Tentative de détection d'une date brute (ISO, FR, etc.)
+        try:
+            # Si pendulum arrive à parser la chaîne sans erreur
+            parsed_date = pendulum.parse(text.lower().strip(), strict=False, tz=pendulum.local_timezone())
+            # On normalise en DSL : [DATE_ISO]@daily#1d@1
+            # L'engine recevra toujours du YYYY-MM-DD
+            # ATTENTION: Comme l'engine commence à chercher l'occurrence après la date d'ancrage 
+            # (car on ne veut pas répéter le jour même d'une tâche qu'on vient de finir), 
+            # il saute au jour suivant. Pour gérer une date fixe il faut donc soustraire 1 JOUR
+            start_anchor = parsed_date.subtract(days=1).to_date_string() 
+            return f"{start_anchor}@daily#1d@1"
+        except pendulum.exceptions.ParserError:
+            # Si ce n'est pas une date brute, on continue vers
+            # la logique de langage naturel (ex: "tous les jours")
+            pass
+
         # 1. Normalisation
         normalized = self._normalize(text)
 

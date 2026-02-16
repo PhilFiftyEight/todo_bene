@@ -1,12 +1,18 @@
+from os import getenv
 import pendulum
 from pendulum.parsing.exceptions import ParserError
 from typing import List, Optional
 
 from todo_bene.domain.entities.todo import Todo
+from todo_bene.domain.services.frequency_engine import FrequencyEngine
+from todo_bene.domain.services.frequency_parser import FrequencyParser
+
 
 class RepetitionTodo:
     def __init__(self, todo_repository):
         self.todo_repository = todo_repository
+        self.frequency_parser = FrequencyParser(getenv("LANG")[:2])
+        self.frequency_engine = FrequencyEngine()
 
     def execute(self, todo_id: str) -> List[Todo] | None:
         original_todo = self.todo_repository.get_by_id(todo_id)
@@ -28,18 +34,29 @@ class RepetitionTodo:
         if original_todo.frequency == "tomorrow":
             new_start_dt = original_dt.add(days=1)
         else:
+            # a. Déterminer le nouveau jour de départ
             try:
-                # On parse la date fournie par la CLI
-                parsed_date = pendulum.parse(original_todo.frequency, tz=tz)
+                # 1. Traduction du langage naturel en DSL
+                dsl_instruction = self.frequency_parser.parse(original_todo.frequency)
                 
-                # STRICT : On injecte l'heure/min/sec exactes de l'original sur le nouveau jour
-                new_start_dt = parsed_date.at(
+                # 2. Calcul de la prochaine occurrence via l'engine
+                # On demande 1 occurrence à partir de 'today' (ou la date de l'original)
+                occurrences = self.frequency_engine.get_occurrences(dsl_instruction)
+                
+                if not occurrences:
+                    raise ValueError("Aucune occurrence trouvée")
+                    
+                # On prend la première occurrence calculée
+                next_date = occurrences[0]
+                
+                # 3. STRICT : Injection de l'heure exacte de l'original (Règle 3)
+                new_start_dt = next_date.at(
                     original_dt.hour, 
                     original_dt.minute, 
                     original_dt.second
                 )
-            except (ParserError, ValueError, TypeError):
-                # Plus de fallback : si on ne comprend pas la date, on stoppe tout
+            except Exception:
+                # On garde ton message d'erreur pour ne pas casser les attentes du test
                 raise ValueError(f"Instruction de répétition invalide, (format de date) : '{original_todo.frequency}'")
         
         # b. Calculer le delta en secondes par rapport à l'ancien start

@@ -4,6 +4,8 @@ import pendulum
 
 from todo_bene.domain.entities.todo import Todo
 from todo_bene.application.use_cases.todo_repetition import RepetitionTodo
+from todo_bene.domain.services.frequency_engine import FrequencyEngine
+from todo_bene.domain.services.frequency_parser import FrequencyParser
 from todo_bene.infrastructure.persistence.memory.memory_todo_repository import MemoryTodoRepository
 
 @pytest.fixture
@@ -271,3 +273,76 @@ def test_repetition_duration_integrity(test_date, user_id):
     new_child_duration = new_child.date_due - new_child.date_start
     assert new_child_duration == original_child_duration
     assert new_child_duration == 2700  # 45 * 60 secondes
+
+def test_repetition_with_natural_language_integration(user_id):
+    """
+    TEST (RED) : La CLI envoie "tous les jours". 
+    Le use case doit parser ET calculer la prochaine occurrence.
+    """
+    # GIVEN
+    repo = MemoryTodoRepository()        
+    use_case = RepetitionTodo(repo)
+    
+    tz = pendulum.local_timezone()
+    start_dt = pendulum.now(tz=tz).replace(hour=10, minute=0, second=0, microsecond=0)
+    
+    # La chaîne brute saisie par l'utilisateur
+    user_input = "tous les jours" 
+    
+    todo = Todo(
+        title="Installer l'étagère",
+        user=user_id,
+        state=True,
+        date_start=start_dt.int_timestamp,
+        frequency=user_input
+    )
+    repo.save(todo)
+
+    # WHEN
+    result = use_case.execute(todo.uuid)
+
+    # EXPECTED
+    assert result is not None
+    new_root = result[0]
+    
+    # Si "tous les jours", la répétition doit être demain à 10h
+    expected_date = start_dt.add(days=1)
+    
+    assert new_root.date_start == expected_date.int_timestamp
+    # On vérifie que l'heure est préservée (Règle 3)
+    assert pendulum.from_timestamp(new_root.date_start, tz=tz).hour == 10
+
+def test_repetition_dst_transition_safety(user_id):
+    """
+    Vérifie le comportement lors du passage à l'heure d'été.
+    29 Mars 2026 à 02:30 n'existe pas (on saute de 02h à 03h).
+    """
+    repo = MemoryTodoRepository()
+    use_case = RepetitionTodo(repo)
+    tz = pendulum.timezone("Europe/Paris")
+
+    # GIVEN : Une tâche terminée le 28 mars à 02:30
+    # On veut la répéter le 29 mars (jour du saut DST)
+    start_dt = pendulum.datetime(2026, 3, 28, 2, 30, tz=tz)
+    
+    todo = Todo(
+        title="Tâche nocturne critique",
+        user=user_id,
+        state=True,
+        date_start=start_dt.int_timestamp,
+        frequency="2026-03-29" # Date du switch DST
+    )
+    repo.save(todo)
+
+    # WHEN
+    result = use_case.execute(todo.uuid)
+
+    # EXPECTED
+    new_root = result[0]
+    new_dt = pendulum.from_timestamp(new_root.date_start, tz=tz)
+    
+    # Pendulum gère le gap : soit il avance à 03:30 (standard), 
+    # soit il ajuste. L'important est que le code ne crashe pas.
+    assert new_dt.day == 29
+    assert new_dt.hour == 3 # 02:30 devient 03:30 lors du saut
+    assert new_dt.minute == 30
