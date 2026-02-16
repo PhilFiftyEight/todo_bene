@@ -159,6 +159,18 @@ wheels = [
 ]
 
 [[package]]
+name = "holidays"
+version = "0.90"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "python-dateutil" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3f/4e/c64742eaa810523995cc9c7cd97d7a6c16de5544bbe55a1ccd7107418feb/holidays-0.90.tar.gz", hash = "sha256:1fb6a973d9c8834a9b6644fcf369b0663373daa0d06bce5ae37d494e702dfb3f", size = 834130, upload-time = "2026-02-02T18:48:17.852Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9b/3d/e3d23cb51f6353931436df4e9d1d4873311d0ed50d273ef1531bdd074958/holidays-0.90-py3-none-any.whl", hash = "sha256:8ed92ea72e2db5ef00f024c37b03641085699809f42fe5ba03b040be6740f72d", size = 1353734, upload-time = "2026-02-02T18:48:16.138Z" },
+]
+
+[[package]]
 name = "idna"
 version = "3.11"
 source = { registry = "https://pypi.org/simple" }
@@ -619,6 +631,7 @@ version = "0.2.2"
 source = { editable = "." }
 dependencies = [
     { name = "duckdb" },
+    { name = "holidays" },
     { name = "pendulum", extra = ["test"] },
     { name = "text2num" },
     { name = "typer" },
@@ -639,6 +652,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "duckdb", specifier = ">=1.4.3" },
+    { name = "holidays", specifier = ">=0.90" },
     { name = "pendulum", extras = ["test"], specifier = ">=3.2.0" },
     { name = "text2num", specifier = ">=3.0.0" },
     { name = "typer", specifier = ">=0.23.1" },

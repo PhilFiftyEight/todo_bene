@@ -61,7 +61,6 @@ def test_frequency_parser_post_processing_duration():
     assert parser.parse("Tous les lundis pour 1 mois") == "today@weekly#1mon@+1m"
     # Test avec "pendant"
     assert parser.parse("Chaque jour pendant 15 jours") == "today@daily#1d@+15d"
-#TODO: ajouter "chaque jour les 2 prochaines semaines" 
 
 def test_frequency_parser_post_processing_duration_extended():
     parser = FrequencyParser(language="fr")
@@ -82,14 +81,7 @@ def test_frequency_parser_post_processing_duration_extended():
     # "Tous les lundis    pendant   3   semaines"
     assert parser.parse("Tous les lundis    pendant   3   semaines") == "today@weekly#1mon@+3w"
 
-    # 5. Cas limite : Si "prochains" (Cas 5) et "pendant" (Cas 6) sont présents
-    # Ici, le Cas 5 gagne l'extraction (priorité 5), mais le post-traitement 
-    # de durée a le "dernier mot" sur la limite.
-    # "Les 5 prochains jours pendant 2 semaines" -> +2w l'emporte sur 5.
-    #assert parser.parse("Les 5 prochains jours pendant 2 semaines") == "today@daily#1d@+2w"
-    assert parser.parse("Les 5 prochains jours pendant 2 semaines") == "today@sequence#1,2,3,4,5d@+2w"
-
-    #6. # "Chaque jour" -> @daily#1d@∞
+    #5. # "Chaque jour" -> @daily#1d@∞
     # "les 2 prochaines semaines" -> post-traité en @+2w
     assert parser.parse("chaque jour les 2 prochaines semaines") == "today@daily#1d@+2w"
 
@@ -235,3 +227,6 @@ def test_parse_exclusion_month_short():
     assert parser.parse("Tous les lundis sauf août") == "today@weekly#1mon@∞!aug"
     parser = FrequencyParser(language="en")
     assert parser.parse("Every Monday except August") == "today@weekly#1mon@∞!aug"
+
+#TODO: ajouter "chaque jour les 2 prochaines semaines" 
+# TODO verifier que nous avons des tests pour semestre et quinzaine

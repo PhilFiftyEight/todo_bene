@@ -15,6 +15,7 @@ readme = "README.md"
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "duckdb>=1.4.3",
+    "holidays>=0.90",
     "pendulum[test]>=3.2.0",
     "text2num>=3.0.0",
     "typer>=0.23.1",
