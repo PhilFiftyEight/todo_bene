@@ -12,11 +12,13 @@ description = "To-do-list"
 license = "MIT"
 license-files = ["LICENSE.txt"]
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.13,<3.14"
 dependencies = [
     "duckdb>=1.4.3",
+    "holidays>=0.91",
     "pendulum[test]>=3.2.0",
-    "typer>=0.21.1",
+    "text2num>=3.0.0",
+    "typer>=0.24.0",
 ]
 
 [dependency-groups]
@@ -28,10 +30,12 @@ dev = [
     "pytest-mock>=3.15.1",
     "radon>=6.0.1",
     "requests>=2.32.5",
-    "ruff>=0.15.0",
+    "ruff>=0.15.1",
 ]
 [project.scripts]
 tb = "todo_bene.infrastructure.cli.main:app"
+gh_issue = "github_utils.gh_issue:main"
+gh_check = "github_utils.check_ci:check_status"
 
 [tool.uv]
 package = true

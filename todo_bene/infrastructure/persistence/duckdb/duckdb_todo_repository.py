@@ -12,7 +12,7 @@ class DuckDBTodoRepository(TodoRepository):
         self._conn = connection
 
     def _init_db(self):
-        self._conn.execute("""
+        self._conn.execute(self._conn.execute("""
             CREATE TABLE IF NOT EXISTS todos (
                 uuid UUID PRIMARY KEY,
                 title VARCHAR,
@@ -23,9 +23,11 @@ class DuckDBTodoRepository(TodoRepository):
                 date_start DOUBLE,
                 date_due DOUBLE,
                 user_id UUID,
-                parent_id UUID
+                parent_id UUID,
+                frequency VARCHAR,
+                date_final DOUBLE
             )
-        """)
+        """))
         # AJOUT : La table users
         self._conn.execute("""
             CREATE TABLE IF NOT EXISTS users (
@@ -54,7 +56,7 @@ class DuckDBTodoRepository(TodoRepository):
         self._conn.execute(
             """
             INSERT OR REPLACE INTO todos 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
             (
                 todo.uuid,
@@ -67,6 +69,8 @@ class DuckDBTodoRepository(TodoRepository):
                 todo.date_due,
                 todo.user,
                 todo.parent,
+                todo.frequency,
+                todo.date_final,
             ),
         )
 
@@ -184,6 +188,8 @@ class DuckDBTodoRepository(TodoRepository):
             date_due=row[7],
             user=row[8],
             parent=row[9],
+            frequency=row[10],
+            date_final=row[11],
         )
 
     def get_user_by_email(self, email: str):

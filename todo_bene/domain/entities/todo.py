@@ -57,7 +57,7 @@ class Todo:
             parts = self.frequency.split(",")
             try:
                 self.frequency = (parts[0], int(parts[1]))
-            except ValueError, IndexError:
+            except (ValueError, IndexError):
                 pass
 
     def _init_dates(self):
@@ -97,6 +97,7 @@ class Todo:
             "category",
             "date_start",
             "date_due",
+            "frequency",
         }
 
         # On extrait les valeurs pour la validation croisée

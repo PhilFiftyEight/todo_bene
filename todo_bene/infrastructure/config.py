@@ -33,7 +33,7 @@ def load_full_config() -> Dict[str, Any]:
         return {"profiles": {}, "active_profile": None}
     try:
         return json.loads(config_path.read_text())
-    except json.JSONDecodeError, OSError:
+    except (json.JSONDecodeError, OSError):
         return {"profiles": {}, "active_profile": None}
 
 
@@ -54,7 +54,7 @@ def load_user_info() -> Tuple[Optional[UUID], Optional[str], Optional[str]]:
     try:
         u_id = UUID(profile["user_id"])
         return u_id, profile.get("db_path"), active_name
-    except ValueError, KeyError:
+    except (ValueError, KeyError):
         return None, None, None
 
 

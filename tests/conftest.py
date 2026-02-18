@@ -11,7 +11,6 @@ from todo_bene.infrastructure.persistence.duckdb.duckdb_category_repository impo
 )
 
 
-# ... (garde tes fixtures setup_test_env, test_config_env, user_id telles quelles)
 @pytest.fixture(autouse=True)
 def setup_test_env(tmp_path, monkeypatch):
     """Isole totalement la config et la DB pour chaque test."""
@@ -70,7 +69,7 @@ def repository(monkeypatch, repo):
         yield repo
 
     # On patche l'endroit où la CLI va chercher son repository
-    # Attention à bien vérifier le chemin du patch selon ton arborescence
+    # Attention à bien vérifier le chemin du patch l'arborescence
     monkeypatch.setattr(
         "todo_bene.infrastructure.cli.main.get_repository", mock_get_repository
     )
