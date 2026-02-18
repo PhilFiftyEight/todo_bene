@@ -16,7 +16,9 @@ CREATE TABLE IF NOT EXISTS todos (
     date_start DOUBLE,
     date_due DOUBLE,
     user_id UUID,
-    parent_id UUID
+    parent_id UUID,
+    frequency VARCHAR,
+    date_final DOUBLE
 );
 
 -- Table Categories

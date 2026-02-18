@@ -228,5 +228,24 @@ def test_parse_exclusion_month_short():
     parser = FrequencyParser(language="en")
     assert parser.parse("Every Monday except August") == "today@weekly#1mon@∞!aug"
 
+def test_parse_single_day_name_returns_next_occurrence_fr():
+    """
+    Un nom de jour seul doit retourner une string DSL 
+    ancrée à la veille du prochain jour correspondant.
+    """
+    parser = FrequencyParser("fr")
+    
+    # On simule un contexte où "aujourd'hui" est le jeudi 19 février 2026
+    # Le prochain "Mercredi" est donc le 25 février 2026
+    with pendulum.travel_to(pendulum.datetime(2026,2,19, tz=pendulum.local_timezone())):
+        result = parser.parse("Mercredi")
+        
+        # Le premier mercredi suivant est le 2026-02-25.
+        # Pour que l'occurrence tombe pile ce jour-là, l'ancre doit être la veille.
+        expected_anchor = "2026-02-24"
+        expected_dsl = f"{expected_anchor}@daily#1d@1"
+        
+        assert result == expected_dsl, f"Attendu '{expected_dsl}', obtenu '{result}'"
+
 #TODO: ajouter "chaque jour les 2 prochaines semaines" 
 # TODO verifier que nous avons des tests pour semestre et quinzaine

@@ -346,3 +346,51 @@ def test_repetition_dst_transition_safety(user_id):
     assert new_dt.day == 29
     assert new_dt.hour == 3 # 02:30 devient 03:30 lors du saut
     assert new_dt.minute == 30
+
+def test_repetition_multiple_occurrences_cycle(user_id):
+    """
+    Vérifie que le use case génère bien 4 occurrences distinctes
+    pour une fréquence 'Mardi et Jeudi pendant 2 semaines'.
+    """
+    repo = MemoryTodoRepository()
+    use_case = RepetitionTodo(repo)
+    tz = pendulum.local_timezone()
+    
+    # GIVEN : Lundi 5 Janvier 2026 à 10h00
+    now_frozen = pendulum.datetime(2026, 1, 5, 10, 0, tz=tz)
+    
+    with pendulum.travel_to(now_frozen):
+        todo = Todo(
+            title="Sport bi-hebdomadaire",
+            user=user_id,
+            state=True, # Doit être terminée pour être répétée
+            date_start=now_frozen.int_timestamp,
+            # Le parser devrait normalement transformer l'entrée en DSL
+            # Ici on simule le résultat du parser pour tester le Use Case
+            frequency="mardi et jeudi pendant 2 semaines" 
+        )
+        repo.save(todo)
+
+        # WHEN
+        result = use_case.execute(todo.uuid)
+
+        # EXPECTED
+        # On attend 4 nouveaux Todos (Mardi 6, Jeudi 8, Mardi 13, Jeudi 15)
+        assert result is not None
+        assert len(result) == 4, f"Attendu 4 occurrences, obtenu {len(result)}"
+        
+        # Vérification des dates (Règle 3 : conservation de l'heure à 10h00)
+        dates_obtenues = sorted([t.date_start for t in result])
+        
+        expected_dates = [
+            pendulum.datetime(2026, 1, 6, 10, 0, tz=tz).int_timestamp,
+            pendulum.datetime(2026, 1, 8, 10, 0, tz=tz).int_timestamp,
+            pendulum.datetime(2026, 1, 13, 10, 0, tz=tz).int_timestamp,
+            pendulum.datetime(2026, 1, 15, 10, 0, tz=tz).int_timestamp,
+        ]
+        
+        for i, expected_ts in enumerate(expected_dates):
+            actual_dt = pendulum.from_timestamp(dates_obtenues[i], tz=tz)
+            expected_dt = pendulum.from_timestamp(expected_ts, tz=tz)
+            assert dates_obtenues[i] == expected_ts, \
+                f"Occurrence {i+1} incorrecte. Attendu {expected_dt}, obtenu {actual_dt}"

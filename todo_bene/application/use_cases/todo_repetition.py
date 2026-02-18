@@ -27,50 +27,49 @@ class RepetitionTodo:
             
         # --- LOGIQUE DE DATES (Règle 3) ---
         tz = pendulum.local_timezone()
-        # On récupère l'objet DateTime complet de l'original pour garder l'heure
         original_dt = pendulum.from_timestamp(original_todo.date_start, tz=tz)
         
-        # a. Déterminer le nouveau jour de départ
-        if original_todo.frequency == "tomorrow":
-            new_start_dt = original_dt.add(days=1)
-        else:
-            # a. Déterminer le nouveau jour de départ
-            try:
-                # 1. Traduction du langage naturel en DSL
+        created_todos = []
+
+        try:
+            # Gestion du cas spécifique "tomorrow" (Règle métier par défaut)
+            if original_todo.frequency == "tomorrow":
+                occurrences = [original_dt.add(days=1)]
+            else:
+                # a. Récupération des dates via le parser et l'engine
                 dsl_instruction = self.frequency_parser.parse(original_todo.frequency)
-                
-                # 2. Calcul de la prochaine occurrence via l'engine
-                # On demande 1 occurrence à partir de 'today' (ou la date de l'original)
                 occurrences = self.frequency_engine.get_occurrences(dsl_instruction)
-                
-                if not occurrences:
-                    raise ValueError("Aucune occurrence trouvée")
-                    
-                # On prend la première occurrence calculée
-                next_date = occurrences[0]
-                
-                # 3. STRICT : Injection de l'heure exacte de l'original (Règle 3)
-                new_start_dt = next_date.at(
+
+            if not occurrences:
+                raise ValueError("Aucune occurrence trouvée")
+
+            # b. Boucle sur chaque occurrence pour créer une salve (Racine + Enfants)
+            for next_date in occurrences:
+                # On réinjecte l'heure/min/sec de l'original dans la date de l'engine
+                # next_date peut être un DateTime (via engine) ou un objet pendulum (via tomorrow)
+                target_dt = next_date.at(
                     original_dt.hour, 
                     original_dt.minute, 
                     original_dt.second
-                )
-            except Exception:
-                # On garde ton message d'erreur pour ne pas casser les attentes du test
-                raise ValueError(f"Instruction de répétition invalide, (format de date) : '{original_todo.frequency}'")
-        
-        # b. Calculer le delta en secondes par rapport à l'ancien start
-        time_delta = new_start_dt.int_timestamp - original_todo.date_start
+                ).in_timezone(tz)
 
-        created_todos: List[Todo] = []
-        
-        # Cloner la racine (la fréquence devient vide sur le clone)
-        new_root = self._create_clone(original_todo, time_delta=time_delta)
-        self.todo_repository.save(new_root)
-        created_todos.append(new_root)
-        
-        # Cloner les descendants récursivement (Règle 2)
-        self._clone_descendants(original_todo.uuid, new_root.uuid, created_todos, time_delta)
+                # Calcul du delta en secondes pour cette occurrence précise
+                time_delta = target_dt.int_timestamp - original_todo.date_start
+
+                # Création du clone de la racine
+                new_root = self._create_clone(original_todo, time_delta=time_delta)
+                self.todo_repository.save(new_root)
+                created_todos.append(new_root)
+
+                # Création des descendants pour cette occurrence (Règle 2)
+                self._clone_descendants(original_todo.uuid, new_root.uuid, created_todos, time_delta)
+                
+        except Exception as e:
+            # Si c'est déjà notre ValueError "Aucune occurrence", on la laisse remonter
+            if str(e) == "Aucune occurrence trouvée":
+                raise e
+            # Sinon, on lève l'exception d'instruction invalide
+            raise ValueError(f"Instruction de répétition invalide : '{original_todo.frequency}'")
         
         return created_todos
 

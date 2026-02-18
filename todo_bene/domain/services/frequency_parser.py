@@ -90,10 +90,30 @@ class FrequencyParser:
             # il saute au jour suivant. Pour gérer une date fixe il faut donc soustraire 1 JOUR
             start_anchor = parsed_date.subtract(days=1).to_date_string() 
             return f"{start_anchor}@daily#1d@1"
+        
         except pendulum.exceptions.ParserError:
-            # Si ce n'est pas une date brute, on continue vers
-            # la logique de langage naturel (ex: "tous les jours")
+            # RJQ : Gestion d'un nom de jour isolé (ex: "Mercredi")
+            # On cherche si l'entrée correspond à une clé du lexique pointant vers un jour
+            day_names = {k: v for k, v in self._lexicon.items() if v in ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']}
+            input_clean = text.lower().strip()
+            
+            if input_clean in day_names:
+                day_key = day_names[input_clean]
+                # Mapping pour Pendulum
+                mapping = {
+                    'mon': pendulum.MONDAY, 'tue': pendulum.TUESDAY, 'wed': pendulum.WEDNESDAY,
+                    'thu': pendulum.THURSDAY, 'fri': pendulum.FRIDAY, 'sat': pendulum.SATURDAY, 'sun': pendulum.SUNDAY
+                }
+                now = pendulum.now(tz=pendulum.local_timezone())
+                # On calcule la date du prochain occurrence de ce jour
+                target_date = now.next(mapping[day_key]).start_of('day')
+                # L'ancre est fixée à J-1 pour que l'occurrence tombe le bon jour
+                anchor = target_date.subtract(days=1).to_date_string()
+                return f"{anchor}@daily#1d@1"
+            
+            # Si ce n'est pas un jour, on poursuit vers la normalisation et les extracteurs
             pass
+            
 
         # 1. Normalisation
         normalized = self._normalize(text)

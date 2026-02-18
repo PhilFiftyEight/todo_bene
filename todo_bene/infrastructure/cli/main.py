@@ -21,6 +21,7 @@ import pendulum
 from todo_bene.application.use_cases.todo_find_top_level_by_user import (
     TodoGetAllRootsByUserUseCase,
 )
+from todo_bene.application.use_cases.todo_repetition import RepetitionTodo
 from todo_bene.application.use_cases.todo_update import TodoUpdateUseCase
 from todo_bene.application.use_cases.user_create import UserCreateUseCase
 from todo_bene.application.use_cases.todo_get import TodoGetUseCase
@@ -227,10 +228,32 @@ def handle_completion_success(repo, result, user_id: UUID):
     if result.get("is_root"):
         todo = repo.get_by_id(result["completed_id"])
         title = todo.title if todo else "la racine"
-        Prompt.ask(
+        answer = Prompt.ask(
             f"\n[bold cyan]' {title} ' est une tâche racine. Voulez-vous la répéter ?[/bold cyan] (o/N)",
             default="n",
         )
+        if answer == "o":
+            # Si la tâche n'a pas de fréquence, on la demande (déclenche le 2ème prompt du test)
+            if not todo.frequency:
+                new_freq = Prompt.ask("Fréquence de répétition ?", default="tomorrow")
+                if new_freq:
+                    todo.frequency = new_freq
+                    repo.save(todo)
+            
+            # Exécution de la répétition
+            if todo.frequency:
+                try:
+                    repetition_use_case = RepetitionTodo(repo)
+                    new_todos = repetition_use_case.execute(todo.uuid)
+                    
+                    if new_todos:
+                        # Identification de la nouvelle racine créée
+                        new_root = next(t for t in new_todos if t.parent is None)
+                        dt_str = pendulum.from_timestamp(new_root.date_start, tz=pendulum.local_timezone()).format("DD/MM/YYYY HH:mm")
+                        console.print(Panel(f"[green]Nouvelle occurrence planifiée pour le : {dt_str}[/green]", border_style="green"))
+                        sleep(2)
+                except Exception as e:
+                    show_error(f"Erreur lors de la répétition : {e}")
         should_exit = True
     if result.get("newly_pending_ids"):
         ask_validate_parents_recursive(repo, result["newly_pending_ids"], user_id)
@@ -536,7 +559,7 @@ def show_details(todo_uuid: UUID, user_id: UUID) -> bool:
         while True:
             todo, children = TodoGetUseCase(repo).execute(todo_uuid, user_id)
             _display_detail_view(todo, children, repo)
-            choice = Prompt.ask("\nVotre choix", default="r ").lower().strip()
+            choice = Prompt.ask("\nVotre choix", default="r").lower().strip()
             if choice.isdigit():
                 if _handle_navigation(choice, children, user_id):
                     return True

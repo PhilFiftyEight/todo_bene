@@ -97,6 +97,7 @@ class Todo:
             "category",
             "date_start",
             "date_due",
+            "frequency",
         }
 
         # On extrait les valeurs pour la validation croisée

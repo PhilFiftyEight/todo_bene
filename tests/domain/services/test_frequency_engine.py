@@ -888,6 +888,18 @@ def test_mirror_exclusion_month_short_fr_en(parser, engine, tz):
         # Double vérification : aucun mois d'août dans la liste
         assert all(o.month != 8 for o in occurrences)
 
+def test_mirror_parse_single_day_name_returns_next_occurrence_fr(parser, engine, tz):
+    """
+    Vérifie que l'engine génère bien la date du mercredi 25 février 
+    à partir du DSL produit pour "Mercredi" le 19 février.
+    """
+    with pendulum.travel_to(pendulum.datetime(2026,2,19, tz=tz)):
+        instruction = parser().parse("Mercredi")
+        occurrences = engine.get_occurrences(instruction)
+        date_expected = pendulum.DateTime(2026, 2, 25, 0, 0, 0, tzinfo=tz)
+        assert occurrences == [date_expected]
+
+
 # def test_mirror_every_two_days_next_fortnight(parser, engine, tz):
 #     """
 #     Test Miroir : "Tous les 2 jours à partir de la prochaine quinzaine"
