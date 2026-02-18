@@ -30,7 +30,7 @@ htmtlcov/
 .idea/
 
 # docs perso
-docs/
+docs_internes_perso/
 
 # Base de données DuckDB
 *.db
