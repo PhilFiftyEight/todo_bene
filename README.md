@@ -3,7 +3,7 @@
 
 # 📝 Todo Bene
 
-[![Version Python](https://img.shields.io/badge/python-3.14%2B-blue)](https://www.python.org/)
+[![Version Python](https://img.shields.io/badge/python-3.13%2B-blue)](https://www.python.org/)
 [![Licence: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tests](https://img.shields.io/badge/tests-180%20pass%C3%A9s-brightgreen)](#)
 
