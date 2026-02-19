@@ -1,7 +1,7 @@
 # Copyright (c) 2026 PhilFiftyEight
 # Licensed under the MIT License.
 import sys
-from time import sleep
+from os import getenv
 from typing import Optional, Tuple
 from typing import Annotated
 from contextlib import contextmanager
@@ -52,7 +52,12 @@ console = Console()
 
 
 # --- UI TOOLKIT ---
-def show_success(message: str, title: str = "Succès", wait: float = 0):
+def _pause():
+    info="Appuyez sur une touche pour continuer..." # if FR else default > "Press any key to continue..."
+    typer.pause(info) if getenv("LANG")[3:5] == "FR" else typer.pause()
+
+
+def show_success(message: str, title: str = "Succès", pause: bool = False):
     """Affiche un message de succès dans un Panel vert."""
     console.print(
         Panel(
@@ -62,11 +67,11 @@ def show_success(message: str, title: str = "Succès", wait: float = 0):
             expand=False,
         )
     )
-    if wait:
-        sleep(wait)
+    if pause:
+        _pause()
 
 
-def show_error(message: str, title: str = "Erreur", wait: float = 0):
+def show_error(message: str, title: str = "Erreur", pause: bool = False):
     """Affiche un message d'erreur dans un Panel rouge."""
     console.print(
         Panel(
@@ -76,8 +81,8 @@ def show_error(message: str, title: str = "Erreur", wait: float = 0):
             expand=False,
         )
     )
-    if wait:
-        sleep(wait)
+    if pause:
+        _pause()
 
 
 def ensure_user_setup() -> Tuple[UUID, str]:
@@ -177,13 +182,13 @@ def get_date_format():
 
 def continue_after_invalid(message: str):
     # console.print(f"[red]{message}[/red]")
-    show_error(message, title="Invalide")
-    if sys.stdin.isatty():
-        Prompt.ask(
-            "[dim]Appuyez sur Entrée pour continuer[/dim]",
-            show_default=False,
-            default="",
-        )
+    show_error(message, title="Invalide", pause=True)
+    # if sys.stdin.isatty():
+    #     Prompt.ask(
+    #         "[dim]Appuyez sur Entrée pour continuer[/dim]",
+    #         show_default=False,
+    #         default="",
+    #     )
 
 
 def _resolve_parent_uuid(repo, user_id: UUID, parent_input: str) -> Optional[UUID]:
@@ -250,10 +255,9 @@ def handle_completion_success(repo, result, user_id: UUID):
                         # Identification de la nouvelle racine créée
                         new_root = next(t for t in new_todos if t.parent is None)
                         dt_str = pendulum.from_timestamp(new_root.date_start, tz=pendulum.local_timezone()).format("DD/MM/YYYY HH:mm")
-                        console.print(Panel(f"[green]Nouvelle occurrence planifiée pour le : {dt_str}[/green]", border_style="green"))
-                        sleep(2)
+                        show_success(f"[green]Nouvelle occurrence planifiée pour le : {dt_str}[/green]", "Todo répété", True)
                 except Exception as e:
-                    show_error(f"Erreur lors de la répétition : {e}")
+                    show_error(f"Erreur lors de la répétition : {e}", pause=True)
         should_exit = True
     if result.get("newly_pending_ids"):
         ask_validate_parents_recursive(repo, result["newly_pending_ids"], user_id)
@@ -272,7 +276,7 @@ def ask_validate_parents_recursive(repo, newly_pending_ids: list, user_id: UUID)
             if result and result.get("success"):
                 # console.print(f"[bold green]✓ Parent '{p_todo.title}' terminé ![/bold green]")
                 show_success(
-                    f"Parent '{p_todo.title}' terminé !", title="Cascade", wait=0.5
+                    f"Parent '{p_todo.title}' terminé !", title="Cascade", pause=True
                 )
                 handle_completion_success(repo, result, user_id)
 
@@ -334,7 +338,7 @@ def _handle_action(
         if typer.confirm(f"Supprimer {todo.title} ?"):
             TodoDeleteUseCase(repo).execute(todo.uuid, user_id)
             # console.print("[green]Supprimé avec succès.[/green]")
-            show_success("Supprimé avec succès.", title="Suppression", wait=0.8)
+            show_success("Supprimé avec succès.", title="Suppression", pause=True)
             return True, False
     if choice == "m":
         console.print("\n[bold blue]📝 Modification du Todo[/bold blue]")
@@ -378,7 +382,7 @@ def _handle_action(
                 show_error(
                     "Format de date invalide. Utilisez : DD/MM/YYYY HH:mm",
                     title="Date",
-                    wait=1,
+                    pause=True,
                 )
                 raise ValueError()
 
@@ -412,11 +416,11 @@ def _handle_action(
                         f"[dim yellow]Champs non modifiables : {', '.join(tech_forbiden)}[/dim yellow]"
                     )
             # console.print("[bold green]✔ Todo mis à jour avec succès ![/bold green]")
-            show_success("Todo mis à jour avec succès !", title="Mise à jour", wait=0.5)
+            show_success("Todo mis à jour avec succès !", title="Mise à jour", pause=True)
             return False, False
         except ValueError as e:
             # console.print(f"[bold red]❌ Erreur : {e}[/bold red]")
-            show_error(f"Erreur : {e}", title="Modification", wait=1)
+            show_error(f"Erreur : {e}", title="Modification", pause=True)
             return False, False
 
     def menu_nouvelle_sous_tache(parent: Todo, repo):
@@ -440,7 +444,7 @@ def _handle_action(
             new_due_ts = pendulum.from_format(new_due, fmt, tz=tz).timestamp()
         except ValueError:
             # console.print("[bold red]Format de date invalide ![/bold red]")
-            show_error("Format de date invalide !", title="Date", wait=0.7)
+            show_error("Format de date invalide !", title="Date", pause=True)
             return False
         subtask = Todo(
             title=title,
@@ -455,7 +459,7 @@ def _handle_action(
         repo.save(subtask)
         # console.print(f"[bold green]✔ Sous-tâche '{title}' créée avec succès ![/bold green]")
         show_success(
-            f"Sous-tâche '{title}' créée avec succès !", title="Sous-tâche", wait=0.5
+            f"Sous-tâche '{title}' créée avec succès !", title="Sous-tâche", pause=True
         )
         return True
 
@@ -471,12 +475,16 @@ def _execute_completion_logic(todo: Todo, repo, user_id: UUID) -> bool:
     if result is None:
         # console.print("[red]Erreur : Tâche introuvable ou accès refusé.[/red]")
         show_error(
-            "Erreur : Tâche introuvable ou accès refusé.", title="Accès", wait=0.5
+            "Erreur : Tâche introuvable ou accès refusé.", title="Accès", pause=True
         )
         return False
     if result.get("success"):
         # console.print(f"[green]✔[/green] Tâche '{todo.title}' terminée !")
-        show_success(f"Tâche '{todo.title}' terminée !", title="Terminé", wait=0.5)
+        show_success(
+            f"Tâche '{todo.title}' terminée !",
+            title="Terminé",
+            pause=False if result.get("is_root") else True
+        )
         handle_completion_success(repo, result, user_id)
         return True
     if result.get("reason") == "active_children":
@@ -489,7 +497,7 @@ def _execute_completion_logic(todo: Todo, repo, user_id: UUID) -> bool:
             if final_result and final_result.get("success"):
                 # console.print(f"[green]✔[/green] {todo.title} a été terminée !")
                 show_success(
-                    f"{todo.title} a été terminée !", title="Forçage", wait=0.5
+                    f"{todo.title} a été terminée !", title="Forçage"
                 )
                 handle_completion_success(repo, final_result, user_id)
                 return True
@@ -658,7 +666,7 @@ def create(
                 msg = f"Succès ! [cyan]{todo.title}[/cyan]"
                 if todo.priority:
                     msg += " [yellow](prioritaire)[/yellow]"
-                show_success(msg, title="Todo créé", wait=0.5)
+                show_success(msg, title="Todo créé")
                 break
             except ValueError as e:
                 # console.print(f"\n[bold red]🙅‍♂️ Erreur de validation : {e}[/bold red]")
@@ -709,7 +717,7 @@ def list_todos(
                 if category:
                     msg += f" pour la catégorie {category}"
                 # console.print(f"[yellow]{msg}.[/yellow]")
-                show_error(f"{msg}.", title="Vide", wait=0.5)
+                show_error(f"{msg}.", title="Vide")
                 return
 
             if sys.stdin.isatty():
