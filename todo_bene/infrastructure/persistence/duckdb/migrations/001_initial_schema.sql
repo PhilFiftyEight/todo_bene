@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
     email TEXT UNIQUE
 );
 
--- Table Todos
+-- Table Todos (Version v0.20)
 CREATE TABLE IF NOT EXISTS todos (
     uuid UUID PRIMARY KEY,
     title VARCHAR,
@@ -16,9 +16,7 @@ CREATE TABLE IF NOT EXISTS todos (
     date_start DOUBLE,
     date_due DOUBLE,
     user_id UUID,
-    parent_id UUID,
-    frequency VARCHAR,
-    date_final DOUBLE
+    parent_id UUID
 );
 
 -- Table Categories
