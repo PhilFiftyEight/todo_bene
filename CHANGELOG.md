@@ -25,3 +25,28 @@
 - **Stability**: The codebase is now backed by a comprehensive suite of 86 passing tests.
 - **Dependency Management**: Optimized use of uv for fast and reliable installation.
 
+## 📝 Changelog - v0.30 (2026-02-19)
+
+### 🚀 New Features
+
+* **Advanced Repetition System**: Full management of recurring tasks via a DSL engine (Daily, Weekly, Monthly, "Every Tuesday", etc.).
+* **Recursive Cloning**: The system now automatically duplicates the entire task tree (parent task and all its sub-tasks).
+* **Time Management**: Precise preservation of original task time (hours, minutes, seconds) when creating future occurrences.
+* **Safety Guardrails**: Automatic 1-year limit on repetitions to prevent database flooding.
+
+### 🛠 Infrastructure & Persistence
+
+* **Migration Manager**: Implementation of a database versioning system (`_migrations`) for seamless updates without data loss.
+* **Schema Evolution**: Added `frequency` (VARCHAR) and `date_final` (DOUBLE) columns to the `todos` table.
+* **SQL Robustness**: Transitioned to a granular migration structure (files `001`, `002`).
+
+### 🎨 User Experience (UX)
+
+* **Interactive Control**: Replaced fixed `sleep` timers with user validation (`click.pause`), making the CLI more responsive.
+* **Enhanced Feedback**: Clearer success and error messages during task creation and completion.
+
+### 🧪 Quality & Reliability
+
+* **Test Coverage**: 180 unit and integration tests passed, covering complex repetition scenarios.
+
+---
