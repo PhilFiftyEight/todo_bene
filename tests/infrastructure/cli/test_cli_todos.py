@@ -35,7 +35,7 @@ def test_cli_priority_creation_and_display(test_config_env):
 
     # Vérification de l'étoile dans la liste
     result_list = runner.invoke(
-        app, ["list"], env={"TODO_BENE_CONFIG_PATH": str(test_config_env)}
+        app, ["list", "--period", "all"], env={"TODO_BENE_CONFIG_PATH": str(test_config_env)}
     )
     assert "🔥" in result_list.stdout
     assert "Urgent !" in result_list.stdout
@@ -58,7 +58,7 @@ def test_cli_create_with_french_dates(test_config_env):
 
     # Vérification de l'affichage localisé dans la liste
     result_list = runner.invoke(
-        app, ["list"], env={"TODO_BENE_CONFIG_PATH": str(test_config_env)}
+        app, ["list", "--period", "all"], env={"TODO_BENE_CONFIG_PATH": str(test_config_env)}
     )
     assert start_str + " 00:00" in result_list.stdout
     assert due_str + " 23:59" in result_list.stdout
@@ -86,7 +86,7 @@ def test_cli_default_date_logic(test_config_env, time_machine):
 
     # Assert : Vérification dans la liste au format FR
     result_list = runner.invoke(
-        app, ["list"], env={"TODO_BENE_CONFIG_PATH": str(test_config_env)}
+        app, ["list", "--period", "all"], env={"TODO_BENE_CONFIG_PATH": str(test_config_env)}
     )
 
     # Doit afficher l'heure précise de création
@@ -109,7 +109,7 @@ def test_cli_precise_hour_parsing_fr(test_config_env):
         )
         
         result_list = runner.invoke(
-            app, ["list"], env={"TODO_BENE_CONFIG_PATH": str(test_config_env)}
+            app, ["list", "--period", "all"], env={"TODO_BENE_CONFIG_PATH": str(test_config_env)}
         )
         assert "12/02/2026 14:15" in result_list.stdout
         # L'échéance doit suivre sur le même jour à 23:59
@@ -141,7 +141,7 @@ def test_cli_create_with_various_separators(test_config_env):
     )
     pendulum.travel_back()
     result_list = runner.invoke(
-        app, ["list"], env={"TODO_BENE_CONFIG_PATH": str(test_config_env)}
+        app, ["list", "--period", "all"], env={"TODO_BENE_CONFIG_PATH": str(test_config_env)}
     )
     assert expected_slash1 in result_list.stdout
     assert expected_slash2 in result_list.stdout

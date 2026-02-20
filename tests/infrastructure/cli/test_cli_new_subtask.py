@@ -41,7 +41,7 @@ def test_menu_detail_trigger_new_subtask(
     monkeypatch.setattr("rich.prompt.Prompt.ask", lambda prompt, **kwargs: next(inputs))
 
     result = runner.invoke(
-        app, ["list"], env={"TODO_BENE_CONFIG_PATH": str(test_config_env)}
+        app, ["list", "--period", "all"], env={"TODO_BENE_CONFIG_PATH": str(test_config_env)}
     )
 
     # 3. Assertions pour le RED
@@ -68,7 +68,7 @@ def test_menu_detail_inputs_subtask(repository, user_id, monkeypatch, test_confi
     # "r", "q" -> Sortie
     inputs = "1\nn\nSous-tâche test\nMa description\ny\nr\nq"
     result = runner.invoke(
-        app, ["list"], input=inputs, env={"TODO_BENE_CONFIG_PATH": str(test_config_env)}
+        app, ["list", "--period", "all"], input=inputs, env={"TODO_BENE_CONFIG_PATH": str(test_config_env)}
     )
 
     # Assertions : on vérifie que les prompts ont été affichés (ou sont présents dans le stdout)
@@ -102,7 +102,7 @@ def test_menu_detail_dates_subtask(repository, user_id, monkeypatch, test_config
     # inputs = "1\nn\nTitre\nDesc\nn\n\n\nr\nq\n"
     inputs = "1\nn\nTitre\nDesc\n\n\n\n\n\n"
     result = runner.invoke(
-        app, ["list"], input=inputs, env={"TODO_BENE_CONFIG_PATH": str(test_config_env)}
+        app, ["list", "--period", "all"], input=inputs, env={"TODO_BENE_CONFIG_PATH": str(test_config_env)}
     )
 
     # On vérifie que le CLI propose les dates du parent par défaut
