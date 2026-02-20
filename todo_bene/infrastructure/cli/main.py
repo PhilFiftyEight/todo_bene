@@ -10,6 +10,7 @@ from uuid import UUID
 from pathlib import Path
 import typer
 from rich.table import Table
+from rich.style import Style
 from rich.console import Console
 from rich import box
 from rich.prompt import Confirm, Prompt
@@ -50,11 +51,14 @@ from todo_bene.infrastructure.persistence.duckdb.duckdb_category_repository impo
 app = typer.Typer()
 console = Console()
 
+# get locale
+def _get_locale():
+    return getenv("LANG")[3:5]
 
 # --- UI TOOLKIT ---
 def _pause():
     info="Appuyez sur une touche pour continuer..." # if FR else default > "Press any key to continue..."
-    typer.pause(info) if getenv("LANG")[3:5] == "FR" else typer.pause()
+    typer.pause(info) if _get_locale() == "FR" else typer.pause()
 
 
 def show_success(message: str, title: str = "Succès", pause: bool = False):
@@ -504,7 +508,7 @@ def _execute_completion_logic(todo: Todo, repo, user_id: UUID) -> bool:
     return False
 
 
-def _display_root_list(roots: list[Todo], repo):
+def _display_root_list(roots: list[Todo], repo, period: str = "all"):
     tz = pendulum.local_timezone()
     date_fmt = get_date_format()
     table = Table(box=box.SIMPLE, header_style="bold", row_styles=["none", "dim"])
@@ -514,7 +518,40 @@ def _display_root_list(roots: list[Todo], repo):
     table.add_column("Description", style="white")
     table.add_column("Début", style="green")
     table.add_column("Échéance", style="magenta")
+
+    last_group = None
+
     for idx, todo in enumerate(roots, 1):
+        # LOGIQUE DE REGROUPEMENT
+        current_group = None
+        dt_due = pendulum.from_timestamp(todo.date_due, tz=tz)
+        
+        if period == "week":
+            current_group = dt_due.format("dddd DD MMMM", locale=_get_locale()).upper()
+        elif period == "month":
+            current_group = f"SEMAINE {dt_due.week_of_year} ({dt_due.start_of('week').format('DD/MM', locale=_get_locale())})"
+
+        # Si le groupe change, on ajoute une section visuelle
+        # Insertion d'un séparateur si le groupe change
+        if current_group and current_group != last_group:
+            # On ajoute une ligne vide pour aérer avant le titre (sauf si c'est le premier groupe)
+            if last_group is not None:
+                table.add_row("", "", "", "", "", "")
+            
+            # Le titre de groupe : On remplit la colonne "Titre" (index 2) 
+            # et on laisse les autres vides pour éviter le tassement dans "Idx"
+            table.add_row(
+                "", 
+                "", 
+                current_group,
+                "", 
+                "", 
+                "",
+                style=Style(color="yellow", dim=False, bold=True)
+            )
+            table.add_section()
+            last_group = current_group
+
         prio_mark = "🔥" if todo.priority else ""
         children = repo.find_by_parent(todo.uuid)
         child_signal = (
@@ -605,6 +642,9 @@ def complete_category(incomplete: str):
         name for name in all_categories if name.lower().startswith(incomplete.lower())
     ]
 
+def complete_period(incomplete: str):
+    periods = ["today", "week", "month", "all"]
+    return [p for p in periods if p.startswith(incomplete.lower())]
 
 @app.command(name="add")
 def create(
@@ -697,12 +737,16 @@ def list_todos(
         Optional[str],
         typer.Option("--category", "-c", autocompletion=complete_category),
     ] = None,
+    period: Annotated[
+        str, 
+        typer.Option("--period", "-p", autocompletion=complete_period, help="today, week, month, all")
+    ] = "today",
 ):
     user_id, _, _ = load_user_info()
     with get_repository() as repo:
         while True:
             use_case = TodoGetAllRootsByUserUseCase(repo)
-            roots, postponed_count = use_case.execute(user_id, category=category)
+            roots, postponed_count = use_case.execute(user_id, category=category, period=period)
             if postponed_count > 0:
                 console.print(
                     Panel(
@@ -713,24 +757,23 @@ def list_todos(
                 )
 
             if not roots:
-                msg = "Aucun Todo trouvé"
+                msg = f"Aucun Todo trouvé pour la période '{period}'"
                 if category:
                     msg += f" pour la catégorie {category}"
-                # console.print(f"[yellow]{msg}.[/yellow]")
                 show_error(f"{msg}.", title="Vide")
                 return
 
             if sys.stdin.isatty():
                 console.clear()
 
-            _display_root_list(roots, repo)
+            _display_root_list(roots, repo, period=period)
             count = len(roots)
             message = (
                 f"{count} tâche racine trouvée"
                 if count <= 1
                 else f"{count} tâches racines trouvées"
             )
-            console.print(f"\n[dim] {message}.[/dim]")
+            console.print(f"\n[dim] {message} pour la période '{period}'.[/dim]")
             try:
                 choice = Prompt.ask(
                     "\nSaisissez l'index (ou 'q' pour quitter)", default="q"

@@ -25,25 +25,45 @@ class MemoryTodoRepository(TodoRepository):
             if todo.user == user_id and not todo.state
         ]
 
+    # def find_top_level_by_user(
+    #     self, user_id: UUID, category: Optional[str] = None
+    # ) -> list[Todo]:
+    #     """
+    #     Récupère les tâches racines en mémoire avec un filtre optionnel.
+    #     """
+    #     # On filtre les racines de l'utilisateur qui ne sont pas complétées
+    #     roots = [
+    #         todo
+    #         for todo in self.todos.values()
+    #         if todo.user == user_id and todo.parent is None and todo.state is False
+    #     ]
+
+    #     # On applique le filtre de catégorie si présent
+    #     if category:
+    #         roots = [todo for todo in roots if todo.category == category]
+
+    #     # 3. On trie par date de début (comme dans l'implémentation DuckDB)
+    #     return sorted(roots, key=lambda x: x.date_start)
     def find_top_level_by_user(
-        self, user_id: UUID, category: Optional[str] = None
+        self, user_id: UUID, category: Optional[str] = None, max_date: Optional[int] = None
     ) -> list[Todo]:
-        """
-        Récupère les tâches racines en mémoire avec un filtre optionnel.
-        """
-        # On filtre les racines de l'utilisateur qui ne sont pas complétées
+        # Filtrage de base (racines actives de l'utilisateur)
         roots = [
             todo
             for todo in self.todos.values()
             if todo.user == user_id and todo.parent is None and todo.state is False
         ]
 
-        # On applique le filtre de catégorie si présent
+        # Filtre de catégorie
         if category:
             roots = [todo for todo in roots if todo.category == category]
+            
+        # NOUVEAU : Filtre de date
+        if max_date:
+            roots = [todo for todo in roots if todo.date_due <= max_date]
 
-        # 3. On trie par date de début (comme dans l'implémentation DuckDB)
-        return sorted(roots, key=lambda x: x.date_start)
+        # Tri par date_start (heure) puis date_due
+        return sorted(roots, key=lambda x: (x.date_start, x.date_due))
 
     def search_by_title(self, user_id: UUID, search_term: str) -> list[Todo]:
         return [

@@ -54,12 +54,41 @@ def apply_auto_postpone(repository, user_id):
     return postponed_count
 
 
+# class TodoGetAllRootsByUserUseCase:
+#     def __init__(self, todo_repo: TodoRepository):
+#         self.todo_repo = todo_repo
+
+#     def execute(self, user_id: UUID, category: str = None) -> list[Todo]:
+#         # 1. Application de la règle métier système
+#         count = apply_auto_postpone(self.todo_repo, user_id)
+#         roots = self.todo_repo.find_top_level_by_user(user_id, category=category)
+#         return roots, count
+
 class TodoGetAllRootsByUserUseCase:
     def __init__(self, todo_repo: TodoRepository):
         self.todo_repo = todo_repo
 
-    def execute(self, user_id: UUID, category: str = None) -> list[Todo]:
-        # 1. Application de la règle métier système
+    def execute(self, user_id: UUID, category: str = None, period: str = "all") -> list[Todo]:
+        # 1. Application de la règle métier système (auto-postpone)
         count = apply_auto_postpone(self.todo_repo, user_id)
-        roots = self.todo_repo.find_top_level_by_user(user_id, category=category)
+        
+        # 2. Calcul de la borne temporelle selon la période
+        max_date = None
+        now = pendulum.now()
+
+        if period == "today":
+            max_date = int(now.at(23, 59, 59).timestamp())
+        elif period == "week":
+            # Fin de la semaine calendaire (dimanche 23:59:59)
+            max_date = int(now.end_of('week').timestamp())
+        elif period == "month":
+            # Fin du mois calendaire
+            max_date = int(now.end_of('month').timestamp())
+
+        # 3. Récupération filtrée
+        roots = self.todo_repo.find_top_level_by_user(
+            user_id, 
+            category=category, 
+            max_date=max_date
+        )
         return roots, count

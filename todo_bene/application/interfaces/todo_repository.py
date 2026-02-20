@@ -24,9 +24,12 @@ class TodoRepository(ABC):
 
     @abstractmethod
     def find_top_level_by_user(
-        self, user_id: UUID, category: Optional[str] = None
+        self, 
+        user_id: UUID, 
+        category: Optional[str] = None,
+        max_date: Optional[int] = None  # Ajout de la borne temporelle
     ) -> list[Todo]:
-        """Récupère les tâches racines, avec un filtre optionnel par catégorie."""
+        """Récupère les tâches racines, avec filtres optionnels par catégorie et date échéance."""
         pass
 
     @abstractmethod
