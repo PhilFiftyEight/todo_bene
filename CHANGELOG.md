@@ -49,4 +49,17 @@
 
 * **Test Coverage**: 180 unit and integration tests passed, covering complex repetition scenarios.
 
+## [v0.3.1] - 2026-02-20
+
+### ✨ New Features
+- **Period-based filtering**: Added `--period` (`-p`) option supporting `today`, `week`, `month`, and `all`.
+- **Default View**: The `list` command now defaults to `today` for enhanced daily focus and productivity.
+- **Visual Grouping**: Smart display grouping by Day (for `week` view) or Week (for `month` view) with stylized separators.
+- **Autocompletion**: Full Typer support for period options in the shell.
+
+### 🛠️ Enhancements & Fixes
+- **Chronological Sorting**: Fixed SQL sorting logic to correctly combine `date_start` (time) and `date_due` (deadline).
+- **UI Robustness**: Implemented `Style` objects to prevent "dim" inheritance on section headers, ensuring high visibility.
+- **Test Stability**: Updated the entire test suite (184 tests) to decouple CLI integration tests from UI default changes using explicit flags.
+
 ---
