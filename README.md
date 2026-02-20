@@ -5,7 +5,7 @@
 
 [![Version Python](https://img.shields.io/badge/python-3.13%2B-blue)](https://www.python.org/)
 [![Licence: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-180%20pass%C3%A9s-brightgreen)](#)
+[![Tests](https://img.shields.io/badge/tests-184%20pass%C3%A9s-brightgreen)](#)
 
 [Version Française](#-version-française) | [English Version](#-english-version)
 
