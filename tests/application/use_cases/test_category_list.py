@@ -23,3 +23,18 @@ def test_category_list_merges_system_and_custom(user_id):
     assert len(categories) == 7
     # Bonus : vérifier que c'est trié par ordre alphabétique
     assert categories == sorted(categories)
+
+def test_category_list_uniqueness_with_emoji_logic(user_id):
+    """Vérifie que même si on essaie d'ajouter une catégorie système, la liste reste propre."""
+    repo = MemoryCategoryRepository()
+    use_case = CategoryListUseCase(repo)
+
+    # On force l'ajout d'une catégorie qui a le même nom qu'une catégorie système
+    # (Même si le UseCase de création l'empêche, on teste la robustesse du List)
+    repo.save_category(Category(name="Travail", user_id=user_id))
+
+    categories = use_case.execute(user_id=user_id)
+
+    # Assert
+    assert categories.count("Travail") == 1
+    assert len(categories) == 6 # Pas de 7ème catégorie "doublon"

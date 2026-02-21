@@ -44,3 +44,17 @@ def test_category_create_already_exists_raises_error(user_id, existing_name, new
     # WHEN / THEN
     with pytest.raises(ValueError, match="Cette catégorie existe déjà"):
         use_case.execute(name=new_input, user_id=user_id)
+
+def test_category_create_success(user_id):
+    # GIVEN
+    category_repo = MemoryCategoryRepository()
+    use_case = CategoryCreateUseCase(category_repo)
+    cat_name = "Jardinage"
+
+    # WHEN
+    category = use_case.execute(name=cat_name, user_id=user_id)
+
+    # THEN
+    assert category.name == "Jardinage"
+    assert category.emoji == "🏷️"  # <--- AJOUT : Vérifie que le Use Case produit une catégorie avec l'émoji par défaut
+    assert category_repo.category_exists(cat_name, user_id) is True

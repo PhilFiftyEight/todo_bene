@@ -22,3 +22,17 @@ def test_category_validation_rules(user_id):
     # On pourrait décider qu'une catégorie ne peut pas être vide, sécurité
     with pytest.raises(ValueError, match="Le nom ne peut pas être vide"):
         Category(name="", user_id=user_id)
+
+def test_base_category_gets_correct_emoji(user_id):
+    # On teste que "travail" (minuscule) récupère bien l'émoji 💼
+    cat = Category(name="travail", user_id=user_id)
+    assert cat.name == "Travail"
+    assert cat.emoji == "💼"
+
+    # On teste "Famille"
+    cat_famille = Category(name="Famille", user_id=user_id)
+    assert cat_famille.emoji == "🧑‍🧑‍🧒‍🧒"
+
+def test_custom_category_gets_default_emoji(user_id):
+    cat = Category(name="Bricolage", user_id=user_id)
+    assert cat.emoji == "🏷️"

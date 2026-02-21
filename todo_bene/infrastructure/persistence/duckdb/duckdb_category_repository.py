@@ -5,15 +5,9 @@ from todo_bene.application.interfaces.category_repository import CategoryReposit
 
 
 class DuckDBCategoryRepository(CategoryRepository):
+
     def __init__(self, connection):
         self._conn = connection
-
-    def save_category(self, category: Category) -> None:
-        # Ici category.name est déjà formaté par __post_init__
-        self._conn.execute(
-            "INSERT INTO categories (name, user_id) VALUES (?, ?)",
-            [category.name, category.user_id],
-        )
 
     def category_exists(self, name: str, user_id: UUID) -> bool:
         # On crée une instance temporaire pour bénéficier du formatage du domaine
@@ -31,3 +25,18 @@ class DuckDBCategoryRepository(CategoryRepository):
             "SELECT name FROM categories WHERE user_id = ? ORDER BY name", [user_id]
         ).fetchall()
         return [row[0] for row in rows]
+
+    def save_category(self, category: Category) -> None:
+        # On inclut l'émoji calculé par le domaine lors de l'insertion
+        self._conn.execute(
+            "INSERT INTO categories (name, user_id, emoji) VALUES (?, ?, ?)",
+            [category.name, category.user_id, category.emoji],
+        )
+
+    def get_all_categories_with_emojis(self, user_id: UUID) -> List[Category]:
+        """Récupère les objets Category complets avec leurs émojis stockés."""
+        rows = self._conn.execute(
+            "SELECT name, emoji FROM categories WHERE user_id = ? ORDER BY name", 
+            [user_id]
+        ).fetchall()
+        return [Category(name=row[0], user_id=user_id, emoji=row[1]) for row in rows]

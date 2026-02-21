@@ -6,8 +6,9 @@ from uuid import UUID
 class Category:
     name: str
     user_id: UUID
+    emoji: str = "🏷️"  # Fallback par défaut
 
-    # Constantes pour faciliter l'usage dans le code
+    # Constantes
     QUOTIDIEN = "Quotidien"
     TRAVAIL = "Travail"
     LOISIRS = "Loisirs"
@@ -15,16 +16,25 @@ class Category:
     MEDICAL = "Médical"
     FAMILLE = "Famille"
 
-    # Liste pour la validation et la future complétion Typer
     ALL = [QUOTIDIEN, TRAVAIL, LOISIRS, SPORT, MEDICAL, FAMILLE]
 
+    # Mapping statique pour l'attribution automatique
+    _DEFAULT_MAPPING = {
+        QUOTIDIEN: "🏠",
+        TRAVAIL: "💼",
+        LOISIRS: "🎮",
+        SPORT: "🏃",
+        MEDICAL: "🩺",
+        FAMILLE: "🧑‍🧑‍🧒‍🧒"
+    }
+
     def __post_init__(self):
-        """Règles de domaine :
-        - une catégorie doit avoir un nom non vide
-        - name est sous la forme : "Essai"
-        - formats corrigés : " Essai", "essai", "ESSAI", "Essai "
-        """
+        # Formatage existant
         self.name = self.name.strip()
         if not self.name:
             raise ValueError("Le nom ne peut pas être vide")
         self.name = self.name.lower().capitalize()
+        
+        # Attribution automatique de l'émoji selon le nom (KISS)
+        if self.name in self._DEFAULT_MAPPING:
+            self.emoji = self._DEFAULT_MAPPING[self.name]

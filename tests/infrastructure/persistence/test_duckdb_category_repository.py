@@ -40,3 +40,30 @@ def test_duckdb_get_all_categories(category_repo, user_id):
     assert len(result) == 3
     # On vérifie le tri alphabétique (si tu l'as mis dans le SQL ORDER BY)
     assert result == ["Alpha", "Beta", "Zebra"]
+
+def test_duckdb_category_save_and_exists(category_repo, user_id):
+    # GIVEN
+    category = Category(name="Jardinage", user_id=user_id) # Emoji par défaut 🏷️
+
+    # WHEN
+    category_repo.save_category(category)
+
+    # THEN
+    assert category_repo.category_exists("Jardinage", user_id) is True
+    
+    # AJOUT : Vérification de la persistance de l'émoji
+    all_cats = category_repo.get_all_categories_with_emojis(user_id)
+    stored_cat = next(c for c in all_cats if c.name == "Jardinage")
+    assert stored_cat.emoji == "🏷️"
+
+def test_duckdb_category_persists_custom_emoji(category_repo, user_id):
+    # On teste avec un émoji explicite pour une catégorie perso
+    # (Imaginons qu'on laisse l'utilisateur choisir son émoji plus tard)
+    category = Category(name="Bricolage", user_id=user_id, emoji="🔨") 
+
+    category_repo.save_category(category)
+    result = category_repo.get_all_categories_with_emojis(user_id)
+    
+    stored_cat = next(c for c in result if c.name == "Bricolage")
+    assert stored_cat.emoji == "🔨"
+

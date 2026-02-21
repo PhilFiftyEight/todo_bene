@@ -26,3 +26,13 @@ class MemoryCategoryRepository(CategoryRepository):
         créées par l'utilisateur.
         """
         return [c.name for (uid, _), c in self.categories.items() if uid == user_id]
+    
+    def get_all_categories_with_emojis(self, user_id: UUID) -> List[Category]:
+        """
+        Récupère la liste des objets Category complets pour l'utilisateur.
+        """
+        return [
+            category 
+            for (uid, _), category in self.categories.items() 
+            if uid == user_id
+        ]
