@@ -12,7 +12,7 @@ def test_memory_repo_integration_with_create_use_case():
     # Act
     # On crée une catégorie personnalisée via le Use Case
     # Le Use Case instancie Category, qui formate le nom en "Projet alpha" 
-    # et lui donne l'émoji par défaut "🏷️"
+    # et lui donne l'émoji par défaut "🔖"
     cat_obj = use_case.execute("  projet alpha  ", user_id)
     
     # On récupère via la nouvelle méthode du repository
@@ -23,7 +23,7 @@ def test_memory_repo_integration_with_create_use_case():
     stored_cat = categories[0]
     
     assert stored_cat.name == "Projet alpha"  # Vérifie le formatage du domaine
-    assert stored_cat.emoji == "🏷️"            # Vérifie l'émoji par défaut
+    assert stored_cat.emoji == "🔖"            # Vérifie l'émoji par défaut
     assert stored_cat.user_id == user_id
 
 def test_memory_repo_list_compatibility():

@@ -9,6 +9,7 @@ import locale
 from uuid import UUID
 from pathlib import Path
 import typer
+from rich.text import Text
 from rich.table import Table
 from rich.style import Style
 from rich.console import Console
@@ -293,6 +294,9 @@ def ask_validate_parents_recursive(repo, newly_pending_ids: list, user_id: UUID)
 def _display_detail_view(todo: Todo, children: list[Todo], repo):
     if sys.stdin.isatty():
         console.clear()
+    # RÉCUPÉRATION EMOJI
+    cat_emoji = Category(name=todo.category, user_id=todo.user).emoji
+    # -------------------------------
     state_label = (
         "[bold green]✅ COMPLÉTÉE[/bold green]"
         if todo.state
@@ -305,18 +309,33 @@ def _display_detail_view(todo: Todo, children: list[Todo], repo):
         p_obj = repo.get_by_id(todo.parent)
         p_name = p_obj.title if p_obj else str(todo.parent)[:8]
         parent_line = f"[dim] → {p_name}[/dim]"
-    content = f"{header}{parent_line}\n\n[italic]{todo.description or 'Pas de description'}[/italic]"
+    # On construit une ligne composite : [Titre + Parent] ... [Emoji]
+    base_text = f"{prio_mark}{todo.title}{parent_line}"
+    t_obj = Text(base_text)    
+    # Calcul de l'espace (Largeur 70 - 2 bords - longueur texte - 1 emoji - padding)
+    # Note : On retire 2 ou 3 selon le padding interne du Panel
+    # Il faut ajouter 11 si todo.parent car cell_len : Get the number of cells required to render this text. < les caractères de control (eg [dim]) ne sont pas comptés
+    if todo.parent:
+        lg_space = 70 - 2 - t_obj.cell_len - 1 - 3 + 11
+    else:
+        lg_space = 70 - 2 - t_obj.cell_len - 1 - 3
+    space = " " * max(1, lg_space)
+    
+    header_with_emoji = f"[bold white]{base_text}[/bold white]{space}{cat_emoji}"
+
+    content = f"{header_with_emoji}\n\n[italic]{todo.description or 'Pas de description'}[/italic]"
     tz = pendulum.local_timezone()
     date_fmt = get_date_format()
     d_start = pendulum.from_timestamp(todo.date_start, tz=tz).format(date_fmt)
     d_due = pendulum.from_timestamp(todo.date_due, tz=tz).format(date_fmt)
     content += f"\n\n[blue]Démarrage: {d_start} - Échéance: {d_due}[/blue]"
     panel = Panel(
-        Align.center(content, vertical="middle"),
+        #Align.center(content, vertical="middle"),
+        content,
         title=state_label,
         border_style="grey37",
         box=box.ROUNDED,
-        width=60,
+        width=70,
     )
     console.print("\n")
     console.print(Align.center(panel))
@@ -513,70 +532,6 @@ def _execute_completion_logic(todo: Todo, repo, user_id: UUID) -> bool:
     return False
 
 
-# def _display_root_list(roots: list[Todo], repo, period: str = "all"):
-#     tz = pendulum.local_timezone()
-#     date_fmt = get_date_format()
-#     table = Table(box=box.SIMPLE, header_style="bold", row_styles=["none", "dim"])
-#     table.add_column("Idx", justify="right", style="cyan", width=4)
-#     table.add_column(" ", justify="center", width=2)
-#     table.add_column("Titre", style="blue")
-#     table.add_column("Description", style="white")
-#     table.add_column("Début", style="green")
-#     table.add_column("Échéance", style="magenta")
-
-#     last_group = None
-
-#     for idx, todo in enumerate(roots, 1):
-#         # LOGIQUE DE REGROUPEMENT
-#         current_group = None
-#         dt_due = pendulum.from_timestamp(todo.date_due, tz=tz)
-        
-#         if period == "week":
-#             current_group = dt_due.format("dddd DD MMMM", locale=_get_locale()).upper()
-#         elif period == "month":
-#             current_group = f"SEMAINE {dt_due.week_of_year} ({dt_due.start_of('week').format('DD/MM', locale=_get_locale())})"
-
-#         # Si le groupe change, on ajoute une section visuelle
-#         # Insertion d'un séparateur si le groupe change
-#         if current_group and current_group != last_group:
-#             # On ajoute une ligne vide pour aérer avant le titre (sauf si c'est le premier groupe)
-#             if last_group is not None:
-#                 table.add_row("", "", "", "", "", "")
-            
-#             # Le titre de groupe : On remplit la colonne "Titre" (index 2) 
-#             # et on laisse les autres vides pour éviter le tassement dans "Idx"
-#             table.add_row(
-#                 "", 
-#                 "", 
-#                 current_group,
-#                 "", 
-#                 "", 
-#                 "",
-#                 style=Style(color="yellow", dim=False, bold=True)
-#             )
-#             table.add_section()
-#             last_group = current_group
-
-#         prio_mark = "🔥" if todo.priority else ""
-#         children = repo.find_by_parent(todo.uuid)
-#         child_signal = (
-#             f" [bold cyan][{repo.count_all_descendants(todo.uuid)}+][/bold cyan]"
-#             if len(children) > 0
-#             else ""
-#         )
-#         raw_desc = str(todo.description) if todo.description else ""
-#         desc = (raw_desc[:20] + "...") if len(raw_desc) > 20 else raw_desc
-#         d_start = pendulum.from_timestamp(todo.date_start, tz=tz).format(date_fmt)
-#         d_due = pendulum.from_timestamp(todo.date_due, tz=tz).format(date_fmt)
-#         table.add_row(
-#             f"{idx:3}",
-#             prio_mark,
-#             f"{todo.title}{child_signal}",
-#             desc or "[dim italic]Pas de description[/dim italic]",
-#             d_start,
-#             d_due,
-#         )
-#     console.print(table)
 
 def _display_root_list(roots: list[Todo], repo, period: str = "all"):
     # --- DÉBUT AJOUT CACHE EMOJI (RJQ) ---

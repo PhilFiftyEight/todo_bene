@@ -35,4 +35,4 @@ def test_base_category_gets_correct_emoji(user_id):
 
 def test_custom_category_gets_default_emoji(user_id):
     cat = Category(name="Bricolage", user_id=user_id)
-    assert cat.emoji == "🏷️"
+    assert cat.emoji == "🔖"

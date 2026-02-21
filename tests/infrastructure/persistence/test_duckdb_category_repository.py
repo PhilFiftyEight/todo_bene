@@ -54,7 +54,7 @@ def test_duckdb_category_save_and_exists(category_repo, user_id):
     # AJOUT : Vérification de la persistance de l'émoji
     all_cats = category_repo.get_all_categories_with_emojis(user_id)
     stored_cat = next(c for c in all_cats if c.name == "Jardinage")
-    assert stored_cat.emoji == "🏷️"
+    assert stored_cat.emoji == "🔖"
 
 def test_duckdb_category_persists_custom_emoji(category_repo, user_id):
     # On teste avec un émoji explicite pour une catégorie perso

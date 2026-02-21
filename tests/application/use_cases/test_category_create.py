@@ -56,5 +56,5 @@ def test_category_create_success(user_id):
 
     # THEN
     assert category.name == "Jardinage"
-    assert category.emoji == "🏷️"  # <--- AJOUT : Vérifie que le Use Case produit une catégorie avec l'émoji par défaut
+    assert category.emoji == "🔖"  # <--- AJOUT : Vérifie que le Use Case produit une catégorie avec l'émoji par défaut
     assert category_repo.category_exists(cat_name, user_id) is True

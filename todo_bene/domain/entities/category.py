@@ -6,7 +6,7 @@ from uuid import UUID
 class Category:
     name: str
     user_id: UUID
-    emoji: str = "🏷️"  # Fallback par défaut
+    emoji: str = "🔖"  # Fallback par défaut
 
     # Constantes
     QUOTIDIEN = "Quotidien"
