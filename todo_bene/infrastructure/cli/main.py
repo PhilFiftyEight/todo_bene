@@ -315,10 +315,11 @@ def _display_detail_view(todo: Todo, children: list[Todo], repo):
     # Calcul de l'espace (Largeur 70 - 2 bords - longueur texte - 1 emoji - padding)
     # Note : On retire 2 ou 3 selon le padding interne du Panel
     # Il faut ajouter 11 si todo.parent car cell_len : Get the number of cells required to render this text. < les caractères de control (eg [dim]) ne sont pas comptés
-    if todo.parent:
-        lg_space = 70 - 2 - t_obj.cell_len - 1 - 3 + 11
-    else:
-        lg_space = 70 - 2 - t_obj.cell_len - 1 - 3
+    lg_space = 70 - 2 - t_obj.cell_len - 1 - 3 # cas général
+    if todo.parent: # on élimine [dim]...[/dim]
+        lg_space +=  + 11
+    if prio_mark:
+        lg_space += 17 # on élimine [yellow]...[/yellow]
     space = " " * max(1, lg_space)
     
     header_with_emoji = f"[bold white]{base_text}[/bold white]{space}{cat_emoji}"
@@ -343,7 +344,8 @@ def _display_detail_view(todo: Todo, children: list[Todo], repo):
         console.print("\n[bold]Sous-tâches :[/bold]")
         for idx, child in enumerate(children, 1):
             c_status = "✅" if child.state else "⏳"
-            console.print(f"  {idx}. {c_status} {child.title}")
+            prio_child = f"🔥 "if child.priority else ""
+            console.print(f"  {idx}. {prio_child} {c_status} {child.title}")
     else:
         console.print("\n[dim]Aucune sous-tâche.[/dim]")
     console.print("\n[bold]Actions :[/bold]")
