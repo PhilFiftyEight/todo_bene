@@ -532,37 +532,50 @@ def _execute_completion_logic(todo: Todo, repo, user_id: UUID) -> bool:
     return False
 
 
-
 def _display_root_list(roots: list[Todo], repo, period: str = "all"):
-    # --- DÉBUT AJOUT CACHE EMOJI (RJQ) ---
-    # On récupère les catégories pour l'utilisateur (on prend l'user_id du premier todo s'il existe)
+    # --- CACHE EMOJI
     emoji_cache = {}
     if roots:
         user_id = roots[0].user
-        # On utilise le Use Case pour avoir la liste fusionnée (Base + Perso)
-        # On instancie le repository et le use case localement
-        # On suppose que ton repo de tâches a accès à la connexion (self._conn)
-        # from todo_bene.infrastructure.persistence.duckdb.duckdb_category_repository import DuckDBCategoryRepository
-        category_repo = DuckDBCategoryRepository(repo._conn)
-        all_category = CategoryListUseCase(category_repo).execute(user_id)
-        for name in all_category:
-            # Le domaine calcule l'émoji (💼, 🏠, etc. ou 🏷️)
+        from todo_bene.infrastructure.persistence.duckdb.duckdb_category_repository import DuckDBCategoryRepository
+        cat_repo = DuckDBCategoryRepository(repo._conn)
+        all_cats = CategoryListUseCase(cat_repo).execute(user_id)
+        for name in all_cats:
             emoji_cache[name] = Category(name=name, user_id=user_id).emoji
-    # --- FIN AJOUT CACHE EMOJI ---
 
     tz = pendulum.local_timezone()
     date_fmt = get_date_format()
-    # ... (colonnes inchangées) ...
     table = Table(box=box.SIMPLE, header_style="bold", row_styles=["none", "dim"])
     table.add_column("Idx", justify="right", style="cyan", width=4)
     table.add_column(" ", justify="center", width=2)
     table.add_column("Titre", style="blue")
-    # ... (le reste des colonnes) ...
+    table.add_column("Description", style="white")
+    table.add_column("Début", style="green")
+    table.add_column("Échéance", style="magenta")
 
     last_group = None
 
     for idx, todo in enumerate(roots, 1):
-        # ... (Logique de regroupement inchangée) ...
+        # --- LOGIQUE DE REGROUPEMENT ---
+        current_group = None
+        dt_due = pendulum.from_timestamp(todo.date_due, tz=tz)
+        
+        if period == "week":
+            current_group = dt_due.format("dddd DD MMMM", locale=_get_locale()).upper()
+        elif period == "month":
+            current_group = f"SEMAINE {dt_due.week_of_year} ({dt_due.start_of('week').format('DD/MM', locale=_get_locale())})"
+
+        if current_group and current_group != last_group:
+            if last_group is not None:
+                table.add_row("", "", "", "", "", "")
+            
+            table.add_row(
+                "", "", current_group, "", "", "",
+                style=Style(color="yellow", dim=False, bold=True)
+            )
+            table.add_section()
+            last_group = current_group
+        # ----------------------------------------------
 
         prio_mark = "🔥" if todo.priority else ""
         children = repo.find_by_parent(todo.uuid)
@@ -572,11 +585,9 @@ def _display_root_list(roots: list[Todo], repo, period: str = "all"):
             else ""
         )
         
-        # --- MODIFICATION DU TITRE (RJQ) ---
-        # On récupère l'émoji dans le cache
-        emoji = emoji_cache.get(todo.category, "🏷️")
-        display_title = f"{emoji} {todo.title}{child_signal}"
-        # -----------------------------------
+        # Titre avec Emoji
+        emoji = emoji_cache.get(todo.category, "🔖")
+        display_title = f"{emoji}  {todo.title}{child_signal}"
 
         raw_desc = str(todo.description) if todo.description else ""
         desc = (raw_desc[:20] + "...") if len(raw_desc) > 20 else raw_desc
@@ -586,7 +597,7 @@ def _display_root_list(roots: list[Todo], repo, period: str = "all"):
         table.add_row(
             f"{idx:3}",
             prio_mark,
-            display_title, # Titre avec Emoji
+            display_title,
             desc or "[dim italic]Pas de description[/dim italic]",
             d_start,
             d_due,
@@ -784,7 +795,9 @@ def list_todos(
 
             if sys.stdin.isatty():
                 console.clear()
-
+            # On trie la liste par date d'échéance pour éviter les doublons de bandeaux jaunes
+            roots = sorted(roots, key=lambda x: x.date_due)
+            # -----------------------------
             _display_root_list(roots, repo, period=period)
             count = len(roots)
             message = (
