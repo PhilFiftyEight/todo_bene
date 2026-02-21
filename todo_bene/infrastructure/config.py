@@ -95,19 +95,3 @@ def update_last_postpone_date():
         config_path, _ = get_base_paths()
         config_path.write_text(json.dumps(config, indent=4))
 
-
-# def get_last_postpone_date() -> str:
-#     """Récupère la date du dernier report automatique pour le profil actif."""
-#     config = load_full_config()
-#     active = config.get("active_profile")
-#     if active and active in config.get("profiles", {}):
-#         return config["profiles"][active].get("last_auto_postpone", "1970-01-01")
-#     return "1970-01-01"
-
-# def update_last_postpone_date(date_str: str):
-#     """Met à jour la date du dernier report pour le profil actif."""
-#     config = load_full_config()
-#     active = config.get("active_profile")
-#     if active and active in config.get("profiles", {}):
-#         config["profiles"][active]["last_auto_postpone"] = date_str
-#         save_full_config(config)

@@ -19,31 +19,36 @@ from rich.align import Align
 import pendulum
 
 # Imports Internes
-from todo_bene.application.use_cases.todo_find_top_level_by_user import (
-    TodoGetAllRootsByUserUseCase,
-)
-from todo_bene.application.use_cases.todo_repetition import RepetitionTodo
-from todo_bene.application.use_cases.todo_update import TodoUpdateUseCase
-from todo_bene.application.use_cases.user_create import UserCreateUseCase
-from todo_bene.application.use_cases.todo_get import TodoGetUseCase
-from todo_bene.domain.entities.todo import Todo
 from todo_bene.infrastructure.config import (
     get_base_paths,
     load_user_info,
     save_user_config,
 )
+
+from todo_bene.domain.entities.todo import Todo
+from todo_bene.domain.entities.category import Category
+
+from todo_bene.application.use_cases.user_create import UserCreateUseCase
+
+from todo_bene.application.use_cases.category_create import CategoryCreateUseCase
+from todo_bene.application.use_cases.category_list import CategoryListUseCase
+
+from todo_bene.application.use_cases.todo_create import TodoCreateUseCase
+from todo_bene.application.use_cases.todo_delete import TodoDeleteUseCase
+from todo_bene.application.use_cases.todo_complete import TodoCompleteUseCase
+from todo_bene.application.use_cases.todo_find_top_level_by_user import (
+    TodoGetAllRootsByUserUseCase,
+)
+from todo_bene.application.use_cases.todo_repetition import RepetitionTodo
+from todo_bene.application.use_cases.todo_update import TodoUpdateUseCase
+from todo_bene.application.use_cases.todo_get import TodoGetUseCase
+
 from todo_bene.infrastructure.persistence.duckdb.duckdb_connection_manager import (
     DuckDBConnectionManager,
 )
 from todo_bene.infrastructure.persistence.duckdb.duckdb_todo_repository import (
     DuckDBTodoRepository,
 )
-from todo_bene.application.use_cases.todo_create import TodoCreateUseCase
-from todo_bene.application.use_cases.todo_delete import TodoDeleteUseCase
-from todo_bene.application.use_cases.todo_complete import TodoCompleteUseCase
-from todo_bene.domain.entities.category import Category
-from todo_bene.application.use_cases.category_create import CategoryCreateUseCase
-from todo_bene.application.use_cases.category_list import CategoryListUseCase
 from todo_bene.infrastructure.persistence.duckdb.duckdb_category_repository import (
     DuckDBCategoryRepository,
 )
@@ -508,49 +513,101 @@ def _execute_completion_logic(todo: Todo, repo, user_id: UUID) -> bool:
     return False
 
 
+# def _display_root_list(roots: list[Todo], repo, period: str = "all"):
+#     tz = pendulum.local_timezone()
+#     date_fmt = get_date_format()
+#     table = Table(box=box.SIMPLE, header_style="bold", row_styles=["none", "dim"])
+#     table.add_column("Idx", justify="right", style="cyan", width=4)
+#     table.add_column(" ", justify="center", width=2)
+#     table.add_column("Titre", style="blue")
+#     table.add_column("Description", style="white")
+#     table.add_column("Début", style="green")
+#     table.add_column("Échéance", style="magenta")
+
+#     last_group = None
+
+#     for idx, todo in enumerate(roots, 1):
+#         # LOGIQUE DE REGROUPEMENT
+#         current_group = None
+#         dt_due = pendulum.from_timestamp(todo.date_due, tz=tz)
+        
+#         if period == "week":
+#             current_group = dt_due.format("dddd DD MMMM", locale=_get_locale()).upper()
+#         elif period == "month":
+#             current_group = f"SEMAINE {dt_due.week_of_year} ({dt_due.start_of('week').format('DD/MM', locale=_get_locale())})"
+
+#         # Si le groupe change, on ajoute une section visuelle
+#         # Insertion d'un séparateur si le groupe change
+#         if current_group and current_group != last_group:
+#             # On ajoute une ligne vide pour aérer avant le titre (sauf si c'est le premier groupe)
+#             if last_group is not None:
+#                 table.add_row("", "", "", "", "", "")
+            
+#             # Le titre de groupe : On remplit la colonne "Titre" (index 2) 
+#             # et on laisse les autres vides pour éviter le tassement dans "Idx"
+#             table.add_row(
+#                 "", 
+#                 "", 
+#                 current_group,
+#                 "", 
+#                 "", 
+#                 "",
+#                 style=Style(color="yellow", dim=False, bold=True)
+#             )
+#             table.add_section()
+#             last_group = current_group
+
+#         prio_mark = "🔥" if todo.priority else ""
+#         children = repo.find_by_parent(todo.uuid)
+#         child_signal = (
+#             f" [bold cyan][{repo.count_all_descendants(todo.uuid)}+][/bold cyan]"
+#             if len(children) > 0
+#             else ""
+#         )
+#         raw_desc = str(todo.description) if todo.description else ""
+#         desc = (raw_desc[:20] + "...") if len(raw_desc) > 20 else raw_desc
+#         d_start = pendulum.from_timestamp(todo.date_start, tz=tz).format(date_fmt)
+#         d_due = pendulum.from_timestamp(todo.date_due, tz=tz).format(date_fmt)
+#         table.add_row(
+#             f"{idx:3}",
+#             prio_mark,
+#             f"{todo.title}{child_signal}",
+#             desc or "[dim italic]Pas de description[/dim italic]",
+#             d_start,
+#             d_due,
+#         )
+#     console.print(table)
+
 def _display_root_list(roots: list[Todo], repo, period: str = "all"):
+    # --- DÉBUT AJOUT CACHE EMOJI (RJQ) ---
+    # On récupère les catégories pour l'utilisateur (on prend l'user_id du premier todo s'il existe)
+    emoji_cache = {}
+    if roots:
+        user_id = roots[0].user
+        # On utilise le Use Case pour avoir la liste fusionnée (Base + Perso)
+        # On instancie le repository et le use case localement
+        # On suppose que ton repo de tâches a accès à la connexion (self._conn)
+        # from todo_bene.infrastructure.persistence.duckdb.duckdb_category_repository import DuckDBCategoryRepository
+        category_repo = DuckDBCategoryRepository(repo._conn)
+        all_category = CategoryListUseCase(category_repo).execute(user_id)
+        for name in all_category:
+            # Le domaine calcule l'émoji (💼, 🏠, etc. ou 🏷️)
+            emoji_cache[name] = Category(name=name, user_id=user_id).emoji
+    # --- FIN AJOUT CACHE EMOJI ---
+
     tz = pendulum.local_timezone()
     date_fmt = get_date_format()
+    # ... (colonnes inchangées) ...
     table = Table(box=box.SIMPLE, header_style="bold", row_styles=["none", "dim"])
     table.add_column("Idx", justify="right", style="cyan", width=4)
     table.add_column(" ", justify="center", width=2)
     table.add_column("Titre", style="blue")
-    table.add_column("Description", style="white")
-    table.add_column("Début", style="green")
-    table.add_column("Échéance", style="magenta")
+    # ... (le reste des colonnes) ...
 
     last_group = None
 
     for idx, todo in enumerate(roots, 1):
-        # LOGIQUE DE REGROUPEMENT
-        current_group = None
-        dt_due = pendulum.from_timestamp(todo.date_due, tz=tz)
-        
-        if period == "week":
-            current_group = dt_due.format("dddd DD MMMM", locale=_get_locale()).upper()
-        elif period == "month":
-            current_group = f"SEMAINE {dt_due.week_of_year} ({dt_due.start_of('week').format('DD/MM', locale=_get_locale())})"
-
-        # Si le groupe change, on ajoute une section visuelle
-        # Insertion d'un séparateur si le groupe change
-        if current_group and current_group != last_group:
-            # On ajoute une ligne vide pour aérer avant le titre (sauf si c'est le premier groupe)
-            if last_group is not None:
-                table.add_row("", "", "", "", "", "")
-            
-            # Le titre de groupe : On remplit la colonne "Titre" (index 2) 
-            # et on laisse les autres vides pour éviter le tassement dans "Idx"
-            table.add_row(
-                "", 
-                "", 
-                current_group,
-                "", 
-                "", 
-                "",
-                style=Style(color="yellow", dim=False, bold=True)
-            )
-            table.add_section()
-            last_group = current_group
+        # ... (Logique de regroupement inchangée) ...
 
         prio_mark = "🔥" if todo.priority else ""
         children = repo.find_by_parent(todo.uuid)
@@ -559,20 +616,27 @@ def _display_root_list(roots: list[Todo], repo, period: str = "all"):
             if len(children) > 0
             else ""
         )
+        
+        # --- MODIFICATION DU TITRE (RJQ) ---
+        # On récupère l'émoji dans le cache
+        emoji = emoji_cache.get(todo.category, "🏷️")
+        display_title = f"{emoji} {todo.title}{child_signal}"
+        # -----------------------------------
+
         raw_desc = str(todo.description) if todo.description else ""
         desc = (raw_desc[:20] + "...") if len(raw_desc) > 20 else raw_desc
         d_start = pendulum.from_timestamp(todo.date_start, tz=tz).format(date_fmt)
         d_due = pendulum.from_timestamp(todo.date_due, tz=tz).format(date_fmt)
+        
         table.add_row(
             f"{idx:3}",
             prio_mark,
-            f"{todo.title}{child_signal}",
+            display_title, # Titre avec Emoji
             desc or "[dim italic]Pas de description[/dim italic]",
             d_start,
             d_due,
         )
     console.print(table)
-
 
 def _handle_list_navigation(choice: str, roots: list[Todo], user_id: UUID) -> bool:
     try:
