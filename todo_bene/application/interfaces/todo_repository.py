@@ -18,6 +18,11 @@ class TodoRepository(ABC):
         pass
 
     @abstractmethod
+    def count_all_descendants(self, todo_uuid: UUID) -> int:
+        """Compte récursivement tous les descendants d'un Todo."""
+        pass
+
+    @abstractmethod
     def find_all_active_by_user(self, user_id: UUID) -> list[Todo]:
         """Récupère toutes les tâches non terminées (actives) d'un utilisateur."""
         pass

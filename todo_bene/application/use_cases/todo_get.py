@@ -12,8 +12,9 @@ class TodoGetUseCase:
         todo = self.todo_repo.get_by_id(todo_id)
         # Vérification : existence ET propriété
         if not todo or todo.user != user_id:
-            return None, []
+            return None, [], 0
 
         # On récupère les enfants associés à ce Todo
         children = self.todo_repo.find_by_parent(todo_id)
-        return todo, children
+        countchildrecursiv = self.todo_repo.count_all_descendants(todo_id) 
+        return todo, children, countchildrecursiv

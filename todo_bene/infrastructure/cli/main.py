@@ -291,7 +291,7 @@ def ask_validate_parents_recursive(repo, newly_pending_ids: list, user_id: UUID)
                 handle_completion_success(repo, result, user_id)
 
 
-def _display_detail_view(todo: Todo, children: list[Todo], repo):
+def _display_detail_view(todo: Todo, children: list[Todo], countchildrecursiv: int, repo):
     if sys.stdin.isatty():
         console.clear()
     # RÉCUPÉRATION EMOJI
@@ -345,7 +345,9 @@ def _display_detail_view(todo: Todo, children: list[Todo], repo):
         for idx, child in enumerate(children, 1):
             c_status = "✅" if child.state else "⏳"
             prio_child = f" 🔥"if child.priority else ""
-            console.print(f"  {idx}. {c_status} {child.title}{prio_child}")
+            _, _, child_count = TodoGetUseCase(repo).execute(child.uuid, child.user)
+            child_count = f" [+{child_count}]" if child_count > 0 else ""
+            console.print(f"  {idx}. {c_status} {child.title}{prio_child}{child_count}")
     else:
         console.print("\n[dim]Aucune sous-tâche.[/dim]")
     console.print("\n[bold]Actions :[/bold]")
@@ -634,8 +636,8 @@ def _handle_navigation(choice: str, children: list[Todo], user_id: UUID) -> bool
 def show_details(todo_uuid: UUID, user_id: UUID) -> bool:
     with get_repository() as repo:
         while True:
-            todo, children = TodoGetUseCase(repo).execute(todo_uuid, user_id)
-            _display_detail_view(todo, children, repo)
+            todo, children, countchildrecursiv = TodoGetUseCase(repo).execute(todo_uuid, user_id)
+            _display_detail_view(todo, children, countchildrecursiv, repo)
             choice = Prompt.ask("\nVotre choix", default="r").lower().strip()
             if choice.isdigit():
                 if _handle_navigation(choice, children, user_id):
