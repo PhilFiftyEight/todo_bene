@@ -62,4 +62,27 @@
 - **UI Robustness**: Implemented `Style` objects to prevent "dim" inheritance on section headers, ensuring high visibility.
 - **Test Stability**: Updated the entire test suite (184 tests) to decouple CLI integration tests from UI default changes using explicit flags.
 
+
+
+---
+
+## [0.3.2] - 2026-02-22
+
+### ✨ New Features
+
+* **UI Redesign (Rich):** Complete interface overhaul using the `Rich` library for a nice look and feel (panels, tables, and colors).
+* **Time-Based Grouping:** Added clear visual separators in `week` and `month` views to group tasks by **Day** and **Week**.
+
+### 🛠 Improvements & Fixes
+
+* **Justify Spacing:** Corrected display offsets to ensure perfect right-alignment in detail panels, regardless of title length.
+* **Recursive Navigation:** Stabilized index handling when diving into subtasks.
+* **DuckDB Robustness:** Improved connection management via the `DuckDBConnectionManager`.
+
+### 📝 Documentation & Media
+
+* **Animated Demos:** Integrated VHS demos (`.gif`) showcasing the initial setup and core features.
+* **Bilingual README:** Complete documentation now available in both French 🇫🇷 and English 🇬🇧.
+* **Demo Scripts:** Added `populate_demo.py` in `docs/media/` to generate an instant testing environment.
+
 ---
