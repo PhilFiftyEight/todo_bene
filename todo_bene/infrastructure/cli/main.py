@@ -344,8 +344,8 @@ def _display_detail_view(todo: Todo, children: list[Todo], repo):
         console.print("\n[bold]Sous-tâches :[/bold]")
         for idx, child in enumerate(children, 1):
             c_status = "✅" if child.state else "⏳"
-            prio_child = f"🔥 "if child.priority else ""
-            console.print(f"  {idx}. {prio_child} {c_status} {child.title}")
+            prio_child = f" 🔥"if child.priority else ""
+            console.print(f"  {idx}. {c_status} {child.title}{prio_child}")
     else:
         console.print("\n[dim]Aucune sous-tâche.[/dim]")
     console.print("\n[bold]Actions :[/bold]")

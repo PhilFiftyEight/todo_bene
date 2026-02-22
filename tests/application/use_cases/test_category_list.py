@@ -17,10 +17,10 @@ def test_category_list_merges_system_and_custom(user_id):
     categories = use_case.execute(user_id=user_id)
 
     # Assert
-    # Doit contenir les 6 de base + "Jardinage"
+    # Doit contenir les 7 de base + "Jardinage"
     assert "Quotidien" in categories
     assert "Jardinage" in categories
-    assert len(categories) == 7
+    assert len(categories) == 8
     # Bonus : vérifier que c'est trié par ordre alphabétique
     assert categories == sorted(categories)
 
@@ -37,4 +37,4 @@ def test_category_list_uniqueness_with_emoji_logic(user_id):
 
     # Assert
     assert categories.count("Travail") == 1
-    assert len(categories) == 6 # Pas de 7ème catégorie "doublon"
+    assert len(categories) == 7 # Pas de 8ème catégorie "doublon"

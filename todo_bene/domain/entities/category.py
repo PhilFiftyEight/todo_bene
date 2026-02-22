@@ -13,19 +13,21 @@ class Category:
     TRAVAIL = "Travail"
     LOISIRS = "Loisirs"
     SPORT = "Sport"
-    MEDICAL = "Médical"
+    SANTE = "Santé"
     FAMILLE = "Famille"
+    FINANCES = "Finances"
 
-    ALL = [QUOTIDIEN, TRAVAIL, LOISIRS, SPORT, MEDICAL, FAMILLE]
+    ALL = [QUOTIDIEN, TRAVAIL, LOISIRS, SPORT, SANTE, FAMILLE, FINANCES]
 
     # Mapping statique pour l'attribution automatique
     _DEFAULT_MAPPING = {
         QUOTIDIEN: "🏠",
         TRAVAIL: "💼",
-        LOISIRS: "🎮",
+        LOISIRS: "🎳",
         SPORT: "🏃",
-        MEDICAL: "🩺",
-        FAMILLE: "🧑‍🧑‍🧒‍🧒"
+        SANTE: "🏥",
+        FAMILLE: "🧑‍🧑‍🧒‍🧒",
+        FINANCES: "💰",
     }
 
     def __post_init__(self):

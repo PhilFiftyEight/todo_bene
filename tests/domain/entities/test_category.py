@@ -9,7 +9,7 @@ def test_base_categories_exist():
     assert Category.TRAVAIL == "Travail"
     assert Category.LOISIRS == "Loisirs"
     assert Category.SPORT == "Sport"
-    assert Category.MEDICAL == "Médical"
+    assert Category.SANTE == "Santé"
     assert Category.FAMILLE == "Famille"
 
 

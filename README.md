@@ -5,23 +5,23 @@
 
 [![Version Python](https://img.shields.io/badge/python-3.13%2B-blue)](https://www.python.org/)
 [![Licence: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-184%20pass%C3%A9s-brightgreen)](#)
+[![Tests](https://img.shields.io/badge/tests-190%20pass%C3%A9s-brightgreen)](#)
 
 [Version Française](#-version-française) | [English Version](#-english-version)
 
 ## 🇫🇷 Version Française
 
-**Todo Bene** est un gestionnaire de tâches en ligne de commande (CLI) focalisé sur l'efficacité, conçu pour lutter contre la procrastination grâce à une hiérarchie de tâches structurée et un report intelligent automatique.
+**Todo Bene** est un gestionnaire de tâches en ligne de commande (CLI) focalisé sur l'efficacité, conçu pour lutter contre la procrastination grâce à une hiérarchie de tâches structurée et un report automatique.
 
 ---
 
 ## ✨ Fonctionnalités Clés
 
 * **Hiérarchie Intelligente :** Créez des sous-tâches avec héritage des propriétés (catégorie, dates).
-* **Report Automatique :** Les tâches en retard sont automatiquement replanifiées au soir même pour maintenir la pertinence de votre liste.
+* **Report Automatique :** Les tâches en retard sont automatiquement replanifiées au lendemain même pour maintenir la pertinence de votre liste.
 * **Zéro Configuration :** Un assistant de configuration interactif vous guide lors du premier lancement.
-* **Interface UI Riche :** Une superbe interface terminal avec des panneaux d'état, des tableaux et des indicateurs de progression.
-* **Architecture Propre :** Conçu pour la fiabilité et la performance en utilisant DuckDB.
+* **Interface UI Riche :** Une interface terminal avec des panneaux d'état, des tableaux et des indicateurs de progression.
+* **Architecture Propre :** Conçu pour la fiabilité et la performance en utilisant DuckDB
 
 ---
 
@@ -39,51 +39,57 @@ uv pip install -e .
 
 ```
 
-### Premier Lancement
+### Premier Lancement et commandes CLI
 
-Oubliez les fichiers de configuration complexes. Tapez simplement :
-
-```bash
-. .venv/bin/activate?(.bat|.csh|.fish|.nu|.ps1)
-tb
+Le premier lancement va générer le fichier de configuration :
+l'**Assistant Interactif** vous guidera pour créer votre profil et initialiser votre base de données locale.
 
 ```
-
-L'**Assistant Interactif** vous guidera pour créer votre profil et initialiser votre base de données locale.
-
-```
-# exemple de structure :
 ~/.config/todo_bene/config.json
 ~/.local/share/todo_bene/.todo_bene.db
-
+# Noter que si vous répondez OUI à la version de développement, la base sera créer dans le répertoire `todo_bene` avec le nom `dev.db`
 ```
+
+![Setup](docs/media/01setup.gif) 
 
 ---
 
 ## 🛠 Utilisation
 
-### Ajouter des tâches
+### Ajouter des Todos
 
 Créez une tâche principale ou une sous-tâche en toute simplicité :
 
 ```bash
-tb add "Finir le rapport de projet" --category "Travail" --priority (*)
+tb add "Finir le rapport de projet" --category "Travail"(*) --priority
 # (*) : Le passage à l'anglais est prévu ultérieurement
 
 ```
 
-### Gérer les tâches
+### Pour visualiser et gérer les Todos
 
 Lancez la liste interactive pour naviguer, mettre à jour ou terminer vos tâches :
 
 ```bash
 tb list
-
+tb list -c Travail # Pour filtrer sur une catégorie (autocompletion)
+# Si la catégorie n'existe pas, vous pourrez valider sa création
+tb list -p [today|week|month|all] # filtrer par période
+# les filtres peuvent être combinés
 ```
 
-* **Naviguer :** Navigation récursive pour plonger dans les sous-tâches.
-* **Terminer :** Marquez les tâches comme faites. Les sous-tâches actives bloquent la complétion à moins de forcer l'action.
-* **Refactoriser :** Modifiez les titres, descriptions, priorités ou dates directement depuis la vue détaillée.
+### Naviguer, Modifier, Terminer et Répéter, Supprimer
+
+La navigation est récursive pour plonger dans les sous-tâches. 
+
+Modifier facilement un todo à partir de la vue détails.
+
+Terminer un Todo l' archive (il reste présents dans la bdd afin d'historique et recherche). Vous pourrez alors les répéter automatiquement en langage naturel `ex: tous les lundi pendant 2 mois`. Les sous-tâches actives bloquent la complétion à moins de forcer l'action. Un Todo terminé n'est plus visible dans la list
+
+Supprimer définitivement un Todo (pas d'archivage)
+
+
+![Demo](docs/media/02demov032.gif) 
 
 ### Vue Debug & Dev
 
@@ -120,18 +126,17 @@ Développé avec ❤️ par **PhilFiftyEight** (2026).
 
 ## 🇬🇧 English Version
 
-**Todo Bene** is a focused, CLI-based task manager designed to fight procrastination through structured task hierarchy and automated smart rescheduling.
+**Todo Bene** is a command-line task manager (CLI) focused on efficiency, designed to fight procrastination through a structured task hierarchy and automatic rescheduling.
 
 ---
 
 ## ✨ Key Features
 
-* **Smart Hierarchy:** Create subtasks with inherited properties (category, dates).
-* **Automatic Postponing:** Overdue tasks are automatically rescheduled to the current evening to keep your list relevant.
-* **Zero Configuration:** Interactive setup wizard on first launch.
-* **Rich UI:** Beautiful terminal interface with status panels, tables, and progress indicators.
+* **Smart Hierarchy:** Create subtasks with property inheritance (category, dates).
+* **Self-Correction:** Overdue tasks are automatically rescheduled to the next day to keep your list relevant.
+* **Zero Config:** An interactive setup wizard guides you through your first launch.
+* **Rich UI:** A polished terminal interface featuring status panels, tables, and progress indicators.
 * **Clean Architecture:** Built for reliability and performance using DuckDB.
-
 ---
 
 ## 🚀 Getting Started
@@ -148,51 +153,52 @@ uv pip install -e .
 
 ```
 
-### First Launch
+### First Launch & Configuration
 
-Forget complex configuration files. Just type:
+The first launch will generate your configuration file. The **Interactive Wizard** will guide you through creating your profile and initializing your local database.
 
-```bash
-. .venv/bin/activate?(.bat|.csh|.fish|.nu|.ps1)
-tb
-
-```
-
-The **Interactive Wizard** will guide you through creating your profile and initializing your local database.
-
-```
-# example:
+```text
 ~/.config/todo_bene/config.json
 ~/.local/share/todo_bene/.todo_bene.db
+# Note: If you choose the development version, the database will be created in the `todo_bene` directory as `dev.db`
 
 ```
-
+![Setup](docs/media/01setup.gif)
 ---
 
 ## 🛠 Usage
 
-### Adding Tasks
+### Adding Todos
 
 Create a main task or a subtask with ease:
 
 ```bash
-tb add "Finish project report" --category "Travail" --priority (*)
-# (*) : Translation to English is planned for later
+tb add "Finish project report" --category "Work" --priority
 
 ```
 
-### Managing Tasks
+### Viewing and Managing Todos
 
-Launch the interactive list to navigate, update, or complete tasks:
+Launch the interactive list to navigate, update, or complete your tasks:
 
 ```bash
 tb list
+tb list -c Work # Filter by category (with autocompletion)
+# If the category doesn't exist, you can confirm its creation on the fly.
+tb list -p [today|week|month|all] # Filter by period
+# Filters can be combined.
 
 ```
 
-* **Navigate:** Recursive navigation to dive into subtasks.
-* **Complete:** Mark tasks as done. Active subtasks will block completion unless forced.
-* **Refactor:** Modify titles, descriptions, priority or dates directly from the detail view.
+### Navigate, Edit, Complete & Repeat, Delete
+
+* **Navigation:** Recursive navigation allows you to dive deep into subtasks.
+* **Edit:** Easily modify a todo from the details view.
+* **Complete:** Completing a todo archives it (it remains in the database for history and search).
+* **Recurrence:** You can set tasks to repeat using natural language (e.g., `every Monday for 2 months`). Active subtasks block completion unless forced.
+* **Delete:** Permanently remove a todo (no archiving).
+
+![Demo](docs/media/02demov032.gif)
 
 ### Debug & Dev View
 
@@ -221,3 +227,4 @@ pytest -s
 Distributed under the MIT License. See `LICENSE` for more information.
 
 Developed with ❤️ by **PhilFiftyEight** (2026).
+
