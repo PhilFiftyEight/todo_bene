@@ -80,16 +80,16 @@ def test_repository_count_all_descendants(repository, user_id):
     repository.save(autre_enfant)
 
     # WHEN: On compte les descendants de la racine
-    count = repository.count_all_descendants(racine.uuid)
+    count, completed = repository.count_all_descendants(racine.uuid)
 
     # THEN: On doit en trouver 3 (enfant, petit_enfant, autre_enfant)
     assert count == 3
 
     # ET: L'enfant doit en avoir 1 (le petit-enfant)
-    assert repository.count_all_descendants(enfant.uuid) == 1
+    assert repository.count_all_descendants(enfant.uuid) == (1, 0)
 
     # ET: Le petit-enfant doit en avoir 0
-    assert repository.count_all_descendants(petit_enfant.uuid) == 0
+    assert repository.count_all_descendants(petit_enfant.uuid) == (0, 0)
 
 
 def test_repository_recursive_delete(repository, user_id):

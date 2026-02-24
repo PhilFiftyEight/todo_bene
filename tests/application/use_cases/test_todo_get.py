@@ -22,7 +22,7 @@ def test_todo_get_use_case_success(user_id):
     use_case = TodoGetUseCase(repo)
 
     # Act. _ car pas d'enfant dans ce test
-    found_todo, _, _ = use_case.execute(existing_todo.uuid, existing_todo.user)
+    found_todo, _, _, _ = use_case.execute(existing_todo.uuid, existing_todo.user)
 
     # Assert
     assert found_todo is not None
@@ -37,7 +37,7 @@ def test_todo_get_use_case_not_found(user_id):
 
     # Act
     # On explicite que même avec un user_id valide, si le Todo n'existe pas, c'est None
-    found_todo, _, _ = use_case.execute(todo_id=uuid4(), user_id=user_id)
+    found_todo, _, _, _ = use_case.execute(todo_id=uuid4(), user_id=user_id)
 
     # Assert
     assert found_todo is None
@@ -75,7 +75,7 @@ def test_todo_get_with_children(user_id):
     result = use_case.execute(parent.uuid, user_id)
 
     # Assert
-    todo, children, _ = result
+    todo, children, _, _ = result
     assert todo.uuid == parent.uuid
     assert len(children) == 2
     # assert children[0].title == "Enfant 1"
@@ -98,7 +98,7 @@ def test_todo_get_fails_for_wrong_user():
 
     # Act
     # L'utilisateur "hacker" tente d'accéder au Todo de l'owner
-    found_todo, _, _ = use_case.execute(todo.uuid, hacker_id)
+    found_todo, _, _, _ = use_case.execute(todo.uuid, hacker_id)
 
     # Assert
     assert found_todo is None  # On refuse l'accès

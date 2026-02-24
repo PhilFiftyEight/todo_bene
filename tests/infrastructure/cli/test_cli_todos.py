@@ -45,9 +45,11 @@ def test_cli_create_with_french_dates(test_config_env):
     """Vérifie que la CLI accepte et affiche correctement le format français JJ/MM/AAAA."""
     user_id = "550e8400-e29b-41d4-a716-446655440000"
     save_user_config(user_id, "dev.db", "test_profile")
-    start_str = pendulum.now().add(days=30).format("DD/MM/YYYY")
-    due_str = pendulum.now().add(days=45).format("DD/MM/YYYY")
+    start = pendulum.now().add(days=30)
+    due = pendulum.now().add(days=45)
     # Utilisation du format FR à la création
+    start_str = start.format("DD/MM/YYYY")
+    due_str = due.format("DD/MM/YYYY")
     result = runner.invoke(
         app,
         ["add", "Réserver vacances", "--start", start_str, "--due", due_str],
@@ -57,9 +59,12 @@ def test_cli_create_with_french_dates(test_config_env):
     assert "Succès" in result.stdout
 
     # Vérification de l'affichage localisé dans la liste
+    start_str = start.format("DD/MM")
+    due_str = due.format("DD/MM")
     result_list = runner.invoke(
         app, ["list", "--period", "all"], env={"TODO_BENE_CONFIG_PATH": str(test_config_env)}
     )
+
     assert start_str + " 00:00" in result_list.stdout
     assert due_str + " 23:59" in result_list.stdout
 
@@ -90,9 +95,9 @@ def test_cli_default_date_logic(test_config_env, time_machine):
     )
 
     # Doit afficher l'heure précise de création
-    assert "11/01/2026 15:30" in result_list.stdout
+    assert "11/01 15:30" in result_list.stdout
     # L'échéance par défaut doit être la fin de ce jour
-    assert "11/01/2026 23:59" in result_list.stdout
+    assert "11/01 23:59" in result_list.stdout
 
 
 def test_cli_precise_hour_parsing_fr(test_config_env):
@@ -111,9 +116,9 @@ def test_cli_precise_hour_parsing_fr(test_config_env):
         result_list = runner.invoke(
             app, ["list", "--period", "all"], env={"TODO_BENE_CONFIG_PATH": str(test_config_env)}
         )
-        assert "12/02/2026 14:15" in result_list.stdout
+        assert "12/02 14:15" in result_list.stdout
         # L'échéance doit suivre sur le même jour à 23:59
-        assert "12/02/2026 23:59" in result_list.stdout
+        assert "12/02 23:59" in result_list.stdout
 
 
 def test_cli_create_with_various_separators(test_config_env):
@@ -124,8 +129,8 @@ def test_cli_create_with_various_separators(test_config_env):
     pendulum.travel(freeze=True)
     date_tiret = pendulum.now().format("DD-MM-YYYY HH:mm")
     date_slash = pendulum.now().add(days=1).format("DD/MM/YYYY HH:mm")
-    expected_slash1 = pendulum.now().format("DD/MM/YYYY HH:mm")
-    expected_slash2 = pendulum.now().add(days=1).format("DD/MM/YYYY HH:mm")
+    expected_slash1 = pendulum.now().format("DD/MM HH:mm")
+    expected_slash2 = pendulum.now().add(days=1).format("DD/MM HH:mm")
     # Test avec tirets (ton cas d'erreur)
     runner.invoke(
         app,

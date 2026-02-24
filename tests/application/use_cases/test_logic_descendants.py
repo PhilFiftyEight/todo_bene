@@ -24,17 +24,17 @@ def test_recursive_count_long_chain(user_id):
 
     # 2. Assertions sur la logique récursive brute
     # Parent (A) doit avoir 4 descendants (B, C, D, E)
-    _, _, countchildrecursiv = use_case.execute(todo_a.uuid, user_id)
+    _, _, countchildrecursiv, _ = use_case.execute(todo_a.uuid, user_id)
     assert countchildrecursiv == 4
     # Enfant (B) doit avoir 3 descendants (C, D, E)
-    _, _, countchildrecursiv = use_case.execute(todo_b.uuid, user_id)
+    _, _, countchildrecursiv, _ = use_case.execute(todo_b.uuid, user_id)
     assert countchildrecursiv == 3
     # Petit-Enfant (C) doit avoir 2 descendants (D, E)
-    _, _, countchildrecursiv = use_case.execute(todo_c.uuid, user_id)
+    _, _, countchildrecursiv, _ = use_case.execute(todo_c.uuid, user_id)
     assert countchildrecursiv == 2
      # Arrière-Petit-Enfant (D) doit avoir 1 descendants (E)
-    _, _, countchildrecursiv = use_case.execute(todo_d.uuid, user_id)
+    _, _, countchildrecursiv, _ = use_case.execute(todo_d.uuid, user_id)
     assert countchildrecursiv == 1   
     # Le dernier Arrière-Arrière-Petit-Enfant (E) doit avoir 0 descendants
-    _, _, countchildrecursiv = use_case.execute(todo_e.uuid, user_id)
+    _, _, countchildrecursiv, _ = use_case.execute(todo_e.uuid, user_id)
     assert countchildrecursiv == 0

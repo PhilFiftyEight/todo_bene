@@ -26,17 +26,9 @@ def test_cli_show_details_displays_recursive_count(user_id):
     # Arrière-Petit-Enfant (D)
     todo_d = Todo(title="Arriere-Petit-Enfant", user=user_id, parent=todo_c.uuid)
     repo_memory.save(todo_d)
-
-    # 2. Exécution : On affiche les détails du Parent (A)
-    # L'index dans la liste sera 1 pour le premier lancement
-    #result = runner.invoke(app, ["list", "--period", "all"]) # Pour initialiser la vue
-    # On simule la saisie de l'index du Parent pour voir ses détails
-    # (Ou on appelle directement une commande de détail si elle existe, 
-    # mais ici on teste l'affichage des sous-tâches de A)
     
     # Si on regarde les détails de 'Parent', on doit voir 'Enfant [+2]'
     # Si on regarde les détails de 'Enfant', on doit voir 'Petit-Enfant [+1]'
-    
     
     import io
     from contextlib import redirect_stdout
@@ -44,7 +36,7 @@ def test_cli_show_details_displays_recursive_count(user_id):
     f = io.StringIO()
     with redirect_stdout(f):
         # On appelle directement la fonction de vue avec les datas du Use Case
-        todo, children, count = TodoGetUseCase(repo_memory).execute(todo_a.uuid, user_id)
+        todo, children, count, completed = TodoGetUseCase(repo_memory).execute(todo_a.uuid, user_id)
         _display_detail_view(todo, children, count, repo_memory)
     
     output = f.getvalue()
@@ -56,7 +48,7 @@ def test_cli_show_details_displays_recursive_count(user_id):
     f_child = io.StringIO()
     with redirect_stdout(f_child):
         # On récupère les billes pour l'Enfant (B)
-        todo_b_data, subtasks_b, count_b = TodoGetUseCase(repo_memory).execute(todo_b.uuid, user_id)
+        todo_b_data, subtasks_b, count_b, completed_b = TodoGetUseCase(repo_memory).execute(todo_b.uuid, user_id)
         _display_detail_view(todo_b_data, subtasks_b, count_b, repo_memory)
         
         output_b = Text.from_ansi(f_child.getvalue()).plain
@@ -66,9 +58,10 @@ def test_cli_show_details_displays_recursive_count(user_id):
     f_grandchild = io.StringIO()
     with redirect_stdout(f_grandchild):
         # On récupère les billes pour le Petit-Enfant (C)
-        todo_c_data, subtasks_c, count_c = TodoGetUseCase(repo_memory).execute(todo_c.uuid, user_id)
+        todo_c_data, subtasks_c, count_c, completed_c = TodoGetUseCase(repo_memory).execute(todo_c.uuid, user_id)
         _display_detail_view(todo_c_data, subtasks_c, count_c, repo_memory)
 
         output_c = Text.from_ansi(f_grandchild.getvalue()).plain
         assert "Arriere-Petit-Enfant" in output_c # D n'a plus d'enfants
         assert "[+0]" not in output_c
+    

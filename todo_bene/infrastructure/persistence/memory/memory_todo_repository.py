@@ -20,9 +20,12 @@ class MemoryTodoRepository(TodoRepository):
     def count_all_descendants(self, todo_uuid: UUID) -> int:
         children = self.find_by_parent(todo_uuid)
         total = len(children)
+        completed = sum(1 for child in children if child.state)
         for child in children:
-            total += self.count_all_descendants(child.uuid)
-        return total
+            subtotal, subcompleted = self.count_all_descendants(child.uuid)
+            total += subtotal
+            completed += subcompleted
+        return total, completed
 
     def find_all_active_by_user(self, user_id: UUID) -> list[Todo]:
         """Récupère toutes les tâches non terminées (actives) d'un utilisateur."""

@@ -18,7 +18,7 @@ class TodoRepository(ABC):
         pass
 
     @abstractmethod
-    def count_all_descendants(self, todo_uuid: UUID) -> int:
+    def count_all_descendants(self, todo_uuid: UUID) -> tuple[int, int]:
         """Compte récursivement tous les descendants d'un Todo."""
         pass
 

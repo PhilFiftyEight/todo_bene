@@ -136,13 +136,18 @@ class DuckDBTodoRepository(TodoRepository):
         # On utilise la méthode de mapping existante
         return [self._row_to_todo(row) for row in res]
 
-    def count_all_descendants(self, todo_uuid: UUID) -> int:
+    def count_all_descendants(self, todo_uuid: UUID) -> tuple[int, int]:
         """Compte récursivement tous les descendants d'un Todo."""
         children = self.find_by_parent(todo_uuid)
         total = len(children)
+        # On compte les enfants directs terminés (state=True)
+        completed = sum(1 for child in children if child.state)
+        # Récupération récursive du tuple (total, fini) pour chaque enfant
         for child in children:
-            total += self.count_all_descendants(child.uuid)
-        return total
+            subtotal, subcompleted = self.count_all_descendants(child.uuid)
+            total += subtotal
+            completed += subcompleted
+        return total, completed
 
     def delete(self, todo_id: UUID) -> None:
         """Supprime récursivement un todo et ses enfants via SQL."""

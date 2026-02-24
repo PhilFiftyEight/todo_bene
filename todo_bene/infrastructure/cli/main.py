@@ -9,6 +9,7 @@ import locale
 from uuid import UUID
 from pathlib import Path
 import typer
+
 from rich.text import Text
 from rich.table import Table
 from rich.style import Style
@@ -17,6 +18,9 @@ from rich import box
 from rich.prompt import Confirm, Prompt
 from rich.panel import Panel
 from rich.align import Align
+from rich.progress_bar import ProgressBar
+from rich.columns import Columns
+
 import pendulum
 
 # Imports Internes
@@ -93,6 +97,33 @@ def show_error(message: str, title: str = "Erreur", pause: bool = False):
     )
     if pause:
         _pause()
+
+
+def render_inline_progress(completed: int, total: int):
+    """Génère une petite barre de progression inline pour les listes."""
+    if total == 0: # Pas de sous-tâche
+        return ""    
+    renderables = [
+        f"[{total}",
+        ProgressBar(total=total, completed=completed, width=4),
+        "]"
+    ]
+    return Columns(renderables, padding=1)
+
+
+def inner_table(title, emoji, progress_bar):
+    console_width = console.size.width or 80 # Taille du screen
+    responsive_width = 19 + (console_width - 80) # 19 est la largeur minimum pour une console de 80, le reste étant réservé aux autres colonnes
+    progress_bar_width = 9 # [X ---- ]
+    inner_table = Table.grid(padding=0)
+    if progress_bar:
+        inner_table.add_column(overflow='ellipsis',min_width=responsive_width, no_wrap=True, )
+        inner_table.add_column(no_wrap=True, min_width=progress_bar_width)
+        inner_table.add_row(f"{emoji} {title}", progress_bar)
+    else:
+        inner_table.add_column(overflow='ellipsis', no_wrap=True )
+        inner_table.add_row(f"{emoji} {title}")
+    return inner_table
 
 
 def ensure_user_setup() -> Tuple[UUID, str]:
@@ -184,10 +215,12 @@ def get_date_format():
     try:
         lang, _ = locale.getlocale()
         if lang and lang.startswith("fr"):
-            return "DD/MM/YYYY HH:mm"
+            return "DD/MM HH:mm"
+            #return "DD/MM/YYYY HH:mm"
     except TypeError:
         pass
-    return "YYYY-MM-DD HH:mm"
+    # return "YYYY-MM-DD HH:mm"
+    return "MM-DD HH:mm"
 
 
 def continue_after_invalid(message: str):
@@ -345,7 +378,7 @@ def _display_detail_view(todo: Todo, children: list[Todo], countchildrecursiv: i
         for idx, child in enumerate(children, 1):
             c_status = "✅" if child.state else "⏳"
             prio_child = f" 🔥"if child.priority else ""
-            _, _, child_count = TodoGetUseCase(repo).execute(child.uuid, child.user)
+            _, _, child_count, _ = TodoGetUseCase(repo).execute(child.uuid, child.user)
             child_count = f" [+{child_count}]" if child_count > 0 else ""
             console.print(f"  {idx}. {c_status} {child.title}{prio_child}{child_count}")
     else:
@@ -549,11 +582,11 @@ def _display_root_list(roots: list[Todo], repo, period: str = "all"):
 
     tz = pendulum.local_timezone()
     date_fmt = get_date_format()
-    table = Table(box=box.SIMPLE, header_style="bold", row_styles=["none", "dim"])
-    table.add_column("Idx", justify="right", style="cyan", width=4)
+    table = Table(box=box.SIMPLE, header_style="bold", row_styles=["none", "dim"], padding=0)
+    table.add_column("Idx", justify="right", style="cyan", width=3)
     table.add_column(" ", justify="center", width=2)
     table.add_column("Titre", style="blue")
-    table.add_column("Description", style="white")
+    table.add_column("Description", style="white", no_wrap=True)
     table.add_column("Début", style="green")
     table.add_column("Échéance", style="magenta")
 
@@ -582,19 +615,14 @@ def _display_root_list(roots: list[Todo], repo, period: str = "all"):
         # ----------------------------------------------
 
         prio_mark = "🔥" if todo.priority else ""
-        children = repo.find_by_parent(todo.uuid)
-        child_signal = (
-            f" [bold cyan][{repo.count_all_descendants(todo.uuid)}+][/bold cyan]"
-            if len(children) > 0
-            else ""
-        )
-        
-        # Titre avec Emoji
+        count_child, count_completed = repo.count_all_descendants(todo.uuid)
         emoji = emoji_cache.get(todo.category, "🔖")
-        display_title = f"{emoji}  {todo.title}{child_signal}"
+
+        progress_bar = render_inline_progress(count_completed, count_child)
+        display_title = inner_table(todo.title, emoji, progress_bar)        
 
         raw_desc = str(todo.description) if todo.description else ""
-        desc = (raw_desc[:20] + "...") if len(raw_desc) > 20 else raw_desc
+        desc = (raw_desc[:15] + "...") if len(raw_desc) > 15 else raw_desc
         d_start = pendulum.from_timestamp(todo.date_start, tz=tz).format(date_fmt)
         d_due = pendulum.from_timestamp(todo.date_due, tz=tz).format(date_fmt)
         
@@ -602,7 +630,7 @@ def _display_root_list(roots: list[Todo], repo, period: str = "all"):
             f"{idx:3}",
             prio_mark,
             display_title,
-            desc or "[dim italic]Pas de description[/dim italic]",
+            desc or "[dim italic]...[/dim italic]",
             d_start,
             d_due,
         )
@@ -636,7 +664,7 @@ def _handle_navigation(choice: str, children: list[Todo], user_id: UUID) -> bool
 def show_details(todo_uuid: UUID, user_id: UUID) -> bool:
     with get_repository() as repo:
         while True:
-            todo, children, countchildrecursiv = TodoGetUseCase(repo).execute(todo_uuid, user_id)
+            todo, children, countchildrecursiv, completed = TodoGetUseCase(repo).execute(todo_uuid, user_id)
             _display_detail_view(todo, children, countchildrecursiv, repo)
             choice = Prompt.ask("\nVotre choix", default="r").lower().strip()
             if choice.isdigit():
