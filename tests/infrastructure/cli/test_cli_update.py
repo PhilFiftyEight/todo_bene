@@ -2,6 +2,9 @@ import pendulum
 import pytest  # noqa: F401
 from uuid import uuid4
 from typer.testing import CliRunner
+from prompt_toolkit import PromptSession
+#from prompt_toolkit.input import create_pipe_input
+
 from todo_bene.infrastructure.cli.main import app
 from todo_bene.domain.entities.todo import Todo
 
@@ -9,7 +12,7 @@ runner = CliRunner()
 
 
 def test_cli_update_todo_title_and_description(
-    repository, monkeypatch, test_config_env
+    repository, monkeypatch, test_config_env, mock_prompt_session
 ):
     # GIVEN
     user_id = uuid4()
@@ -47,7 +50,7 @@ def test_cli_update_todo_title_and_description(
     assert "mis à jour avec succès" in result.stdout
 
 
-def test_cli_update_forbidden_field_feedback(repository, monkeypatch, test_config_env):
+def test_cli_update_forbidden_field_feedback(repository, monkeypatch, test_config_env, mock_prompt_session):
     # GIVEN
     user_id = uuid4()
     monkeypatch.setattr(
@@ -55,7 +58,7 @@ def test_cli_update_forbidden_field_feedback(repository, monkeypatch, test_confi
         lambda: (user_id, "dev.db", "test_profile"),
     )
 
-    todo = Todo(title="Test Protec", user=user_id)
+    todo = Todo(title="Test Protect", user=user_id)
     repository.save(todo)
 
     # Simulation : On tente de passer 'user' dans les arguments (via un mock ou input)
@@ -84,7 +87,7 @@ def test_cli_update_forbidden_field_feedback(repository, monkeypatch, test_confi
         assert "Champs non modifiables : user, uuid" in result.stdout
 
 
-def test_cli_update_dates_success(repository, monkeypatch, test_config_env):
+def test_cli_update_dates_success(repository, monkeypatch, test_config_env, mock_prompt_session):
     # GIVEN
     user_id = uuid4()
     monkeypatch.setattr(
@@ -101,6 +104,7 @@ def test_cli_update_dates_success(repository, monkeypatch, test_config_env):
     future_date_str = "31/12/2026 23:59"
     # 1 -> \n m -> \n (Titre) -> \n (Desc) -> \n (Priority) -> \n (Cat) -> \n (Start) -> \n DATE (Due)
     inputs = f"1\nm\n\n\n\n\n\n{future_date_str}\nr\n"
+
     # WHEN
     result = runner.invoke(
         app, ["list"], input=inputs, env={"TODO_BENE_CONFIG_PATH": str(test_config_env)}
@@ -117,7 +121,7 @@ def test_cli_update_dates_success(repository, monkeypatch, test_config_env):
 
 
 def test_cli_update_date_invalid_format_shows_error(
-    repository, monkeypatch, test_config_env
+    repository, monkeypatch, test_config_env, mock_prompt_session
 ):
     user_id = uuid4()
     monkeypatch.setattr(

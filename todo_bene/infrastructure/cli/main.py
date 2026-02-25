@@ -21,6 +21,10 @@ from rich.align import Align
 from rich.progress_bar import ProgressBar
 from rich.columns import Columns
 
+from prompt_toolkit import PromptSession
+from prompt_toolkit.history import InMemoryHistory
+from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+
 import pendulum
 
 # Imports Internes
@@ -211,16 +215,18 @@ def get_repository():
             repo.close()
 
 
-def get_date_format():
+def get_date_format(short:bool = True)-> str:
     try:
         lang, _ = locale.getlocale()
         if lang and lang.startswith("fr"):
-            return "DD/MM HH:mm"
-            #return "DD/MM/YYYY HH:mm"
+            if short: 
+                return "DD/MM HH:mm"
+            return "DD/MM/YYYY HH:mm"
     except TypeError:
         pass
-    # return "YYYY-MM-DD HH:mm"
-    return "MM-DD HH:mm"
+    if short:
+        return "MM-DD HH:mm"
+    return "YYYY-MM-DD HH:mm"
 
 
 def continue_after_invalid(message: str):
@@ -359,7 +365,7 @@ def _display_detail_view(todo: Todo, children: list[Todo], countchildrecursiv: i
 
     content = f"{header_with_emoji}\n\n[italic]{todo.description or 'Pas de description'}[/italic]"
     tz = pendulum.local_timezone()
-    date_fmt = get_date_format()
+    date_fmt = get_date_format(short=False)
     d_start = pendulum.from_timestamp(todo.date_start, tz=tz).format(date_fmt)
     d_due = pendulum.from_timestamp(todo.date_due, tz=tz).format(date_fmt)
     content += f"\n\n[blue]Démarrage: {d_start} - Échéance: {d_due}[/blue]"
@@ -390,6 +396,18 @@ def _display_detail_view(todo: Todo, children: list[Todo], countchildrecursiv: i
     console.print(" [b]t[/b]: Terminer | [b]s[/b]: Supprimer |  [b]r[/b]: Retour ")
 
 
+def create_session_with_history(items: list[str]) -> PromptSession:
+    """Crée une session prompt-toolkit avec un historique pré-rempli."""
+    history = InMemoryHistory()
+    for item in items:
+        history.append_string(item)
+    return PromptSession(
+        history=history,
+        auto_suggest=AutoSuggestFromHistory(),
+        enable_history_search=True
+    )
+
+
 def _handle_action(
     choice: str, todo: Todo, children: list[Todo], repo, user_id
 ) -> tuple[bool, bool]:
@@ -408,40 +426,62 @@ def _handle_action(
     if choice == "m":
         console.print("\n[bold blue]📝 Modification du Todo[/bold blue]")
         console.print("[dim]Laissez vide pour conserver la valeur actuelle[/dim]\n")
-        new_title = Prompt.ask(
-            f"Titre [dim]({todo.title})[/dim]", default=todo.title, show_default=False
-        )
-        current_desc = todo.description if todo.description else ""
-        new_desc = Prompt.ask(
-            f"Description [dim]({current_desc or 'aucune'})[/dim]",
-            default=current_desc,
-            show_default=False,
-        )
+
+        title_session = create_session_with_history([todo.title])       
+        try:
+            new_title = title_session.prompt(f"Titre ({todo.title}) : ") or todo.title
+        except KeyboardInterrupt:
+            new_title = todo.title       
+
+        desc_session = PromptSession() 
+        console.print(f"Description [dim](actuelle: {todo.description or 'aucune'})[/dim] :")
+        console.print("[dim italic](Pressez Esc + Entrée pour valider)[/dim italic]")
+        try:
+            new_desc = desc_session.prompt(default=todo.description or "", multiline=True)
+        except KeyboardInterrupt:
+            new_desc = todo.description
+
         current_priority = todo.priority
         new_priority = typer.confirm(
             f"Prioritaire ? ({'Oui' if current_priority else 'Non'})",
             default=current_priority,
         )
-        new_cat = Prompt.ask(
-            f"Catégorie [dim]({todo.category})[/dim]",
-            default=todo.category,
-            show_default=True,
-        )
+       
+        cat_repo = DuckDBCategoryRepository(repo._conn)
+        categories = CategoryListUseCase(cat_repo).execute(user_id)
+        cat_session = create_session_with_history(categories)
+        categories = " / ".join([category for category in categories])
+        console.print(f"[dim]{categories}[/dim]")
+        try:
+            new_cat = cat_session.prompt(f"Catégorie ({todo.category}) : ") or todo.category
+        except KeyboardInterrupt:
+            new_cat = todo.category
 
-        def ask_date(label: str, default_ts: Optional[int] = None) -> int:
-            default_str = ""
-            if default_ts:
-                default_str = pendulum.from_timestamp(
-                    default_ts, tz=pendulum.local_timezone()
-                ).format("DD/MM/YYYY HH:mm")
-            val = Prompt.ask(f"{label}", default=default_str)
-            if val == default_str and default_ts is not None:
-                return int(default_ts)
+        def ask_date(label: str, default_timestamp: Optional[int] = None) -> int:            
+            default_date_str = ""
+            if default_timestamp:
+                default_date_str = pendulum.from_timestamp(
+                    default_timestamp,
+                    tz=pendulum.local_timezone()
+                    ).format("DD/MM/YYYY HH:mm")
+            
+            date_session = PromptSession()
             try:
-                dt = pendulum.from_format(
-                    val, "DD/MM/YYYY HH:mm", tz=pendulum.local_timezone()
+                new_date_str = date_session.prompt(
+                    f"Début ({default_date_str}) : ", 
+                    default=default_date_str
                 )
-                return int(dt.timestamp())
+            except KeyboardInterrupt:
+                new_date_str = default_date_str
+            
+            if new_date_str == default_date_str and default_date_str is not None:
+                return int(default_timestamp)
+
+            try:
+                new_date = pendulum.from_format(
+                    new_date_str, "DD/MM/YYYY HH:mm", tz=pendulum.local_timezone()
+                )
+                return int(new_date.timestamp())
             except ValueError:
                 # console.print("[bold red]❌ Format de date invalide.[/bold red] Utilisez : DD/MM/YYYY HH:mm")
                 show_error(
@@ -480,11 +520,9 @@ def _handle_action(
                     console.print(
                         f"[dim yellow]Champs non modifiables : {', '.join(tech_forbiden)}[/dim yellow]"
                     )
-            # console.print("[bold green]✔ Todo mis à jour avec succès ![/bold green]")
             show_success("Todo mis à jour avec succès !", title="Mise à jour", pause=True)
             return False, False
         except ValueError as e:
-            # console.print(f"[bold red]❌ Erreur : {e}[/bold red]")
             show_error(f"Erreur : {e}", title="Modification", pause=True)
             return False, False
 

@@ -1,5 +1,7 @@
 import pytest
 from uuid import uuid4
+from prompt_toolkit import PromptSession
+
 from todo_bene.infrastructure.persistence.duckdb.duckdb_connection_manager import (
     DuckDBConnectionManager,
 )
@@ -74,3 +76,20 @@ def repository(monkeypatch, repo):
         "todo_bene.infrastructure.cli.main.get_repository", mock_get_repository
     )
     return repo
+
+
+@pytest.fixture
+def mock_prompt_session(monkeypatch):
+    """Fixture pour simuler les saisies interactives de prompt-toolkit.
+    # On remplace la méthode prompt de PromptSession par un simple input()
+    # pour matcher la signature complexe de prompt-toolkit.
+    # On intercepte 'default' pour simuler le comportement de prompt-toolkit"""
+    def _mock_prompt(*args, **kwargs):
+        user_input = input()
+        # Simule le comportement du paramètre 'default' de prompt-toolkit
+        if not user_input and "default" in kwargs:
+            return kwargs["default"]
+        return user_input
+
+    monkeypatch.setattr(PromptSession, "prompt", _mock_prompt)
+    return _mock_prompt
