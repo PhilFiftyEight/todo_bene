@@ -7,7 +7,7 @@ include = ["todo_bene*"]
 
 [project]
 name = "todo-bene"
-version = "0.3.2"
+version = "0.3.3"
 description = "To-do-list"
 license = "MIT"
 license-files = ["LICENSE.txt"]

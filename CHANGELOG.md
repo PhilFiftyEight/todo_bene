@@ -63,9 +63,6 @@
 - **Test Stability**: Updated the entire test suite (184 tests) to decouple CLI integration tests from UI default changes using explicit flags.
 
 
-
----
-
 ## [0.3.2] - 2026-02-22
 
 ### ✨ New Features
@@ -84,5 +81,21 @@
 * **Animated Demos:** Integrated VHS demos (`.gif`) showcasing the initial setup and core features.
 * **Bilingual README:** Complete documentation now available in both French 🇫🇷 and English 🇬🇧.
 * **Demo Scripts:** Added `populate_demo.py` in `docs/media/` to generate an instant testing environment.
+
+
+## [0.3.3] - 2026-02-25
+
+### Added
+- Integrated `prompt-toolkit` for a more interactive CLI experience.
+- Added fish-shell-like auto-suggestions for Category and Title fields during modification.
+- Implemented multiline text editing for Todo descriptions (use Esc+Enter to validate).
+- Added pre-filled editable default values for Start and Due dates.
+
+### Changed
+- Refactored `_handle_action` to use `PromptSession` for task updates.
+- Centralized interactive session creation in a reusable `create_session_with_history` utility.
+
+### Fixed
+- Stabilized CLI unit tests by introducing a `mock_prompt_session` fixture to handle non-interactive environments.
 
 ---
