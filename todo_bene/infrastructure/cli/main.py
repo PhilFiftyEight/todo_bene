@@ -425,7 +425,7 @@ def _handle_action(
         new_cat = Prompt.ask(
             f"Catégorie [dim]({todo.category})[/dim]",
             default=todo.category,
-            show_default=False,
+            show_default=True,
         )
 
         def ask_date(label: str, default_ts: Optional[int] = None) -> int:
@@ -664,7 +664,7 @@ def _handle_navigation(choice: str, children: list[Todo], user_id: UUID) -> bool
 def show_details(todo_uuid: UUID, user_id: UUID) -> bool:
     with get_repository() as repo:
         while True:
-            todo, children, countchildrecursiv, completed = TodoGetUseCase(repo).execute(todo_uuid, user_id)
+            todo, children, countchildrecursiv, _ = TodoGetUseCase(repo).execute(todo_uuid, user_id) # _ = completed, not use there
             _display_detail_view(todo, children, countchildrecursiv, repo)
             choice = Prompt.ask("\nVotre choix", default="r").lower().strip()
             if choice.isdigit():

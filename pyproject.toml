@@ -17,6 +17,7 @@ dependencies = [
     "duckdb>=1.4.3",
     "holidays>=0.91",
     "pendulum[test]>=3.2.0",
+    "prompt-toolkit>=3.0.52",
     "text2num>=3.0.0",
     "typer>=0.24.0",
 ]
@@ -24,7 +25,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "bandit>=1.9.3",
-    "ipython>=9.9.0",
+    "ipython>=9.10.0",
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
     "pytest-mock>=3.15.1",
