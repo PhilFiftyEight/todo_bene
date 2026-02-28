@@ -14,8 +14,10 @@ license-files = ["LICENSE.txt"]
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
 dependencies = [
+    "cryptography>=46.0.5",
     "duckdb>=1.4.3",
     "holidays>=0.91",
+    "keyring>=25.7.0",
     "pendulum[test]>=3.2.0",
     "prompt-toolkit>=3.0.52",
     "text2num>=3.0.0",

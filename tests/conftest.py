@@ -1,4 +1,6 @@
 import pytest
+import keyring
+from keyring.backends.null import Keyring
 from uuid import uuid4
 from prompt_toolkit import PromptSession
 
@@ -11,6 +13,30 @@ from todo_bene.infrastructure.persistence.duckdb.duckdb_todo_repository import (
 from todo_bene.infrastructure.persistence.duckdb.duckdb_category_repository import (
     DuckDBCategoryRepository,
 )
+
+
+class MockKeyring(Keyring):
+    """Un backend de stockage en mémoire pour les tests."""
+    priority = 1
+    def __init__(self):
+        self.passwords = {}
+
+    def get_password(self, service, username):
+        return self.passwords.get(f"{service}:{username}")
+
+    def set_password(self, service, username, password):
+        self.passwords[f"{service}:{username}"] = password
+
+    def delete_password(self, service, username):
+        self.passwords.pop(f"{service}:{username}", None)
+
+@pytest.fixture(autouse=True)
+def mock_keyring_storage():
+    """Active le mock keyring automatiquement pour tous les tests."""
+    original_backend = keyring.get_keyring()
+    keyring.set_keyring(MockKeyring())
+    yield
+    keyring.set_keyring(original_backend)
 
 
 @pytest.fixture(autouse=True)

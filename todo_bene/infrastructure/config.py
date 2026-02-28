@@ -4,6 +4,88 @@ from pathlib import Path
 from typing import Any, Dict, Tuple, Optional
 from uuid import UUID
 import pendulum
+import keyring
+from cryptography.fernet import Fernet
+
+
+def get_or_create_master_key() -> bytes:
+    """
+    Récupère la clé de chiffrement dans le keyring système.
+    Si elle n'existe pas, elle est générée et stockée.
+    """
+    service_name = "todo_bene"
+    key_alias = "master_key"
+    
+    # Tentative de récupération
+    stored_key = keyring.get_password(service_name, key_alias)
+    
+    if stored_key is None:
+        # Génération d'une nouvelle clé Fernet (32 octets encodés en base64)
+        new_key = Fernet.generate_key().decode('utf-8')
+        keyring.set_password(service_name, key_alias, new_key)
+        return new_key.encode('utf-8')
+        
+    return stored_key.encode('utf-8')
+
+
+def decrypt_value(encrypted_value: str) -> str:
+    """
+    Déchiffre une valeur (email, mot de passe) en utilisant la Master Key.
+    Retourne la valeur en clair (string).
+    """
+    if not encrypted_value:
+        return ""
+        
+    master_key = get_or_create_master_key()
+    f = Fernet(master_key)
+    
+    try:
+        # Fernet attend des bytes, on décode la chaîne chiffrée
+        decrypted_bytes = f.decrypt(encrypted_value.encode('utf-8'))
+        return decrypted_bytes.decode('utf-8')
+    except Exception:
+        # En cas d'erreur (mauvaise clé, donnée corrompue), on reste prudent
+        return ""
+
+
+def encrypt_value(plain_text: str) -> str:
+    """
+    Chiffre une valeur en utilisant la Master Key.
+    Retourne la version chiffrée (string) prête à être stockée.
+    """
+    if not plain_text:
+        return ""
+        
+    master_key = get_or_create_master_key()
+    f = Fernet(master_key)
+    
+    # Fernet travaille sur des bytes, on encode le texte
+    encrypted_bytes = f.encrypt(plain_text.encode('utf-8'))
+    return encrypted_bytes.decode('utf-8')
+
+
+def save_smtp_config(host: str, port: int, user: str, password: str):
+    """
+    Chiffre et sauvegarde les paramètres SMTP pour le profil actif.
+    """
+    user_id, db_path, profile_name = load_user_info()
+    if not profile_name:
+        return
+
+    config = load_full_config()
+    
+    # Préparation des données chiffrées
+    smtp_data = {
+        "host": host,
+        "port": port,
+        "user_encrypted": encrypt_value(user),
+        "password_encrypted": encrypt_value(password)
+    }
+    
+    # Injection dans le profil
+    if "profiles" in config and profile_name in config["profiles"]:
+        config["profiles"][profile_name]["smtp_config"] = smtp_data
+        save_full_config(config)
 
 
 def get_base_paths() -> Tuple[Path, Path]:
