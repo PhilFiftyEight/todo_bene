@@ -20,6 +20,7 @@ dependencies = [
     "keyring>=25.7.0",
     "pendulum[test]>=3.2.0",
     "prompt-toolkit>=3.0.52",
+    "questionary>=2.1.1",
     "text2num>=3.0.0",
     "typer>=0.24.0",
 ]

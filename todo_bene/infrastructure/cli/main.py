@@ -9,6 +9,7 @@ import locale
 from uuid import UUID
 from pathlib import Path
 import typer
+import questionary
 
 from rich.text import Text
 from rich.table import Table
@@ -32,7 +33,11 @@ from todo_bene.infrastructure.config import (
     get_base_paths,
     load_user_info,
     save_user_config,
+    save_smtp_config,
+    add_mail_job
 )
+
+from todo_bene.domain.services.transformer_service import TRANSFORMERS_REGISTRY
 
 from todo_bene.domain.entities.todo import Todo
 from todo_bene.domain.entities.category import Category
@@ -920,6 +925,106 @@ def list_dev():
             table.add_row(short_id, parent_info, t.title, state, raw_dates)
         console.print(table)
         console.print(f"\n[dim] Total : {len(todos)} items en base.[/dim]")
+
+
+# Création du sous-groupe pour les mails
+mail_app = typer.Typer(help="Gestion de la configuration et des envois d'emails.")
+
+@mail_app.command()
+def setup(
+    host: str = typer.Option(
+        ..., 
+        prompt="Hôte SMTP", 
+        help="L'adresse du serveur de courrier (ex: smtp.gmail.com)."
+    ),
+    port: int = typer.Option(
+        587, 
+        prompt="Port SMTP", 
+        help="Le port utilisé (587 pour TLS, 465 pour SSL)."
+    ),
+    user: str = typer.Option(
+        ..., 
+        prompt="Utilisateur (Email)", 
+        help="Ton identifiant de connexion au serveur SMTP."
+    ),
+    password: str = typer.Option(
+        ..., 
+        prompt="Mot de passe", 
+        hide_input=True, 
+        confirmation_prompt=True,
+        help="Ton mot de passe (sera chiffré avant d'être stocké)."
+    ),
+):
+    """
+    Configure les paramètres du serveur SMTP de manière sécurisée.
+    Les identifiants sont chiffrés via une Master Key stockée dans ton trousseau OS.
+    """
+    try:
+        # Conversion explicite du port en int (sécurité Typer)
+        save_smtp_config(host, int(port), user, password)
+        typer.secho("\n✅ Configuration SMTP sauvegardée et chiffrée !", fg=typer.colors.GREEN, bold=True)
+    except Exception as e:
+        typer.secho(f"\n❌ Erreur lors de la sauvegarde : {e}", err=True, fg=typer.colors.RED)
+
+
+@mail_app.command()
+def add_job(
+    name: str = typer.Option(..., prompt=typer.style("📌 Nom du job", fg=typer.colors.CYAN, bold=True)),
+    recipient: str = typer.Option(..., prompt=typer.style("📧 Email destinataire", fg=typer.colors.CYAN, bold=True)),
+):
+    """Ajoute un job avec sélection interactive et couleurs."""
+    
+    # Construction des choix avec labels stylisés
+    choices = []
+    for t_name, func in TRANSFORMERS_REGISTRY.items():
+        doc = (func.__doc__ or "Sans description").strip().split('\n')[0]
+        # On peut même mettre de la couleur dans les titres de Questionary
+        choices.append(questionary.Choice(
+            title=[
+                ("class:text", f"{t_name:.<20}"),
+                ("class:description", f" {doc}"),
+            ],
+            value=t_name
+        ))
+
+    # Style personnalisé pour Questionary
+    custom_style = questionary.Style([
+        ('qmark', 'fg:#91A9E8 bold'),          # Icône ? en Bleu
+        ('question', 'bold'),                  # Texte question
+        ('pointer', 'fg:#91A9E8 bold'),        # Curseur en Bleu
+        ('highlighted', 'fg:#00bcd4 bold'),    # Survol en Bleu
+        ('selected', 'fg:#91A9E8'),            # Coché en Bleu
+        ('text', 'fg:#91A9E8'),                # Nom du transformer en Bleu
+        ('description', 'fg:#546e7a italic'),  # Docstring en Gris Bleuté
+    ])
+
+    # 3. Interface Questionary
+    selected_transformers = questionary.checkbox(
+        "🛠️  Quels transformers souhaites-tu appliquer ?",
+        choices=choices,
+        style=custom_style,
+    ).ask()
+
+    if not selected_transformers:
+        typer.secho("\n⚠️  Aucun transformer sélectionné. Job annulé.", fg=typer.colors.YELLOW)
+        raise typer.Exit()
+
+    try:
+        add_mail_job(name, recipient, selected_transformers)
+        
+        # Succès éclatant
+        typer.echo("")
+        typer.secho("✨" + "="*40, fg=typer.colors.BRIGHT_MAGENTA)
+        typer.secho(f"🚀 Job '{name}' créé avec succès !", fg=typer.colors.GREEN, bold=True)
+        typer.secho(f"📬 Destinataire : {recipient}", fg=typer.colors.WHITE)
+        typer.secho(f"🔧 Filters : {', '.join(selected_transformers)}", fg=typer.colors.BLUE)
+        typer.secho("="*42, fg=typer.colors.BRIGHT_MAGENTA)
+        
+    except Exception as e:
+        typer.secho(f"\n❌ Erreur fatale : {e}", err=True, fg=typer.colors.RED, bold=True)
+
+
+app.add_typer(mail_app, name="mail")
 
 
 if __name__ == "__main__":

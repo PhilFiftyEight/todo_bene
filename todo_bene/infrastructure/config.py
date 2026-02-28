@@ -1,7 +1,7 @@
 import os
 import json
 from pathlib import Path
-from typing import Any, Dict, Tuple, Optional
+from typing import Any, Dict, Tuple, Optional, List
 from uuid import UUID
 import pendulum
 import keyring
@@ -86,6 +86,28 @@ def save_smtp_config(host: str, port: int, user: str, password: str):
     if "profiles" in config and profile_name in config["profiles"]:
         config["profiles"][profile_name]["smtp_config"] = smtp_data
         save_full_config(config)
+
+
+def add_mail_job(name: str, recipient: str, transformers: List[str]):
+    """Ajoute un job de mail au profil actif."""
+    user_id, db_path, profile_name = load_user_info()
+    if not profile_name:
+        return
+
+    config = load_full_config()
+    
+    job_data = {
+        "recipient": encrypt_value(recipient),
+        "transformers": transformers
+    }
+    
+    # Initialisation de la section mail_jobs si elle n'existe pas
+    profile = config["profiles"][profile_name]
+    if "mail_jobs" not in profile:
+        profile["mail_jobs"] = {}
+        
+    profile["mail_jobs"][name] = job_data
+    save_full_config(config)
 
 
 def get_base_paths() -> Tuple[Path, Path]:

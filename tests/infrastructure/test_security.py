@@ -1,6 +1,13 @@
 import pytest
 from uuid import uuid4
-from todo_bene.infrastructure.config import encrypt_value, decrypt_value, save_user_config, save_smtp_config, load_full_config
+from todo_bene.infrastructure.config import (
+    encrypt_value,
+    decrypt_value,
+    save_user_config,
+    save_smtp_config,
+    load_full_config,
+    add_mail_job
+)
 
 def test_security_roundtrip():
     """
@@ -51,3 +58,28 @@ def test_save_and_load_smtp_config(tmp_path, monkeypatch):
     # Vérifie que c'est déchiffrable
     assert decrypt_value(smtp_cfg["user_encrypted"]) == raw_user
     assert decrypt_value(smtp_cfg["password_encrypted"]) == raw_pass
+
+
+def test_add_mail_job_persistence(tmp_path, monkeypatch):
+    """Vérifie qu'un job est correctement ajouté au profil."""
+    # 1. Setup
+    config_file = tmp_path / "config.json"
+    monkeypatch.setenv("TODO_BENE_CONFIG_PATH", str(config_file))
+    save_user_config(uuid4(), "test.db", "profile_test")
+
+    # 2. Action
+    job_name = "Rapport Pro"
+    recipient = "boss@company.com"
+    transformers = ["format_phone", "waze_link"]
+    
+    add_mail_job(job_name, recipient, transformers)
+
+    # 3. Assertions
+    config = load_full_config()
+    jobs = config["profiles"]["profile_test"]["mail_jobs"]
+    
+    assert job_name in jobs
+    assert jobs[job_name]["recipient"] != recipient
+    # Vérifie le déchiffrement
+    assert decrypt_value(jobs[job_name]["recipient"]) == recipient
+    assert jobs[job_name]["transformers"] == ["format_phone", "waze_link"]

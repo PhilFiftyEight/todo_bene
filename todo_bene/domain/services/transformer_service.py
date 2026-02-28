@@ -31,6 +31,10 @@ TRANSFORMERS_REGISTRY: Dict[str, Callable[[str], str]] = {
     "waze_link": waze_link,
 }
 
+# def get_available_transformers() -> list[str]:
+#     """Renvoie la liste des noms de transformers enregistrés."""
+#     return list(TRANSFORMERS_REGISTRY.keys())
+
 # --- Moteur d'exécution ---
 
 def apply_transformers(text: str, transformer_names: List[str]) -> str:
