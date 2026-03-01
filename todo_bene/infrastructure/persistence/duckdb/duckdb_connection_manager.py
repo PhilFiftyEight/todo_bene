@@ -16,10 +16,22 @@ logger = logging.getLogger(__name__)
 
 
 class DuckDBConnectionManager:
-    def __init__(self, db_path: str):
-        self.conn = duckdb.connect(db_path)
-        self._ensure_migration_table()
-        self._run_migrations()
+    def __init__(self, db_path: str, read_only: bool = False):
+        self.db_path = db_path
+        self.read_only = read_only
+        
+        # Configuration de l'access_mode
+        access_mode = "READ_ONLY" if self.read_only else "READ_WRITE"
+        
+        # Initialisation de la connexion avec le mode spécifié
+        self.conn = duckdb.connect(self.db_path, config={'access_mode': access_mode})
+        
+        # CRITIQUE : On ne lance les migrations QUE si on est en READ_WRITE
+        if not self.read_only:
+            self._ensure_migration_table()
+            self._run_migrations()
+        else:
+            logger.info(f"Connexion DuckDB établie en mode READ_ONLY pour {db_path}")
 
     def _ensure_migration_table(self):
         """Crée la table de suivi des migrations si elle n'existe pas."""

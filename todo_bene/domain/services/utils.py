@@ -1,6 +1,3 @@
-"""utility functions"""
-
-
 def mask_email(email: str) -> str:
     """Masque l'email selon le pattern : p*******.***t@******.*r"""
     if "@" not in email:

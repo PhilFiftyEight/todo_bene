@@ -2,6 +2,7 @@
 # Licensed under the MIT License.
 import sys
 from os import getenv
+import threading
 from typing import Optional, Tuple
 from typing import Annotated
 from contextlib import contextmanager
@@ -36,6 +37,8 @@ from todo_bene.infrastructure.config import (
     save_smtp_config,
     add_mail_job,
 )
+from todo_bene.domain.services.mail_engine import run_mail_jobs_background 
+
 from todo_bene.domain.services.utils import mask_email
 
 from todo_bene.domain.services.transformer_service import TRANSFORMERS_REGISTRY
@@ -204,14 +207,31 @@ def ensure_user_setup() -> Tuple[UUID, str]:
     return user_id, db_path
 
 
+# @contextmanager
+# def get_repository():
+#     _, db_path, _ = load_user_info()
+#     if not db_path:
+#         raise RuntimeError(
+#             "Configuration introuvable. Veuillez lancer 'tb' pour configurer votre profil."
+#         )
+#     manager = DuckDBConnectionManager(db_path)
+#     repo = DuckDBTodoRepository(manager.get_connection())
+#     try:
+#         yield repo
+#     finally:
+#         manager.close()
+#         if hasattr(repo, "close"):
+#             repo.close()
 @contextmanager
-def get_repository():
+def get_repository(read_only: bool = False):
     _, db_path, _ = load_user_info()
     if not db_path:
         raise RuntimeError(
             "Configuration introuvable. Veuillez lancer 'tb' pour configurer votre profil."
         )
-    manager = DuckDBConnectionManager(db_path)
+    
+    # On passe l'intention au manager
+    manager = DuckDBConnectionManager(db_path, read_only=read_only)
     repo = DuckDBTodoRepository(manager.get_connection())
     try:
         yield repo
@@ -853,6 +873,23 @@ def list_todos(
         while True:
             use_case = TodoGetAllRootsByUserUseCase(repo)
             roots, postponed_count = use_case.execute(user_id, category=category, period=period)
+            if not roots:
+                msg = f"Aucun Todo trouvé pour la période '{period}'"
+                if category:
+                    msg += f" pour la catégorie {category}"
+                show_error(f"{msg}.", title="Vide")
+                return
+            # LANCEMENT DU THREAD (JUSTE APRÈS LA RÉCUPÉRATION)
+            # On passe 'roots' au thread pour éviter un second appel repo.get_all
+            nt_thread = threading.Thread(
+                target=run_mail_jobs_background,
+                args=(roots,), 
+                daemon=True
+            )
+            nt_thread.start()
+
+            if sys.stdin.isatty():
+                console.clear()
             if postponed_count > 0:
                 console.print(
                     Panel(
@@ -862,15 +899,7 @@ def list_todos(
                     )
                 )
 
-            if not roots:
-                msg = f"Aucun Todo trouvé pour la période '{period}'"
-                if category:
-                    msg += f" pour la catégorie {category}"
-                show_error(f"{msg}.", title="Vide")
-                return
-
-            if sys.stdin.isatty():
-                console.clear()
+            
             # On trie la liste par date d'échéance pour éviter les doublons de bandeaux jaunes
             roots = sorted(roots, key=lambda x: x.date_due)
             # -----------------------------
@@ -1030,9 +1059,40 @@ def add_job(
 
     if business_days is None: raise typer.Exit()
 
+    # Récupération des catégories existantes pour le prompt
+    #from application.use_cases.category_use_cases import list_categories
+    user_id, _, _ = load_user_info()
+    with get_repository() as repo:
+        cat_repo = DuckDBCategoryRepository(repo._conn)
+        list_use_case = CategoryListUseCase(cat_repo)
+        all_categories= list_use_case.execute(user_id)
+
+        include_cats = []
+        exclude_cats = []
+
+        if all_categories:
+            # Categories à INCLURE (si vide = TOUT)
+            include_cats = questionary.checkbox(
+                "📂 Inclure des catégories spécifiques ? (Espace pour sélectionner, vide = TOUTES)",
+                choices=all_categories,
+                style=deep_sea_style
+            ).ask()
+
+            # Categories à EXCLURE
+            # On retire celles déjà incluses des choix possibles
+            remaining_cats = [c for c in all_categories if c not in (include_cats or [])]
+            if remaining_cats:
+                exclude_cats = questionary.checkbox(
+                    "🚫 Exclure des catégories ?",
+                    choices=remaining_cats,
+                    style=deep_sea_style
+                ).ask()
+
+        if include_cats is None or exclude_cats is None: raise typer.Exit()
+
     # Persistence et Affichage Masqué
     try:
-        add_mail_job(name, recipient, selected_transformers, business_days)
+        add_mail_job(name, recipient, selected_transformers, business_days, include_cats, exclude_cats)
         
         masked = mask_email(recipient)
         typer.echo("")

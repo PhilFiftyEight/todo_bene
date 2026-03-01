@@ -11,15 +11,14 @@ def format_phone(text: str) -> str:
     return re.sub(phone_pattern, r'\1.\2.\3.\4.\5', text)
 
 def waze_link(text: str) -> str:
-    """Transforme les adresses (ex: 5 rue...) en liens cliquables vers Waze."""
-    # Regex simplifiée pour détecter un début d'adresse (chiffre + nom de rue)
-    # Note : À affiner selon tes habitudes de saisie
+    """Transforme les adresses en liens cliquables."""
     address_pattern = r'(\d+[\w\s\',-]+(?:Ville|Paris|Lyon|Marseille|[A-Z][a-z]+))'
     
     def replace_with_waze(match):
         address = match.group(0).strip()
         encoded_addr = urllib.parse.quote(address)
-        return f"{address} (https://waze.com/ul?q={encoded_addr}&navigate=yes)"
+        # On garde l'adresse et on ajoute le lien HTML
+        return f'{address} <a href="https://waze.com/ul?q={encoded_addr}&navigate=yes">(Waze)</a>'
 
     return re.sub(address_pattern, replace_with_waze, text)
 

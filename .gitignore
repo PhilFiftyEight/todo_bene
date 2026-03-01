@@ -61,3 +61,4 @@ context_*_*.py
 context_*_*.txt
 github_utils/
 .tally-config.toml
+scripts/

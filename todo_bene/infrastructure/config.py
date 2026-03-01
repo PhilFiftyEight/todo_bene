@@ -7,25 +7,75 @@ import pendulum
 import keyring
 from cryptography.fernet import Fernet
 
+# Variable globale pour le cache de session (mémoire vive uniquement)
+_SESSION_MASTER_KEY = None
 
+# def get_or_create_master_key() -> bytes:
+#     """
+#     Récupère la clé de chiffrement dans le keyring système.
+#     Si elle n'existe pas, elle est générée et stockée.
+#     """
+#     global _SESSION_MASTER_KEY
+    
+#     # 1. Si la clé est déjà en cache mémoire, on la renvoie immédiatement
+#     if _SESSION_MASTER_KEY is not None:
+#         return _SESSION_MASTER_KEY
+
+#     service_name = "todo_bene"
+#     key_alias = "master_key"
+    
+#     # Tentative de récupération
+#     stored_key = keyring.get_password(service_name, key_alias)
+    
+#     if stored_key is None:
+#         # Génération d'une nouvelle clé Fernet (32 octets encodés en base64)
+#         new_key = Fernet.generate_key().decode('utf-8')
+#         keyring.set_password(service_name, key_alias, new_key)
+#         _SESSION_MASTER_KEY = new_key.encode('utf-8')
+#     else:
+#         _SESSION_MASTER_KEY = stored_key.encode('utf-8')
+        
+#     return stored_key.encode('utf-8')
 def get_or_create_master_key() -> bytes:
     """
-    Récupère la clé de chiffrement dans le keyring système.
-    Si elle n'existe pas, elle est générée et stockée.
+    Gère la clé maître avec cache de session.
+    Stricte en prod, permissive uniquement en environnement de test.
     """
+    global _SESSION_MASTER_KEY
+    
+    if _SESSION_MASTER_KEY is not None:
+        return _SESSION_MASTER_KEY
+
+    # Détection de l'environnement de test (via ta variable d'env existante)
+    is_test = os.getenv("TODO_BENE_CONFIG_PATH") is not None and "pytest" in os.getenv("TODO_BENE_CONFIG_PATH", "")
+    
     service_name = "todo_bene"
     key_alias = "master_key"
     
-    # Tentative de récupération
-    stored_key = keyring.get_password(service_name, key_alias)
-    
-    if stored_key is None:
-        # Génération d'une nouvelle clé Fernet (32 octets encodés en base64)
-        new_key = Fernet.generate_key().decode('utf-8')
-        keyring.set_password(service_name, key_alias, new_key)
-        return new_key.encode('utf-8')
+    try:
+        stored_key = keyring.get_password(service_name, key_alias)
+    except Exception as e:
+        if not is_test:
+            raise RuntimeError(f"Erreur fatale : Accès au trousseau système impossible : {e}")
+        stored_key = None
+
+    if stored_key:
+        _SESSION_MASTER_KEY = stored_key.encode('utf-8')
+    else:
+        # Cas où la clé n'existe pas encore
+        if is_test:
+            # En test : on génère une clé volatile sans bloquer
+            _SESSION_MASTER_KEY = Fernet.generate_key()
+        else:
+            # En prod : on crée la clé ET on exige le succès du stockage
+            new_key = Fernet.generate_key().decode('utf-8')
+            try:
+                keyring.set_password(service_name, key_alias, new_key)
+                _SESSION_MASTER_KEY = new_key.encode('utf-8')
+            except Exception as e:
+                raise RuntimeError(f"Impossible de stocker la clé de sécurité dans le système : {e}")
         
-    return stored_key.encode('utf-8')
+    return _SESSION_MASTER_KEY
 
 
 def decrypt_value(encrypted_value: str) -> str:
@@ -88,7 +138,9 @@ def save_smtp_config(host: str, port: int, user: str, password: str):
         save_full_config(config)
 
         
-def add_mail_job(name: str, recipient: str, transformers: List[str], business_days_only: bool = False):
+def add_mail_job(name: str, recipient: str, transformers: List[str], business_days_only: bool = False,
+                 include_categories: list[str] = None,
+                 exclude_categories: list[str] = None):
     """Ajoute un job de mail au profil actif."""
     user_id, db_path, profile_name = load_user_info()
     if not profile_name:
@@ -99,7 +151,9 @@ def add_mail_job(name: str, recipient: str, transformers: List[str], business_da
     job_data = {
         "recipient": encrypt_value(recipient),
         "transformers": transformers,
-        "business_days_only": business_days_only
+        "business_days_only": business_days_only,
+        "include_categories": include_categories or [],
+        "exclude_categories": exclude_categories or []
     }
     
     # Initialisation de la section mail_jobs si elle n'existe pas

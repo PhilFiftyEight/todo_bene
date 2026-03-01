@@ -26,7 +26,6 @@ def test_security_roundtrip():
     
     # Validation
     assert decrypted_result == original_secret
-    print(f"\n[OK] Secret préservé : {decrypted_result}")
 
 def test_decrypt_empty_or_invalid():
     """Vérifie la robustesse face aux données invalides."""
