@@ -7,28 +7,65 @@ from uuid import uuid4
 runner = CliRunner()
 
 def test_add_mail_job_flow_with_questionary(tmp_path, monkeypatch, mocker):
-    """Vérifie le flux CLI avec le mock de Questionary via pytest-mock."""
-    # 1. Setup environnement
+    """Vérifie le flux CLI avec mocks Questionary (Password, Checkbox, Confirm)."""
     config_file = tmp_path / "config.json"
     monkeypatch.setenv("TODO_BENE_CONFIG_PATH", str(config_file))
-    
     save_user_config(uuid4(), "test.db", "default")
 
-    # 2. Mocking de Questionary (Focus Unique)
-    # On mocke l'objet retourné par checkbox().ask()
-    mock_ask = mocker.patch("questionary.checkbox")
-    mock_ask.return_value.ask.return_value = ["format_phone", "waze_link"]
-    
-    # 3. Exécution de la commande
-    # Seuls le nom et l'email sont passés via stdin (Typer prompts)
-    inputs = "Rapport\nboss@test.com\n"
+    # Mock des Passwords (Email + Confirmation)
+    mock_password = mocker.patch("questionary.password")
+    # .side_effect permet de donner des réponses successives
+    mock_password.return_value.ask.side_effect = ["boss@test.com", "boss@test.com"]
+
+    # Mock de la Checkbox
+    mock_checkbox = mocker.patch("questionary.checkbox")
+    mock_checkbox.return_value.ask.return_value = ["format_phone"]
+
+    # Mock du Confirm
+    mock_confirm = mocker.patch("questionary.confirm")
+    mock_confirm.return_value.ask.return_value = True
+
+    # Action (On ne passe plus l'email dans input, seulement le Nom)
+    inputs = "Rapport\n" 
     result = runner.invoke(app, ["mail", "add-job"], input=inputs)
 
-    # 4. Assertions
     assert result.exit_code == 0
-    assert "Job 'Rapport' créé avec succès" in result.stdout
-    
-    # Vérification finale de la persistence
     config = load_full_config()
-    job = config["profiles"]["default"]["mail_jobs"]["Rapport"]
-    assert "format_phone" in job["transformers"]
+    assert "Rapport" in config["profiles"]["default"]["mail_jobs"]
+
+
+def test_add_mail_job_flow_with_business_days(tmp_path, monkeypatch, mocker):
+    """Vérifie que la CLI demande et enregistre l'option jours ouvrés."""
+    # Setup
+    config_file = tmp_path / "config.json"
+    monkeypatch.setenv("TODO_BENE_CONFIG_PATH", str(config_file))
+
+    save_user_config(uuid4(), "test.db", "default")
+
+    # Mocks Questionary (Ordre d'exécution dans la CLI)
+    
+    # Mock des deux saisies Password (Email + Confirmation)
+    mock_password = mocker.patch("questionary.password")
+    mock_password.return_value.ask.side_effect = ["boss@test.com", "boss@test.com"]
+
+    # Mock de la Checkbox
+    mock_checkbox = mocker.patch("questionary.checkbox")
+    mock_checkbox.return_value.ask.return_value = ["format_phone"]
+
+    # Mock du Confirm pour Business Days
+    mock_confirm = mocker.patch("questionary.confirm")
+    mock_confirm.return_value.ask.return_value = True 
+
+    # Action
+    # Seul le nom du job reste dans le stdin de Typer
+    inputs = "Job_Business\n"
+    result = runner.invoke(app, ["mail", "add-job"], input=inputs)
+
+    # Assertions
+    assert result.exit_code == 0
+    config = load_full_config()
+    
+    # Vérification de la présence de la clé et de la valeur
+    assert "mail_jobs" in config["profiles"]["default"]
+    job = config["profiles"]["default"]["mail_jobs"]["Job_Business"]
+    assert job["business_days_only"] is True

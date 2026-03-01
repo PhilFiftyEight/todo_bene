@@ -87,8 +87,8 @@ def save_smtp_config(host: str, port: int, user: str, password: str):
         config["profiles"][profile_name]["smtp_config"] = smtp_data
         save_full_config(config)
 
-
-def add_mail_job(name: str, recipient: str, transformers: List[str]):
+        
+def add_mail_job(name: str, recipient: str, transformers: List[str], business_days_only: bool = False):
     """Ajoute un job de mail au profil actif."""
     user_id, db_path, profile_name = load_user_info()
     if not profile_name:
@@ -98,7 +98,8 @@ def add_mail_job(name: str, recipient: str, transformers: List[str]):
     
     job_data = {
         "recipient": encrypt_value(recipient),
-        "transformers": transformers
+        "transformers": transformers,
+        "business_days_only": business_days_only
     }
     
     # Initialisation de la section mail_jobs si elle n'existe pas

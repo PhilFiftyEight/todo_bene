@@ -16,15 +16,15 @@ def test_security_roundtrip():
     """
     original_secret = "mon_secret_smtp_2026"
     
-    # 1. Chiffrement
+    # Chiffrement
     token = encrypt_value(original_secret)
     assert token != original_secret
     assert isinstance(token, str)
     
-    # 2. Déchiffrement
+    # Déchiffrement
     decrypted_result = decrypt_value(token)
     
-    # 3. Validation
+    # Validation
     assert decrypted_result == original_secret
     print(f"\n[OK] Secret préservé : {decrypted_result}")
 
@@ -62,19 +62,19 @@ def test_save_and_load_smtp_config(tmp_path, monkeypatch):
 
 def test_add_mail_job_persistence(tmp_path, monkeypatch):
     """Vérifie qu'un job est correctement ajouté au profil."""
-    # 1. Setup
+    # Setup
     config_file = tmp_path / "config.json"
     monkeypatch.setenv("TODO_BENE_CONFIG_PATH", str(config_file))
     save_user_config(uuid4(), "test.db", "profile_test")
 
-    # 2. Action
+    # Action
     job_name = "Rapport Pro"
     recipient = "boss@company.com"
     transformers = ["format_phone", "waze_link"]
     
     add_mail_job(job_name, recipient, transformers)
 
-    # 3. Assertions
+    # Assertions
     config = load_full_config()
     jobs = config["profiles"]["profile_test"]["mail_jobs"]
     
@@ -83,3 +83,20 @@ def test_add_mail_job_persistence(tmp_path, monkeypatch):
     # Vérifie le déchiffrement
     assert decrypt_value(jobs[job_name]["recipient"]) == recipient
     assert jobs[job_name]["transformers"] == ["format_phone", "waze_link"]
+
+
+def test_add_mail_job_business_days_persistence(tmp_path, monkeypatch):
+    """Vérifie que l'option business_days_only est bien sauvegardée."""
+    # Setup
+    config_file = tmp_path / "config.json"
+    monkeypatch.setenv("TODO_BENE_CONFIG_PATH", str(config_file))
+    save_user_config(uuid4(), "test.db", "profile_test")
+
+    # Action : Création d'un job avec l'option activée
+    add_mail_job("Job Pro", "test@pro.com", [], business_days_only=True)
+
+    # Assertions
+    config = load_full_config()
+    job = config["profiles"]["profile_test"]["mail_jobs"]["Job Pro"]
+    
+    assert job["business_days_only"] is True

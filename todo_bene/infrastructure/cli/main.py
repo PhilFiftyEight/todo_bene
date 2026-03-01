@@ -34,8 +34,9 @@ from todo_bene.infrastructure.config import (
     load_user_info,
     save_user_config,
     save_smtp_config,
-    add_mail_job
+    add_mail_job,
 )
+from todo_bene.domain.services.utils import mask_email
 
 from todo_bene.domain.services.transformer_service import TRANSFORMERS_REGISTRY
 
@@ -970,58 +971,78 @@ def setup(
 @mail_app.command()
 def add_job(
     name: str = typer.Option(..., prompt=typer.style("📌 Nom du job", fg=typer.colors.CYAN, bold=True)),
-    recipient: str = typer.Option(..., prompt=typer.style("📧 Email destinataire", fg=typer.colors.CYAN, bold=True)),
 ):
-    """Ajoute un job avec sélection interactive et couleurs."""
+    """Ajoute un job avec saisie d'email masquée et option jours ouvrés."""
     
-    # Construction des choix avec labels stylisés
+    # Style Deep Sea
+    deep_sea_style = questionary.Style([
+        ('qmark', 'fg:#91A9E8 bold'),
+        ('question', 'bold'),
+        ('pointer', 'fg:#91A9E8 bold'),
+        ('highlighted', 'fg:#00bcd4 bold'),
+        ('selected', 'fg:#91A9E8'),
+        ('text', 'fg:#00bcd4'),
+        ('description', 'fg:#546e7a italic'),
+        ('answer', 'fg:#91A9E8 bold'),
+    ])
+
+    # Saisie sécurisée de l'email (Double confirmation masquée)
+    recipient = questionary.password(
+        "📧 Entrez l'email destinataire :",
+        style=deep_sea_style
+    ).ask()
+    
+    if not recipient: raise typer.Exit()
+
+    confirm_recipient = questionary.password(
+        "📧 Confirmez l'email destinataire :",
+        style=deep_sea_style
+    ).ask()
+
+    if recipient != confirm_recipient:
+        typer.secho("\n❌ Les emails ne correspondent pas. Opération annulée.", fg=typer.colors.RED)
+        raise typer.Exit(1)
+
+    # Sélection des Transformers
     choices = []
     for t_name, func in TRANSFORMERS_REGISTRY.items():
         doc = (func.__doc__ or "Sans description").strip().split('\n')[0]
-        # On peut même mettre de la couleur dans les titres de Questionary
+        label = f"{t_name:.<30}" 
         choices.append(questionary.Choice(
-            title=[
-                ("class:text", f"{t_name:.<20}"),
-                ("class:description", f" {doc}"),
-            ],
+            title=[("class:text", label), ("class:description", f" {doc}")],
             value=t_name
         ))
 
-    # Style personnalisé pour Questionary
-    custom_style = questionary.Style([
-        ('qmark', 'fg:#91A9E8 bold'),          # Icône ? en Bleu
-        ('question', 'bold'),                  # Texte question
-        ('pointer', 'fg:#91A9E8 bold'),        # Curseur en Bleu
-        ('highlighted', 'fg:#00bcd4 bold'),    # Survol en Bleu
-        ('selected', 'fg:#91A9E8'),            # Coché en Bleu
-        ('text', 'fg:#91A9E8'),                # Nom du transformer en Bleu
-        ('description', 'fg:#546e7a italic'),  # Docstring en Gris Bleuté
-    ])
-
-    # 3. Interface Questionary
     selected_transformers = questionary.checkbox(
         "🛠️  Quels transformers souhaites-tu appliquer ?",
         choices=choices,
-        style=custom_style,
+        style=deep_sea_style
     ).ask()
 
-    if not selected_transformers:
-        typer.secho("\n⚠️  Aucun transformer sélectionné. Job annulé.", fg=typer.colors.YELLOW)
-        raise typer.Exit()
+    if selected_transformers is None: raise typer.Exit()
 
+    # Option Jours Ouvrés
+    business_days = questionary.confirm(
+        "📅  Limiter l'envoi aux jours ouvrés uniquement ?",
+        default=True,
+        style=deep_sea_style
+    ).ask()
+
+    if business_days is None: raise typer.Exit()
+
+    # Persistence et Affichage Masqué
     try:
-        add_mail_job(name, recipient, selected_transformers)
+        add_mail_job(name, recipient, selected_transformers, business_days)
         
-        # Succès éclatant
+        masked = mask_email(recipient)
         typer.echo("")
-        typer.secho("✨" + "="*40, fg=typer.colors.BRIGHT_MAGENTA)
         typer.secho(f"🚀 Job '{name}' créé avec succès !", fg=typer.colors.GREEN, bold=True)
-        typer.secho(f"📬 Destinataire : {recipient}", fg=typer.colors.WHITE)
-        typer.secho(f"🔧 Filters : {', '.join(selected_transformers)}", fg=typer.colors.BLUE)
-        typer.secho("="*42, fg=typer.colors.BRIGHT_MAGENTA)
-        
+        typer.secho(f"📧 Destinataire : {masked}", fg=typer.colors.CYAN)
+        if business_days:
+            typer.secho("🕒 Option 'Jours ouvrés' activée.", fg=typer.colors.YELLOW)
+            
     except Exception as e:
-        typer.secho(f"\n❌ Erreur fatale : {e}", err=True, fg=typer.colors.RED, bold=True)
+        typer.secho(f"\n❌ Erreur fatale : {e}", err=True, fg=typer.colors.RED)
 
 
 app.add_typer(mail_app, name="mail")
