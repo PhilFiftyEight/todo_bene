@@ -98,4 +98,16 @@
 ### Fixed
 - Stabilized CLI unit tests by introducing a `mock_prompt_session` fixture to handle non-interactive environments.
 
+
+## [0.3.4] - 2026-03-02
+
+### Added
+- **Background Mail Processing**: The `list` command now triggers mail orchestration in a non-blocking background thread.
+- **Master Key Session Cache**: Implemented an in-memory cache for the encryption master key to prevent redundant password prompts during a single execution.
+- **Enhanced Security Safeguards**: Added strict validation for the system keyring; the application now prevents encryption in production if the secure storage is unreachable.
+- **Mail Payload Filtering**: Optimized the mail orchestrator to skip jobs with empty task lists or for users who have already received their daily notification.
+
+### Fixed
+- **Encryption Logic**: Resolved a `NoneType` error occurring in non-interactive environments (CI/Tests) when the system keyring is unavailable.
+- **Database Optimization**: Removed redundant repository calls by sharing the pre-loaded task list with the background mail thread.
 ---
