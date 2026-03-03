@@ -110,4 +110,21 @@
 ### Fixed
 - **Encryption Logic**: Resolved a `NoneType` error occurring in non-interactive environments (CI/Tests) when the system keyring is unavailable.
 - **Database Optimization**: Removed redundant repository calls by sharing the pre-loaded task list with the background mail thread.
+
+
+## [0.3.5] - 2026-03-03
+
+### Added
+- **Waze Transformer v2**: Smart address detection now supports metric numbering (up to 5 digits), common in rural areas.
+- **Address Suffix Support**: Added regex handling for street number suffixes such as `40B`, `40 Bis`, `40C`, `40 Ter`, etc.
+- **Strict Line Anchoring**: Waze links now terminate strictly at the end of the address line, preventing the "consumption" of subsequent text or newlines.
+
+### Fixed
+- **Phone/Waze Collision**: Resolved a major bug where phone numbers were incorrectly identified as street numbers. Phone detection now takes priority over address matching.
+- **URL Formatting**: Fixed encoding issues where newline characters (`%0A`) were being included in the generated Waze navigation URLs.
+
+### Testing
+- Added comprehensive unit tests for phone/address collision scenarios.
+- Added test cases for various French address formats including suffixes and metric numbering.
+
 ---
