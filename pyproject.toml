@@ -12,7 +12,7 @@ description = "To-do-list"
 license = "MIT"
 license-files = ["LICENSE.txt"]
 readme = "README.md"
-requires-python = ">=3.13,<3.14"
+requires-python = ">=3.13.12,<3.14"
 dependencies = [
     "cryptography>=46.0.5",
     "dotenv>=0.9.9",
