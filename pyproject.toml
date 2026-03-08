@@ -17,25 +17,25 @@ dependencies = [
     "cryptography>=46.0.5",
     "dotenv>=0.9.9",
     "duckdb>=1.4.3",
-    "holidays>=0.91",
+    "holidays>=0.92",
     "keyring>=25.7.0",
     "pendulum[test]>=3.2.0",
     "prompt-toolkit>=3.0.52",
     "questionary>=2.1.1",
     "text2num>=3.0.0",
-    "typer>=0.24.0",
+    "typer>=0.24.1",
 ]
 
 [dependency-groups]
 dev = [
     "bandit>=1.9.4",
-    "ipython>=9.10.0",
+    "ipython>=9.11.0",
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
     "pytest-mock>=3.15.1",
     "radon>=6.0.1",
     "requests>=2.32.5",
-    "ruff>=0.15.4",
+    "ruff>=0.15.5",
 ]
 [project.scripts]
 tb = "todo_bene.infrastructure.cli.main:app"
