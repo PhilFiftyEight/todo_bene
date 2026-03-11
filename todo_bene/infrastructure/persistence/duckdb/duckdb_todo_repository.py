@@ -55,8 +55,8 @@ class DuckDBTodoRepository(TodoRepository):
     def save(self, todo: Todo):
         self._conn.execute(
             """
-            INSERT OR REPLACE INTO todos 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT OR REPLACE INTO todos
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         """,
             (
                 todo.uuid,
@@ -83,8 +83,8 @@ class DuckDBTodoRepository(TodoRepository):
         return None
 
     def find_top_level_by_user(
-        self, 
-        user_id: UUID, 
+        self,
+        user_id: UUID,
         category: Optional[str] = None,
         max_date: Optional[int] = None
     ) -> List[Todo]:
@@ -96,7 +96,7 @@ class DuckDBTodoRepository(TodoRepository):
         if category:
             query += " AND category = ?"
             params.append(category)
-            
+
         # NOUVEAU : Filtre de période
         if max_date is not None:
             query += " AND date_due <= ?"
@@ -110,8 +110,8 @@ class DuckDBTodoRepository(TodoRepository):
 
     def find_by_parent(self, parent_id: UUID) -> List[Todo]:
         query = """
-            SELECT * FROM todos 
-            WHERE parent_id = ? 
+            SELECT * FROM todos
+            WHERE parent_id = ?
             ORDER BY date_start ASC
         """
         rows = self._conn.execute(query, (parent_id,)).fetchall()
@@ -119,7 +119,7 @@ class DuckDBTodoRepository(TodoRepository):
 
     def search_by_title(self, user_id: UUID, search_term: str) -> List[Todo]:
         query = """
-            SELECT * FROM todos 
+            SELECT * FROM todos
             WHERE user_id = ? AND title ILIKE ?
             ORDER BY title ASC
             LIMIT 10
@@ -176,12 +176,12 @@ class DuckDBTodoRepository(TodoRepository):
         # ET pour lesquelles il n'existe AUCUN enfant non complété
         query = """
                 SELECT p.* FROM todos p
-                WHERE p.user_id = ? 
+                WHERE p.user_id = ?
                 AND p.state = false
                 AND EXISTS (SELECT 1 FROM todos c WHERE c.parent_id = p.uuid)
                 AND NOT EXISTS (
-                    SELECT 1 FROM todos c 
-                    WHERE c.parent_id = p.uuid 
+                    SELECT 1 FROM todos c
+                    WHERE c.parent_id = p.uuid
                     AND c.state = false
                 )
             """

@@ -16,7 +16,7 @@ LEXICONS = {
         "jour": "d",
         "mois": "m", 
         "ans": "y", 
-        "an": "y",
+
         
         # Jours de la semaine
         "lundis": "mon", "lundi": "mon",

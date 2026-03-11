@@ -91,8 +91,7 @@ Prendre le rdv"""
     # On simule le passage dans les deux (Téléphone puis Waze)
     step1 = format_phone(input_text)
     step2 = waze_link(step1)
-    print()
-    print(step2)
+
     # Le téléphone est formaté avec des points, l'adresse a son lien
     assert "06.12.34.56.78" in step2
     assert 'href="https://waze.com/ul?q=40B%20rue%20Jules%20Ferry%20Lens' in step2
