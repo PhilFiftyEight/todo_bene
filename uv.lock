@@ -851,7 +851,7 @@ dev = [
 requires-dist = [
     { name = "cryptography", specifier = ">=46.0.5" },
     { name = "dotenv", specifier = ">=0.9.9" },
-    { name = "duckdb", specifier = ">=1.4.3" },
+    { name = "duckdb", specifier = "==1.4.4" },
     { name = "holidays", specifier = ">=0.92" },
     { name = "keyring", specifier = ">=25.7.0" },
     { name = "pendulum", extras = ["test"], specifier = ">=3.2.0" },

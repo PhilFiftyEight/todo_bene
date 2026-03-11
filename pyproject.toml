@@ -16,7 +16,7 @@ requires-python = ">=3.13.12,<3.14"
 dependencies = [
     "cryptography>=46.0.5",
     "dotenv>=0.9.9",
-    "duckdb>=1.4.3",
+    "duckdb==1.4.4",
     "holidays>=0.92",
     "keyring>=25.7.0",
     "pendulum[test]>=3.2.0",
