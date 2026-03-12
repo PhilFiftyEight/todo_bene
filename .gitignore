@@ -34,12 +34,14 @@ docs_internes_perso/
 
 # Base de données DuckDB
 *.db
+*.db.bak
 *.db.wal
 *.duckdb
 *.tmp
 
 # Base de données locale de développement
 dev.db
+dev.db.bak
 dev.db.wal
 
 # Logs

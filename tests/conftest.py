@@ -65,24 +65,25 @@ def user_id():
 
 
 @pytest.fixture
-def db_manager():
+def db_manager_conn():
     """Gère la connexion DuckDB pour les tests (en mémoire)."""
     # On utilise :memory: pour que les tests soient rapides et isolés
-    manager = DuckDBConnectionManager(":memory:")
-    yield manager
-    manager.close()
+    with DuckDBConnectionManager(":memory:") as conn:
+        yield conn
+
 
 
 @pytest.fixture
-def repo(db_manager):
+def repo(db_manager_conn):
     """Fixture pour le DuckDBTodoRepository (utilisée par les tests d'intégration)."""
-    return DuckDBTodoRepository(db_manager.get_connection())
+    return DuckDBTodoRepository(db_manager_conn)
 
 
 @pytest.fixture
-def category_repo(db_manager):
+def category_repo(db_manager_conn):
     """Nouvelle fixture pour tester le DuckDBCategoryRepository."""
-    return DuckDBCategoryRepository(db_manager.get_connection())
+    # return DuckDBCategoryRepository(db_manager_conn.get_connection())
+    return DuckDBCategoryRepository(db_manager_conn)
 
 
 @pytest.fixture

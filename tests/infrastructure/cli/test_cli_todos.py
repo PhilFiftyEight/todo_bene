@@ -1,3 +1,4 @@
+import os
 import pendulum
 import pytest
 from typer.testing import CliRunner
@@ -6,12 +7,18 @@ from todo_bene.infrastructure.config import save_user_config
 
 runner = CliRunner()
 
+try:
+    # nécessaire avec le chiffrement de la base et la création systématique de la clé pendant les tests
+    os.remove("test.db")
+except FileNotFoundError:
+    pass
+
 
 @pytest.fixture
 def test_config_env(tmp_path, monkeypatch):
     """Prépare un environnement de test avec une DB et une config isolées."""
     config_path = tmp_path / ".todo_bene.json"
-    db_path = tmp_path / "test_todo.db"
+    db_path = tmp_path / "test.db"
 
     monkeypatch.setenv("TODO_BENE_CONFIG_PATH", str(config_path))
     monkeypatch.setenv("TODO_BENE_DB_PATH", str(db_path))
@@ -22,7 +29,7 @@ def test_config_env(tmp_path, monkeypatch):
 def test_cli_priority_creation_and_display(test_config_env):
     """Test de la création d'un Todo prioritaire et de son étiquette."""
     user_id = "550e8400-e29b-41d4-a716-446655440000"
-    save_user_config(user_id, "dev.db", "test_profile")
+    save_user_config(user_id, "test.db", "test_profile")
 
     # Création avec le flag priority
     result = runner.invoke(
@@ -44,7 +51,7 @@ def test_cli_priority_creation_and_display(test_config_env):
 def test_cli_create_with_french_dates(test_config_env):
     """Vérifie que la CLI accepte et affiche correctement le format français JJ/MM/AAAA."""
     user_id = "550e8400-e29b-41d4-a716-446655440000"
-    save_user_config(user_id, "dev.db", "test_profile")
+    save_user_config(user_id, "test.db", "test_profile")
     start = pendulum.now().add(days=30)
     due = pendulum.now().add(days=45)
     # Utilisation du format FR à la création
@@ -76,7 +83,7 @@ def test_cli_default_date_logic(test_config_env, time_machine):
     2. Pas de due -> Journée de start se terminant à 23:59.
     """
     user_id = "550e8400-e29b-41d4-a716-446655440000"
-    save_user_config(user_id, "dev.db", "test_profile")
+    save_user_config(user_id, "test.db", "test_profile")
 
     # On fige le temps au 11 Janvier 2026 à 15h30
     now_fixed = "2026-01-11 15:30:00"
@@ -103,8 +110,8 @@ def test_cli_default_date_logic(test_config_env, time_machine):
 def test_cli_precise_hour_parsing_fr(test_config_env):
     """Vérifie le parsing d'une date française avec heure précise."""
     user_id = "550e8400-e29b-41d4-a716-446655440000"
-    save_user_config(user_id, "dev.db", "test_profile")
-    
+    save_user_config(user_id, "test.db", "test_profile")
+
     with pendulum.travel_to("2026/02/12", freeze=True):
 
         runner.invoke(
@@ -112,7 +119,7 @@ def test_cli_precise_hour_parsing_fr(test_config_env):
             ["add", "Rendez-vous dentiste", "--start", "12/02/2026 14:15"],
             env={"TODO_BENE_CONFIG_PATH": str(test_config_env)},
         )
-        
+
         result_list = runner.invoke(
             app, ["list", "--period", "all"], env={"TODO_BENE_CONFIG_PATH": str(test_config_env)}
         )
@@ -124,7 +131,7 @@ def test_cli_precise_hour_parsing_fr(test_config_env):
 def test_cli_create_with_various_separators(test_config_env):
     """Vérifie que la CLI accepte les slashs ET les tirets pour le format FR."""
     user_id = "550e8400-e29b-41d4-a716-446655440000"
-    save_user_config(user_id, "dev.db", "test_profile")
+    save_user_config(user_id, "test.db", "test_profile")
     # Dates futures relatives
     pendulum.travel(freeze=True)
     date_tiret = pendulum.now().format("DD-MM-YYYY HH:mm")
@@ -157,7 +164,7 @@ def test_cli_list_filter_by_category(test_config_env):
     Vérifie que la commande 'list --category' filtre correctement les résultats.
     """
     user_id = "550e8400-e29b-41d4-a716-446655440000"
-    save_user_config(user_id, "dev.db", "test_profile")
+    save_user_config(user_id, "test.db", "test_profile")
 
     # 1. Création de deux tâches dans des catégories différentes
     runner.invoke(

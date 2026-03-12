@@ -3,7 +3,7 @@
 import sys
 from os import getenv
 import threading
-from typing import Optional, Tuple
+from typing import Literal, Optional, Tuple
 from typing import Annotated
 from contextlib import contextmanager
 import locale
@@ -37,7 +37,7 @@ from todo_bene.infrastructure.config import (
     save_smtp_config,
     add_mail_job,
 )
-from todo_bene.domain.services.mail_engine import run_mail_jobs_background 
+from todo_bene.domain.services.mail_engine import run_mail_jobs_background
 
 from todo_bene.domain.services.utils import mask_email
 
@@ -112,10 +112,10 @@ def show_error(message: str, title: str = "Erreur", pause: bool = False):
         _pause()
 
 
-def render_inline_progress(completed: int, total: int):
+def render_inline_progress(completed: int, total: int) -> Columns | Literal['']:
     """Génère une petite barre de progression inline pour les listes."""
     if total == 0: # Pas de sous-tâche
-        return ""    
+        return ""
     renderables = [
         f"[{total}",
         ProgressBar(total=total, completed=completed, width=4),
@@ -124,7 +124,7 @@ def render_inline_progress(completed: int, total: int):
     return Columns(renderables, padding=1)
 
 
-def inner_table(title, emoji, progress_bar):
+def inner_table(title: str, emoji: str, progress_bar: Columns | Literal['']) -> Table:
     console_width = console.size.width or 80 # Taille du screen
     responsive_width = 19 + (console_width - 80) # 19 est la largeur minimum pour une console de 80, le reste étant réservé aux autres colonnes
     progress_bar_width = 9 # [X ---- ]
@@ -195,9 +195,8 @@ def ensure_user_setup() -> Tuple[UUID, str]:
             _, data_dir = get_base_paths()
             db_path_final = str(data_dir / ".todo_bene.db")
 
-        with DuckDBTodoRepository(
-            DuckDBConnectionManager(db_path_final).get_connection()
-        ) as repo:
+        with DuckDBConnectionManager(db_path_final) as conn:
+            repo = DuckDBTodoRepository(conn)
             new_user = UserCreateUseCase(repo).execute(name, email)
 
         save_user_config(new_user.uuid, db_path_final, final_profile_name)
@@ -207,21 +206,6 @@ def ensure_user_setup() -> Tuple[UUID, str]:
     return user_id, db_path
 
 
-# @contextmanager
-# def get_repository():
-#     _, db_path, _ = load_user_info()
-#     if not db_path:
-#         raise RuntimeError(
-#             "Configuration introuvable. Veuillez lancer 'tb' pour configurer votre profil."
-#         )
-#     manager = DuckDBConnectionManager(db_path)
-#     repo = DuckDBTodoRepository(manager.get_connection())
-#     try:
-#         yield repo
-#     finally:
-#         manager.close()
-#         if hasattr(repo, "close"):
-#             repo.close()
 @contextmanager
 def get_repository(read_only: bool = False):
     _, db_path, _ = load_user_info()
@@ -229,23 +213,18 @@ def get_repository(read_only: bool = False):
         raise RuntimeError(
             "Configuration introuvable. Veuillez lancer 'tb' pour configurer votre profil."
         )
-    
-    # On passe l'intention au manager
-    manager = DuckDBConnectionManager(db_path, read_only=read_only)
-    repo = DuckDBTodoRepository(manager.get_connection())
-    try:
+
+    with DuckDBConnectionManager(db_path, read_only=read_only) as conn:
+        # repo = DuckDBTodoRepository(manager.get_connection())
+        repo = DuckDBTodoRepository(conn)
         yield repo
-    finally:
-        manager.close()
-        if hasattr(repo, "close"):
-            repo.close()
 
 
 def get_date_format(short:bool = True)-> str:
     try:
         lang, _ = locale.getlocale()
         if lang and lang.startswith("fr"):
-            if short: 
+            if short:
                 return "DD/MM HH:mm"
             return "DD/MM/YYYY HH:mm"
     except TypeError:
@@ -266,7 +245,7 @@ def continue_after_invalid(message: str):
     #     )
 
 
-def _resolve_parent_uuid(repo, user_id: UUID, parent_input: str) -> Optional[UUID]:
+def _resolve_parent_uuid(repo: DuckDBTodoRepository, user_id: UUID, parent_input: str) -> Optional[UUID]:
     if not parent_input:
         return None
     try:
@@ -303,7 +282,7 @@ def _resolve_parent_uuid(repo, user_id: UUID, parent_input: str) -> Optional[UUI
     return None
 
 
-def handle_completion_success(repo, result, user_id: UUID):
+def handle_completion_success(repo: DuckDBTodoRepository, result: dict, user_id: UUID):
     should_exit = False
     if result.get("is_root"):
         todo = repo.get_by_id(result["completed_id"])
@@ -319,13 +298,13 @@ def handle_completion_success(repo, result, user_id: UUID):
                 if new_freq:
                     todo.frequency = new_freq
                     repo.save(todo)
-            
+
             # Exécution de la répétition
             if todo.frequency:
                 try:
                     repetition_use_case = RepetitionTodo(repo)
                     new_todos = repetition_use_case.execute(todo.uuid)
-                    
+
                     if new_todos:
                         # Identification de la nouvelle racine créée
                         new_root = next(t for t in new_todos if t.parent is None)
@@ -340,7 +319,7 @@ def handle_completion_success(repo, result, user_id: UUID):
     return should_exit
 
 
-def ask_validate_parents_recursive(repo, newly_pending_ids: list, user_id: UUID):
+def ask_validate_parents_recursive(repo: DuckDBTodoRepository, newly_pending_ids: list, user_id: UUID):
     for p_id in newly_pending_ids:
         p_todo = repo.get_by_id(p_id)
         if not p_todo:
@@ -356,7 +335,7 @@ def ask_validate_parents_recursive(repo, newly_pending_ids: list, user_id: UUID)
                 handle_completion_success(repo, result, user_id)
 
 
-def _display_detail_view(todo: Todo, children: list[Todo], countchildrecursiv: int, repo):
+def _display_detail_view(todo: Todo, children: list[Todo], countchildrecursiv: int, repo: DuckDBTodoRepository):
     if sys.stdin.isatty():
         console.clear()
     # RÉCUPÉRATION EMOJI
@@ -376,7 +355,7 @@ def _display_detail_view(todo: Todo, children: list[Todo], countchildrecursiv: i
         parent_line = f"[dim] → {p_name}[/dim]"
     # On construit une ligne composite : [Titre + Parent] ... [Emoji]
     base_text = f"{prio_mark}{todo.title}{parent_line}"
-    t_obj = Text(base_text)    
+    t_obj = Text(base_text)
     # Calcul de l'espace (Largeur 70 - 2 bords - longueur texte - 1 emoji - padding)
     # Note : On retire 2 ou 3 selon le padding interne du Panel
     # Il faut ajouter 11 si todo.parent car cell_len : Get the number of cells required to render this text. < les caractères de control (eg [dim]) ne sont pas comptés
@@ -386,7 +365,7 @@ def _display_detail_view(todo: Todo, children: list[Todo], countchildrecursiv: i
     if prio_mark:
         lg_space += 17 # on élimine [yellow]...[/yellow]
     space = " " * max(1, lg_space)
-    
+
     header_with_emoji = f"[bold white]{base_text}[/bold white]{space}{cat_emoji}"
 
     content = f"{header_with_emoji}\n\n[italic]{todo.description or 'Pas de description'}[/italic]"
@@ -435,7 +414,7 @@ def create_session_with_history(items: list[str]) -> PromptSession:
 
 
 def _handle_action(
-    choice: str, todo: Todo, children: list[Todo], repo, user_id
+    choice: str, todo: Todo, children: list[Todo], repo: DuckDBTodoRepository, user_id: UUID
 ) -> tuple[bool, bool]:
     if choice == "r":
         return True, False
@@ -453,13 +432,13 @@ def _handle_action(
         console.print("\n[bold blue]📝 Modification du Todo[/bold blue]")
         console.print("[dim]Laissez vide pour conserver la valeur actuelle[/dim]\n")
 
-        title_session = create_session_with_history([todo.title])       
+        title_session = create_session_with_history([todo.title])
         try:
             new_title = title_session.prompt(f"Titre ({todo.title}) : ") or todo.title
         except KeyboardInterrupt:
-            new_title = todo.title       
+            new_title = todo.title
 
-        desc_session = PromptSession() 
+        desc_session = PromptSession()
         console.print(f"Description [dim](actuelle: {todo.description or 'aucune'})[/dim] :")
         console.print("[dim italic](Pressez Esc + Entrée pour valider)[/dim italic]")
         try:
@@ -472,7 +451,7 @@ def _handle_action(
             f"Prioritaire ? ({'Oui' if current_priority else 'Non'})",
             default=current_priority,
         )
-       
+
         cat_repo = DuckDBCategoryRepository(repo._conn)
         categories = CategoryListUseCase(cat_repo).execute(user_id)
         cat_session = create_session_with_history(categories)
@@ -483,23 +462,23 @@ def _handle_action(
         except KeyboardInterrupt:
             new_cat = todo.category
 
-        def ask_date(label: str, default_timestamp: Optional[int] = None) -> int:            
+        def ask_date(label: str, default_timestamp: Optional[int] = None) -> int:
             default_date_str = ""
             if default_timestamp:
                 default_date_str = pendulum.from_timestamp(
                     default_timestamp,
                     tz=pendulum.local_timezone()
                     ).format("DD/MM/YYYY HH:mm")
-            
+
             date_session = PromptSession()
             try:
                 new_date_str = date_session.prompt(
-                    f"Début ({default_date_str}) : ", 
+                    f"Début ({default_date_str}) : ",
                     default=default_date_str
                 )
             except KeyboardInterrupt:
                 new_date_str = default_date_str
-            
+
             if new_date_str == default_date_str and default_date_str is not None:
                 return int(default_timestamp)
 
@@ -552,7 +531,7 @@ def _handle_action(
             show_error(f"Erreur : {e}", title="Modification", pause=True)
             return False, False
 
-    def menu_nouvelle_sous_tache(parent: Todo, repo):
+    def menu_nouvelle_sous_tache(parent: Todo, repo: DuckDBTodoRepository):
         console.print(
             Panel(
                 f"[bold blue]🆕 Nouvelle sous-tâche pour : {parent.title}[/bold blue]"
@@ -598,7 +577,7 @@ def _handle_action(
     return False, False
 
 
-def _execute_completion_logic(todo: Todo, repo, user_id: UUID) -> bool:
+def _execute_completion_logic(todo: Todo, repo: DuckDBTodoRepository, user_id: UUID) -> bool:
     use_case = TodoCompleteUseCase(repo)
     result = use_case.execute(todo.uuid, user_id)
     if result is None:
@@ -660,7 +639,7 @@ def _display_root_list(roots: list[Todo], repo, period: str = "all"):
         # --- LOGIQUE DE REGROUPEMENT ---
         current_group = None
         dt_due = pendulum.from_timestamp(todo.date_due, tz=tz)
-        
+
         if period == "week":
             current_group = dt_due.format("dddd DD MMMM", locale=_get_locale()).upper()
         elif period == "month":
@@ -669,7 +648,7 @@ def _display_root_list(roots: list[Todo], repo, period: str = "all"):
         if current_group and current_group != last_group:
             if last_group is not None:
                 table.add_row("", "", "", "", "", "")
-            
+
             table.add_row(
                 "", "", current_group, "", "", "",
                 style=Style(color="yellow", dim=False, bold=True)
@@ -683,13 +662,13 @@ def _display_root_list(roots: list[Todo], repo, period: str = "all"):
         emoji = emoji_cache.get(todo.category, "🔖")
 
         progress_bar = render_inline_progress(count_completed, count_child)
-        display_title = inner_table(todo.title, emoji, progress_bar)        
+        display_title = inner_table(todo.title, emoji, progress_bar)
 
         raw_desc = str(todo.description) if todo.description else ""
         desc = (raw_desc[:15] + "...") if len(raw_desc) > 15 else raw_desc
         d_start = pendulum.from_timestamp(todo.date_start, tz=tz).format(date_fmt)
         d_due = pendulum.from_timestamp(todo.date_due, tz=tz).format(date_fmt)
-        
+
         table.add_row(
             f"{idx:3}",
             prio_mark,
@@ -700,11 +679,11 @@ def _display_root_list(roots: list[Todo], repo, period: str = "all"):
         )
     console.print(table)
 
-def _handle_list_navigation(choice: str, roots: list[Todo], user_id: UUID) -> bool:
+def _handle_list_navigation(choice: str, roots: list[Todo], user_id: UUID, repo: DuckDBTodoRepository) -> bool:
     try:
         idx = int(choice) - 1
         if 0 <= idx < len(roots):
-            show_details(roots[idx].uuid, user_id)
+            show_details(roots[idx].uuid, user_id, repo)
             return True
         else:
             continue_after_invalid("Index inconnu.")
@@ -713,26 +692,25 @@ def _handle_list_navigation(choice: str, roots: list[Todo], user_id: UUID) -> bo
     return False
 
 
-def _handle_navigation(choice: str, children: list[Todo], user_id: UUID) -> bool:
+def _handle_navigation(choice: str, children: list[Todo], user_id: UUID, repo: DuckDBTodoRepository) -> bool:
     if not choice.isdigit():
         return False
     idx = int(choice) - 1
     if 0 <= idx < len(children):
-        exit_cascade = show_details(children[idx].uuid, user_id)
+        exit_cascade = show_details(children[idx].uuid, user_id, repo)
         return exit_cascade
     # console.print("[yellow]Index invalide.[/yellow]")
     show_error("Index invalide.", title="Navigation")
     return False
 
 
-def show_details(todo_uuid: UUID, user_id: UUID) -> bool:
-    with get_repository() as repo:
-        while True:
+def show_details(todo_uuid: UUID, user_id: UUID, repo: DuckDBTodoRepository) -> bool:
+    while True:
             todo, children, countchildrecursiv, _ = TodoGetUseCase(repo).execute(todo_uuid, user_id) # _ = completed, not use there
             _display_detail_view(todo, children, countchildrecursiv, repo)
             choice = Prompt.ask("\nVotre choix", default="r").lower().strip()
             if choice.isdigit():
-                if _handle_navigation(choice, children, user_id):
+                if _handle_navigation(choice, children, user_id, repo):
                     return True
                 continue
             should_break, exit_cascade = _handle_action(
@@ -864,7 +842,7 @@ def list_todos(
         typer.Option("--category", "-c", autocompletion=complete_category),
     ] = None,
     period: Annotated[
-        str, 
+        str,
         typer.Option("--period", "-p", autocompletion=complete_period, help="today, week, month, all")
     ] = "today",
 ):
@@ -883,7 +861,7 @@ def list_todos(
             # On passe 'roots' au thread pour éviter un second appel repo.get_all
             nt_thread = threading.Thread(
                 target=run_mail_jobs_background,
-                args=(roots,), 
+                args=(roots,),
                 daemon=True
             )
             nt_thread.start()
@@ -899,7 +877,7 @@ def list_todos(
                     )
                 )
 
-            
+
             # On trie la liste par date d'échéance pour éviter les doublons de bandeaux jaunes
             roots = sorted(roots, key=lambda x: x.date_due)
             # -----------------------------
@@ -919,7 +897,7 @@ def list_todos(
                 break
             if choice == "q":
                 break
-            _handle_list_navigation(choice, roots, user_id)
+            _handle_list_navigation(choice, roots, user_id, repo)
             if not sys.stdin.isatty():
                 break
 
@@ -963,24 +941,24 @@ mail_app = typer.Typer(help="Gestion de la configuration et des envois d'emails.
 @mail_app.command()
 def setup(
     host: str = typer.Option(
-        ..., 
-        prompt="Hôte SMTP", 
+        ...,
+        prompt="Hôte SMTP",
         help="L'adresse du serveur de courrier (ex: smtp.gmail.com)."
     ),
     port: int = typer.Option(
-        587, 
-        prompt="Port SMTP", 
+        587,
+        prompt="Port SMTP",
         help="Le port utilisé (587 pour TLS, 465 pour SSL)."
     ),
     user: str = typer.Option(
-        ..., 
-        prompt="Utilisateur (Email)", 
+        ...,
+        prompt="Utilisateur (Email)",
         help="Ton identifiant de connexion au serveur SMTP."
     ),
     password: str = typer.Option(
-        ..., 
-        prompt="Mot de passe", 
-        hide_input=True, 
+        ...,
+        prompt="Mot de passe",
+        hide_input=True,
         confirmation_prompt=True,
         help="Ton mot de passe (sera chiffré avant d'être stocké)."
     ),
@@ -1002,7 +980,7 @@ def add_job(
     name: str = typer.Option(..., prompt=typer.style("📌 Nom du job", fg=typer.colors.CYAN, bold=True)),
 ):
     """Ajoute un job avec saisie d'email masquée et option jours ouvrés."""
-    
+
     # Style Deep Sea
     deep_sea_style = questionary.Style([
         ('qmark', 'fg:#91A9E8 bold'),
@@ -1020,8 +998,9 @@ def add_job(
         "📧 Entrez l'email destinataire :",
         style=deep_sea_style
     ).ask()
-    
-    if not recipient: raise typer.Exit()
+
+    if not recipient:
+        raise typer.Exit()
 
     confirm_recipient = questionary.password(
         "📧 Confirmez l'email destinataire :",
@@ -1036,7 +1015,7 @@ def add_job(
     choices = []
     for t_name, func in TRANSFORMERS_REGISTRY.items():
         doc = (func.__doc__ or "Sans description").strip().split('\n')[0]
-        label = f"{t_name:.<30}" 
+        label = f"{t_name:.<30}"
         choices.append(questionary.Choice(
             title=[("class:text", label), ("class:description", f" {doc}")],
             value=t_name
@@ -1048,7 +1027,8 @@ def add_job(
         style=deep_sea_style
     ).ask()
 
-    if selected_transformers is None: raise typer.Exit()
+    if selected_transformers is None:
+        raise typer.Exit()
 
     # Option Jours Ouvrés
     business_days = questionary.confirm(
@@ -1057,7 +1037,8 @@ def add_job(
         style=deep_sea_style
     ).ask()
 
-    if business_days is None: raise typer.Exit()
+    if business_days is None:
+        raise typer.Exit()
 
     # Récupération des catégories existantes pour le prompt
     #from application.use_cases.category_use_cases import list_categories
@@ -1093,14 +1074,14 @@ def add_job(
     # Persistence et Affichage Masqué
     try:
         add_mail_job(name, recipient, selected_transformers, business_days, include_cats, exclude_cats)
-        
+
         masked = mask_email(recipient)
         typer.echo("")
         typer.secho(f"🚀 Job '{name}' créé avec succès !", fg=typer.colors.GREEN, bold=True)
         typer.secho(f"📧 Destinataire : {masked}", fg=typer.colors.CYAN)
         if business_days:
             typer.secho("🕒 Option 'Jours ouvrés' activée.", fg=typer.colors.YELLOW)
-            
+
     except Exception as e:
         typer.secho(f"\n❌ Erreur fatale : {e}", err=True, fg=typer.colors.RED)
 

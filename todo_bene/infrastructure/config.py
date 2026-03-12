@@ -10,31 +10,6 @@ from cryptography.fernet import Fernet
 # Variable globale pour le cache de session (mémoire vive uniquement)
 _SESSION_MASTER_KEY = None
 
-# def get_or_create_master_key() -> bytes:
-#     """
-#     Récupère la clé de chiffrement dans le keyring système.
-#     Si elle n'existe pas, elle est générée et stockée.
-#     """
-#     global _SESSION_MASTER_KEY
-    
-#     # 1. Si la clé est déjà en cache mémoire, on la renvoie immédiatement
-#     if _SESSION_MASTER_KEY is not None:
-#         return _SESSION_MASTER_KEY
-
-#     service_name = "todo_bene"
-#     key_alias = "master_key"
-    
-#     # Tentative de récupération
-#     stored_key = keyring.get_password(service_name, key_alias)
-    
-#     if stored_key is None:
-#         # Génération d'une nouvelle clé Fernet (32 octets encodés en base64)
-#         new_key = Fernet.generate_key().decode('utf-8')
-#         keyring.set_password(service_name, key_alias, new_key)
-#         _SESSION_MASTER_KEY = new_key.encode('utf-8')
-#     else:
-#         _SESSION_MASTER_KEY = stored_key.encode('utf-8')
-        
 #     return stored_key.encode('utf-8')
 def get_or_create_master_key() -> bytes:
     """

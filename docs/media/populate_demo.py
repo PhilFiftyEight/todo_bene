@@ -10,14 +10,12 @@ from todo_bene.application.use_cases.category_create import CategoryCreateUseCas
 @contextmanager
 def get_repos():
     user_id, db_path, _ = load_user_info()
-    manager = DuckDBConnectionManager(db_path)
-    conn = manager.get_connection()
-    todo_repo = DuckDBTodoRepository(conn)
-    cat_repo = DuckDBCategoryRepository(conn)
-    try:
+    with DuckDBConnectionManager(db_path) as conn:
+    #conn = manager.get_connection()
+        todo_repo = DuckDBTodoRepository(conn)
+        cat_repo = DuckDBCategoryRepository(conn)
         yield user_id, todo_repo, cat_repo
-    finally:
-        manager.close()
+
 
 def populate():
     with get_repos() as (user_id, todo_repo, cat_repo):

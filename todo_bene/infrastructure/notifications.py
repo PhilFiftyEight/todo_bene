@@ -48,11 +48,11 @@ def send_email_notification(recipient: str, todos: List[Todo], subject: str) -> 
         html_items = "".join([
             f"""
             <div style="margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
-                <span style="color: #666; font-weight: bold;">[{t['time']}]</span> 
+                <span style="color: #666; font-weight: bold;">[{t['time']}]</span>
                 <strong style="font-size: 1.1em;">{t['title']}</strong><br>
                 <p style="margin: 5px 0 0 0; color: #333;">{t['description']}</p>
             </div>
-            """ 
+            """
             for t in todos
         ])
         html_content = f"""
@@ -73,9 +73,9 @@ def send_email_notification(recipient: str, todos: List[Todo], subject: str) -> 
             server.login(smtp_user, smtp_password)
             server.sendmail(smtp_user, recipient, msg.as_string())
 
-        logger.info(f"Email envoyé avec succès à {recipient}")
+        logger.info(f"Email envoyé avec succès")
         return True
 
     except Exception as e:
-        logger.error(f"Échec de l'envoi SMTP : {e}")
+        logger.error(f"Échec de l'envoi SMTP")
         return False
