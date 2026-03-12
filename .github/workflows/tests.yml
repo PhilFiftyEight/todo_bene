@@ -2,13 +2,13 @@ name: Tests
 
 on:
   push:
-    branches: 
+    branches:
       - main
       - develop
       - 'feat/**'  # Inclut toutes tes branches d'issues (ex: feat/issue-1-categories)
       - 'fix/**'
   pull_request:
-    branches: 
+    branches:
       - main
       - develop
 
@@ -23,7 +23,7 @@ jobs:
             sudo apt-get update
             sudo apt-get install -y locales
             sudo locale-gen fr_FR.UTF-8
-    
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -35,7 +35,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12" # En attendant la stabilité de la 3.14 sur les runners
+          python-version: "3.13" # En attendant la stabilité de la 3.14 sur les runners
 
       - name: Install dependencies
         run: uv sync
