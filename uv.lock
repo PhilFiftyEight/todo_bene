@@ -820,7 +820,7 @@ wheels = [
 
 [[package]]
 name = "todo-bene"
-version = "0.3.5"
+version = "0.3.6"
 source = { editable = "." }
 dependencies = [
     { name = "cryptography" },

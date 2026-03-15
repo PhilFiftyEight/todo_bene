@@ -127,4 +127,16 @@
 - Added comprehensive unit tests for phone/address collision scenarios.
 - Added test cases for various French address formats including suffixes and metric numbering.
 
+
+## [0.3.6] - 2026-03-15
+
+### Added
+- finalize secure logging system
+- Centralize logging configuration in config.py via setup_logging().
+- Implement SensitiveDataFilter to mask emails and encryption keys.
+- Add weekly log rotation with TimedRotatingFileHandler (1-month retention).
+- Force local timezone for log timestamps using time.localtime.
+- Standardize on Root Logger to ensure global filter application across all modules.
+
+
 ---
