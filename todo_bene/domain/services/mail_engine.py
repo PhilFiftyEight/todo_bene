@@ -3,7 +3,7 @@ import logging
 from typing import List
 from todo_bene.domain.entities.todo import Todo
 from todo_bene.infrastructure.config import (
-    load_full_config, 
+    load_full_config,
     save_full_config,  # Pour sauvegarder la config entière avec le nouveau verrou
     decrypt_value,
     load_user_info
@@ -13,11 +13,11 @@ from todo_bene.domain.services.calendar_service import is_send_day
 from todo_bene.domain.services.transformer_service import apply_transformers
 
 # Initialisation du logger
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 def filter_todos_for_job(
-    todos: List[Todo], 
-    include_cats: List[str], 
+    todos: List[Todo],
+    include_cats: List[str],
     exclude_cats: List[str]
 ) -> List[Todo]:
     """
@@ -25,9 +25,9 @@ def filter_todos_for_job(
     """
     tz = pendulum.local_timezone()
     today_end = pendulum.now(tz).at(23, 59, 59).int_timestamp
-    
+
     filtered = []
-    
+
     # 1. Identification des IDs qui sont explicitement dûs et autorisés
     # (Sert de base pour inclure les enfants orphelins ou terminés plus tard)
     for todo in todos:
@@ -37,13 +37,13 @@ def filter_todos_for_job(
             is_allowed_cat = False
         if exclude_cats and todo.category in exclude_cats:
             is_allowed_cat = False
-            
+
         if not is_allowed_cat:
             continue
 
         # Règle de sélection de base : Non terminé ET (Échéance <= Aujourd'hui)
         is_due = todo.date_due <= today_end
-        
+
         if not todo.state and is_due:
             filtered.append(todo)
         # Cas spécial du test : inclure C2 car son parent P2 est inclus
@@ -55,7 +55,7 @@ def filter_todos_for_job(
     # 2. Tri : Priorité d'abord, puis Date d'échéance
     # (True > False, donc on trie priority en reverse)
     return sorted(
-        filtered, 
+        filtered,
         key=lambda x: (not x.priority, x.date_due, x.title)
     )
 
@@ -65,26 +65,26 @@ def prepare_todos_for_notification(todos, job_transformers):
     Transforme les titres/descriptions et formate l'échéance.
     """
     prepared_list = []
-    
+
     for t in todos:
         # 1. Application des transformers sur Titre et Description
         #
         clean_title = apply_transformers(t.title, job_transformers)
         clean_desc = apply_transformers(t.description or "", job_transformers)
-        
+
         # 2. Formatage de l'heure (HH:MM)
         # On suppose que t.date_due est un timestamp ou un objet datetime
         # Formatage de l'heure avec Pendulum (HH:mm)
         due_time = "--:--"
         if t.date_due:
             due_time = pendulum.from_timestamp(t.date_due, tz=pendulum.local_timezone()).format("HH:mm")
-        
+
         prepared_list.append({
             "title": clean_title,
             "description": clean_desc,
             "time": due_time
         })
-        
+
     return prepared_list
 
 
@@ -99,12 +99,12 @@ def run_mail_jobs_background(all_todos: List[Todo]):
     config = load_full_config() #
     profile = config.get("profiles", {}).get(profile_name, {})
     mail_jobs = profile.get("mail_jobs", {})
-    
+
     if not mail_jobs:
         return
 
     today_str = pendulum.now().to_date_string()
-    
+
     for job_name, job_params in mail_jobs.items():
         try:
             if job_params.get("last_mail_sent_date") == today_str:
@@ -126,7 +126,7 @@ def run_mail_jobs_background(all_todos: List[Todo]):
                     filtered = prepare_todos_for_notification(filtered, job_transformers)
                 encrypted_recipient = job_params.get("recipient")
                 recipient = decrypt_value(encrypted_recipient) #
-                
+
                 success = send_email_notification(
                     recipient=recipient,
                     todos=filtered,
@@ -139,6 +139,6 @@ def run_mail_jobs_background(all_todos: List[Todo]):
                     # On sauvegarde le dictionnaire complet
                     save_full_config(config)
                     logger.info(f"Job '{job_name}' envoyé avec succès.")
-                    
+
         except Exception as e:
             logger.error(f"Erreur lors du traitement du job '{job_name}': {e}")

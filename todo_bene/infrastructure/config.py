@@ -1,11 +1,77 @@
 import os
 import json
+import sys
+import re
+import time
+import logging
+from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 from typing import Any, Dict, Tuple, Optional, List
 from uuid import UUID
 import pendulum
 import keyring
 from cryptography.fernet import Fernet
+
+
+class SensitiveDataFilter(logging.Filter):
+    """Filtre de sécurité pour masquer les données sensibles dans les logs."""
+    def filter(self, record):
+        msg = str(record.msg)
+        # 1. Masque la clé DuckDB (Hex 64 chars)
+        msg = re.sub(r'[a-fA-F0-9]{64}', '***ENCRYPTED_KEY***', msg)
+        # 2. Masque les emails (inclut _, -, ., +)
+        # Le tiret '-' est placé à la fin pour ne pas créer d'intervalle invalide
+        email_pattern = r'[a-zA-Z0-9._+\-]+@[a-zA-Z0-9._\-]+\.[a-zA-Z]{2,}'
+        msg = re.sub(email_pattern, '***@email.com', msg)
+
+        record.msg = msg
+        return True
+
+
+def setup_logging():
+    """Initialise le logging sécurisé, localisé et avec rotation temporelle."""
+
+    # Détection du mode test
+    is_test = "pytest" in sys.modules or (len(sys.argv) > 0 and "pytest" in sys.argv[0])
+
+    if is_test:
+        # En test : on reste à la racine, on écrase à chaque run
+        log_path = "todo_bene_test.log"
+        handler = logging.FileHandler(log_path, mode='w', encoding='utf-8')
+        level = logging.DEBUG
+    else:
+        # En prod : on utilise tes chemins standardisés
+        # Puisque get_base_paths est dans le même fichier, on l'appelle directement
+        _, data_dir = get_base_paths()
+        log_dir = data_dir / "logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        log_path = log_dir / "todo_bene.log"
+
+        # Rotation hebdomadaire (le lundi), garde 4 archives (~1 mois)
+        handler = TimedRotatingFileHandler(
+            log_path,
+            when='W0',
+            backupCount=4,
+            encoding='utf-8'
+        )
+        level = logging.INFO
+
+    # Forcer l'utilisation de l'heure locale
+    logging.Formatter.converter = time.localtime
+
+    # Configuration de base
+    logging.basicConfig(
+        level=level,
+        format='%(asctime)s - %(module)s - %(funcName)s - %(levelname)s - %(message)s',
+        handlers=[handler]
+    )
+
+    # Injection du filtre
+    root_logger = logging.getLogger()
+
+    if not any(isinstance(f, SensitiveDataFilter) for f in root_logger.filters):
+        root_logger.addFilter(SensitiveDataFilter())
+
 
 # Variable globale pour le cache de session (mémoire vive uniquement)
 _SESSION_MASTER_KEY = None
@@ -17,16 +83,16 @@ def get_or_create_master_key() -> bytes:
     Stricte en prod, permissive uniquement en environnement de test.
     """
     global _SESSION_MASTER_KEY
-    
+
     if _SESSION_MASTER_KEY is not None:
         return _SESSION_MASTER_KEY
 
     # Détection de l'environnement de test (via ta variable d'env existante)
     is_test = os.getenv("TODO_BENE_CONFIG_PATH") is not None and "pytest" in os.getenv("TODO_BENE_CONFIG_PATH", "")
-    
+
     service_name = "todo_bene"
     key_alias = "master_key"
-    
+
     try:
         stored_key = keyring.get_password(service_name, key_alias)
     except Exception as e:
@@ -49,7 +115,7 @@ def get_or_create_master_key() -> bytes:
                 _SESSION_MASTER_KEY = new_key.encode('utf-8')
             except Exception as e:
                 raise RuntimeError(f"Impossible de stocker la clé de sécurité dans le système : {e}")
-        
+
     return _SESSION_MASTER_KEY
 
 
@@ -60,10 +126,10 @@ def decrypt_value(encrypted_value: str) -> str:
     """
     if not encrypted_value:
         return ""
-        
+
     master_key = get_or_create_master_key()
     f = Fernet(master_key)
-    
+
     try:
         # Fernet attend des bytes, on décode la chaîne chiffrée
         decrypted_bytes = f.decrypt(encrypted_value.encode('utf-8'))
@@ -80,10 +146,10 @@ def encrypt_value(plain_text: str) -> str:
     """
     if not plain_text:
         return ""
-        
+
     master_key = get_or_create_master_key()
     f = Fernet(master_key)
-    
+
     # Fernet travaille sur des bytes, on encode le texte
     encrypted_bytes = f.encrypt(plain_text.encode('utf-8'))
     return encrypted_bytes.decode('utf-8')
@@ -98,7 +164,7 @@ def save_smtp_config(host: str, port: int, user: str, password: str):
         return
 
     config = load_full_config()
-    
+
     # Préparation des données chiffrées
     smtp_data = {
         "host": host,
@@ -106,13 +172,13 @@ def save_smtp_config(host: str, port: int, user: str, password: str):
         "user_encrypted": encrypt_value(user),
         "password_encrypted": encrypt_value(password)
     }
-    
+
     # Injection dans le profil
     if "profiles" in config and profile_name in config["profiles"]:
         config["profiles"][profile_name]["smtp_config"] = smtp_data
         save_full_config(config)
 
-        
+
 def add_mail_job(name: str, recipient: str, transformers: List[str], business_days_only: bool = False,
                  include_categories: list[str] = None,
                  exclude_categories: list[str] = None):
@@ -122,7 +188,7 @@ def add_mail_job(name: str, recipient: str, transformers: List[str], business_da
         return
 
     config = load_full_config()
-    
+
     job_data = {
         "recipient": encrypt_value(recipient),
         "transformers": transformers,
@@ -130,12 +196,12 @@ def add_mail_job(name: str, recipient: str, transformers: List[str], business_da
         "include_categories": include_categories or [],
         "exclude_categories": exclude_categories or []
     }
-    
+
     # Initialisation de la section mail_jobs si elle n'existe pas
     profile = config["profiles"][profile_name]
     if "mail_jobs" not in profile:
         profile["mail_jobs"] = {}
-        
+
     profile["mail_jobs"][name] = job_data
     save_full_config(config)
 

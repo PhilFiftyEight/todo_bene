@@ -36,6 +36,7 @@ from todo_bene.infrastructure.config import (
     save_user_config,
     save_smtp_config,
     add_mail_job,
+    setup_logging,
 )
 from todo_bene.domain.services.mail_engine import run_mail_jobs_background
 
@@ -70,6 +71,9 @@ from todo_bene.infrastructure.persistence.duckdb.duckdb_todo_repository import (
 from todo_bene.infrastructure.persistence.duckdb.duckdb_category_repository import (
     DuckDBCategoryRepository,
 )
+
+setup_logging()
+
 
 app = typer.Typer()
 console = Console()

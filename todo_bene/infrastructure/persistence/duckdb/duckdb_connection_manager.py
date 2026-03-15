@@ -6,16 +6,8 @@ import duckdb
 
 from todo_bene.infrastructure.config import get_or_create_master_key
 
-# Détermine le nom du fichier log selon le contexte
-log_file = "todo_bene_test.log" if "pytest" in modules else "todo_bene.log"
 
-# Configuration du logging
-logging.basicConfig(
-    filename=log_file,
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 
 class DuckDBConnectionManager:
@@ -43,6 +35,7 @@ class DuckDBConnectionManager:
                 # ATTACH 'encrypted.db' AS enc_db (ACCESS_MODE, ENCRYPTION_KEY 'quack_quack') <<< voir la doc
                 self.conn.execute(f"ATTACH '{self.db_path}' AS enc_db ({self.access_mode}, ENCRYPTION_KEY '{master_key}');")
                 self.conn.execute("USE enc_db;")
+                logger.info(f"Connexion DuckDB établie en mode {self.access_mode} pour {self.db_path}")
 
             # Exécution des migrations
             if self.access_mode == 'READ_WRITE':

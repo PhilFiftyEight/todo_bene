@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from todo_bene.domain.entities.todo import Todo
 from todo_bene.infrastructure.config import decrypt_value
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 def send_email_notification(recipient: str, todos: List[Todo], subject: str) -> bool:
     """
@@ -73,7 +73,8 @@ def send_email_notification(recipient: str, todos: List[Todo], subject: str) -> 
             server.login(smtp_user, smtp_password)
             server.sendmail(smtp_user, recipient, msg.as_string())
 
-        logger.info(f"Email envoyé avec succès")
+        logger.info(f"Email envoyé avec succès à {recipient}")
+        logger.info("Connexion avec la clé 1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
         return True
 
     except Exception as e:

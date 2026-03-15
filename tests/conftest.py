@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 import keyring
 from keyring.backends.null import Keyring
@@ -13,7 +15,12 @@ from todo_bene.infrastructure.persistence.duckdb.duckdb_todo_repository import (
 from todo_bene.infrastructure.persistence.duckdb.duckdb_category_repository import (
     DuckDBCategoryRepository,
 )
-
+from todo_bene.infrastructure.config import setup_logging
+setup_logging()
+logger = logging.getLogger()
+logger.info("Logger depuis les tests")
+logger.debug("essai sur les adresses mails : test@test.fr")
+logger.info("Connexion avec la clé 1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
 
 class MockKeyring(Keyring):
     """Un backend de stockage en mémoire pour les tests."""
