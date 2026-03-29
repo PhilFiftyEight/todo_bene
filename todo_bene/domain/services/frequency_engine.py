@@ -32,7 +32,7 @@ class FrequencyEngine:
     def get_occurrences(self, frequency_str, base_now=None):
         tz = pendulum.local_timezone()
         days_map = {"mon":0,"tue":1,"wed":2,"thu":3,"fri":4,"sat":5,"sun":6}
-        
+
         try:
             # 1. Split & Clean
             main_part = frequency_str.split('|')[0].split('!')[0]
@@ -58,7 +58,7 @@ class FrequencyEngine:
             for p in parts[2:]:
                 if not p: continue
                 p_low = p.lower()
-                
+
                 if p_low[:3] in months_list:
                     target_month = months_list.index(p_low[:3]) + 1
                 elif p == "∞":
@@ -80,13 +80,13 @@ class FrequencyEngine:
                     end_date = pendulum.parse(p).replace(tzinfo=tz).end_of('day')
                 else:
                     raise ValueError(f"Instruction de fréquence : Segment inconnu [{p}]")
-            
+
             # --- START DATE ---
-            if start_str == "today": 
+            if start_str == "today":
                 start_date = (base_now or pendulum.now(tz)).start_of('day')
-            elif start_str == "tomorrow": 
+            elif start_str == "tomorrow":
                 start_date = (base_now or pendulum.now(tz)).add(days=1).start_of('day')
-            else: 
+            else:
                 start_date = pendulum.parse(start_str).replace(tzinfo=tz).start_of('day')
 
             if target_month:
@@ -100,10 +100,10 @@ class FrequencyEngine:
             max_limit = getattr(self._LIMITS, base, 366)
             interval = int(re.search(r'\d+', c_parts[1]).group()) if (len(c_parts)>1 and re.search(r'\d+', c_parts[1])) else 1
             spec_days = re.findall(r'(mon|tue|wed|thu|fri|sat|sun)', cadence_full)
-            
+
             # Correction RJQ : On assure au moins 1 itération si un intervalle ordinal est fourni (ex: #135)
             base_iterations = max(1, max_limit // interval) if interval > 0 else max_limit
-            
+
             if limit_attr is None:
                 final_limit = base_iterations
             else:
@@ -112,7 +112,7 @@ class FrequencyEngine:
                     user_requested = limit_attr * len(spec_days)
                 else:
                     user_requested = limit_attr
-                
+
                 if end_date:
                     final_limit = base_iterations
                 else:
@@ -120,7 +120,7 @@ class FrequencyEngine:
 
             # --- GÉNÉRATION ---
             occurrences = []
-            
+
             if base == "weekly" and spec_days:
                 target_wd = [days_map[d] for d in spec_days]
                 curr = start_date.add(days=1)
@@ -128,42 +128,44 @@ class FrequencyEngine:
                     if curr.day_of_week in target_wd:
                         if not end_date or curr <= end_date:
                             occurrences.append(curr)
-                        else: break
+                        else:
+                            break
                     curr = curr.add(days=1)
-                    if (curr - start_date).days > 366: break
-            
+                    if (curr.date() - start_date.date()).days > 366:
+                        break
+
             # Séquences explicites (ex: 1,2,4,8d)
             elif base == "sequence":
                 offsets = [int(n) for n in re.findall(r'\d+', cadence_full)]
                 unit_char = re.search(r'[dwmy]', cadence_full)
                 unit = {'d':'days','w':'weeks','m':'months','y':'years'}.get(unit_char.group(), 'days') if unit_char else 'days'
-                
+
                 # Déterminer la taille du saut de cycle (par défaut 1 semaine si on parle de jours)
                 cycle_step = 7 if unit == 'days' else 1
-                
+
                 idx = 0
                 cycle_count = 0
                 while len(occurrences) < final_limit:
                     # On calcule l'indice dans la liste d'offsets
                     current_idx = idx % len(offsets)
-                    
+
                     # Si on recommence la liste, on change de cycle
                     if idx > 0 and current_idx == 0:
                         cycle_count += 1
-                        
+
                     # Calcul de la date : Start + (Nombre de cycles * Step) + Offset du jour dans le cycle
                     total_offset = (cycle_count * cycle_step) + offsets[current_idx]
-                    
+
                     occ = start_date.add(**{unit: total_offset})
-                    
+
                     if end_date and occ > end_date:
                         break
-                        
+
                     occurrences.append(occ)
                     idx += 1
-                    
+
                     # Sécurité pour ne pas boucler à l'infini
-                    if (occ - start_date).days > 366:
+                    if (occ.date() - start_date.date()).days > 366:
                         break
 
             else:
@@ -176,11 +178,11 @@ class FrequencyEngine:
                     elif base == "monthly":
                         # On sépare pour ne pas matcher "mon" dans "monthly"
                         cadence_only = cadence_full.split('#')[1] if '#' in cadence_full else ""
-                        is_ordinal = ("workday" in cadence_full or 
+                        is_ordinal = ("workday" in cadence_full or
                                      "last" in cadence_full or
-                                     "day" in cadence_full or 
+                                     "day" in cadence_full or
                                      re.search(r'\d+(st|nd|rd|th)', cadence_full))
-                        
+
                         if is_ordinal:
                             if "workday" in cadence_full:
                                 target_count = interval
@@ -215,18 +217,18 @@ class FrequencyEngine:
                                     occ = potential_occ
                         else:
                             occ = start_date.add(months=i * interval)
-                    
+
                     elif base == "yearly":
                         # Détection d'un ordinal (ex: 1stmon, lastfri)
                         day_name = re.search(r'(mon|tue|wed|thu|fri|sat|sun)', cadence_full)
-                        
+
                         if "last" in cadence_full:
                             # Logique pour "Le dernier [jour] de la période"
                             if target_month:
                                 curr = start_date.end_of('month').start_of('day')
                             else:
                                 curr = start_date.end_of('year').start_of('day')
-                                
+
                             if day_name:
                                 target_wd = days_map[day_name.group()]
                                 while curr.day_of_week != target_wd:
@@ -238,7 +240,7 @@ class FrequencyEngine:
                             found_count = 0
                             curr = start_date.start_of('month')
                             target_wd = days_map[day_name.group()]
-                            
+
                             while found_count < target_count:
                                 if curr.day_of_week == target_wd:
                                     found_count += 1
@@ -252,17 +254,17 @@ class FrequencyEngine:
                                 occ = start_date.add(years=i-1)
                             else:
                                 occ = start_date.add(days=step - 1) if interval > 1 else start_date.add(years=step)
- 
+
                     elif base == "fortnight":
                         occ = start_date.add(days=step * 14)
 
-                    elif base == "quarter": 
+                    elif base == "quarter":
                         if "last" in cadence_full:
                             # Logique pour "Le dernier [jour] du trimestre"
                             day_name = re.search(r'(mon|tue|wed|thu|fri|sat|sun)', cadence_full)
                             current_quarter_end_month = ((start_date.month - 1) // 3 + i) * 3
                             curr = start_date.replace(month=current_quarter_end_month).end_of('month').start_of('day')
-                            
+
                             if day_name:
                                 target_wd = days_map[day_name.group()]
                                 while curr.day_of_week != target_wd:
@@ -271,15 +273,15 @@ class FrequencyEngine:
                         else:
                             occ = start_date.add(days=step - 1) if interval > 1 else start_date.add(months=step * 3)
 
-                    elif base == "semester": 
+                    elif base == "semester":
                         occ = start_date.add(days=step - 1) if interval > 1 else start_date.add(months=step * 6)
 
                     else: occ = start_date.add(days=step)
-                    
+
                     if end_date and occ > end_date:
                         break
 
-                    if limit_attr is None and base == "daily" and (occ - start_date).days >= 365:
+                    if limit_attr is None and base == "daily" and (occ.date() - start_date.date()).days >= 365:
                         occurrences.append(occ)
                         break
 
@@ -292,10 +294,10 @@ class FrequencyEngine:
                     "jul":7, "aug":8, "sep":9, "oct":10, "nov":11, "dec":12
                 }
                 raw_exclusions = frequency_str.split('!')[1].split(',')
-                
+
                 excl_days = [days_map[d.strip()] for d in raw_exclusions if d.strip() in days_map]
                 excl_months = [months_map[m.strip()] for m in raw_exclusions if m.strip() in months_map]
-                
+
                 if excl_days:
                     occurrences = [o for o in occurrences if o.day_of_week not in excl_days]
                 if excl_months:

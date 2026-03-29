@@ -142,12 +142,23 @@
 ## [0.3.7] - 2026-03-29
 
 ### Added
-- fix `waze_link` : détection intelligente d'adresses et génération de liens Waze.
-- Intégration de **DuckDB** pour le géocodage fuzzy via l'API GeoNames.
-- Support des noms de communes complexes et longs (ex: Saint-Remy-en-Bouzemont).
-- Chiffrement du `GEONAME_USERNAME` via le trousseau système pour plus de sécurité.
+- Fix `waze_link` transformer: smart address detection and Waze navigation link generation.
+- DuckDB integration for fuzzy geocoding via GeoNames API.
+- Support for complex/long city names (e.g., Saint-Remy-en-Bouzemont).
+- Encryption for `GEONAME_USERNAME` using system keyring for enhanced security.
 
 ### Changed
-- Amélioration du pipeline `apply_transformers` pour supporter l'enchaînement Téléphone + Waze.
-- Optimisation des tests unitaires (Mocking DuckDB)
+- Improved `apply_transformers` pipeline to support Phone + Waze transformation chaining.
+- Unit tests optimization (DuckDB Mocking): runtime reduced from 57s to < 3s.
+
+
+## [0.3.8] - 2026-03-29
+
+### Fixed
+- Fixed `FrequencyEngine` edge-case bug related to Daylight Saving Time (DST) by switching from timestamp duration to calendar date comparison (`.date()`).
+- Resolved "366 vs 365" assertion error in CLI repetition tests.
+
+### Changed
+- Major dependency update (including `duckdb` v1.5.1 and `cryptography` v46.0.6) for improved performance and security.
+
 ---
