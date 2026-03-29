@@ -7,7 +7,6 @@ from todo_bene.domain.entities.todo import Todo
 
 runner = CliRunner()
 
-@pytest.mark.xfail
 def test_cli_integration_repetition_flow(monkeypatch,user_id, repository, test_config_env):
     """
     TEST (RED) : Intégration complète via la commande list.
