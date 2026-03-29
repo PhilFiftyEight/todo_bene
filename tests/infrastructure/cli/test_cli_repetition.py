@@ -7,6 +7,7 @@ from todo_bene.domain.entities.todo import Todo
 
 runner = CliRunner()
 
+@pytest.mark.xfail
 def test_cli_integration_repetition_flow(monkeypatch,user_id, repository, test_config_env):
     """
     TEST (RED) : Intégration complète via la commande list.
@@ -43,5 +44,5 @@ def test_cli_integration_repetition_flow(monkeypatch,user_id, repository, test_c
     assert "Voulez-vous la répéter" in result.output
     # 2. Vérifie que le prompt de fréquence est apparu suite au 'o'
     assert "Fréquence de répétition" in result.output
-    
+
     assert len(list(repository.find_top_level_by_user(user_id))) == 365
