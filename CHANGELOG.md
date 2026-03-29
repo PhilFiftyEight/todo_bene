@@ -139,4 +139,15 @@
 - Standardize on Root Logger to ensure global filter application across all modules.
 
 
+## [0.3.7] - 2026-03-29
+
+### Added
+- fix `waze_link` : détection intelligente d'adresses et génération de liens Waze.
+- Intégration de **DuckDB** pour le géocodage fuzzy via l'API GeoNames.
+- Support des noms de communes complexes et longs (ex: Saint-Remy-en-Bouzemont).
+- Chiffrement du `GEONAME_USERNAME` via le trousseau système pour plus de sécurité.
+
+### Changed
+- Amélioration du pipeline `apply_transformers` pour supporter l'enchaînement Téléphone + Waze.
+- Optimisation des tests unitaires (Mocking DuckDB)
 ---
