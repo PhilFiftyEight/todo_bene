@@ -31,7 +31,9 @@ class DuckDBConnectionManager:
                 )
             except duckdb.Error:
                 self.conn = duckdb.connect()
-                self.conn.execute("LOAD httpfs;")
+                # self.conn.execute("INSTALL httpfs")
+                self.conn.install_extension("https") # si pas présente dans le cache la télécharge TODO: Voir la gestion des mises à jour avec force_install=True
+                self.conn.load_extension("httpfs")
                 # ATTACH 'encrypted.db' AS enc_db (ACCESS_MODE, ENCRYPTION_KEY 'quack_quack') <<< voir la doc
                 self.conn.execute(f"ATTACH '{self.db_path}' AS enc_db ({self.access_mode}, ENCRYPTION_KEY '{master_key}');")
                 self.conn.execute("USE enc_db;")
