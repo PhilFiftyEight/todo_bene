@@ -16,7 +16,7 @@ class MemoryTodoRepository(TodoRepository):
 
     def find_by_parent(self, parent_id: UUID) -> list[Todo]:
         return [todo for todo in self.todos.values() if todo.parent == parent_id]
-    
+
     def count_all_descendants(self, todo_uuid: UUID) -> int:
         children = self.find_by_parent(todo_uuid)
         total = len(children)
@@ -48,7 +48,7 @@ class MemoryTodoRepository(TodoRepository):
         # Filtre de catégorie
         if category:
             roots = [todo for todo in roots if todo.category == category]
-            
+
         # NOUVEAU : Filtre de date
         if max_date:
             roots = [todo for todo in roots if todo.date_due <= max_date]
