@@ -3,6 +3,8 @@
 
 # 📝 Todo Bene
 
+[![Version Python](https://img.shields.io/badge/python-3.12%2B-blue)](https://www.python.org/)
+[![Version Python](https://img.shields.io/badge/python-3.13%2B-blue)](https://www.python.org/)
 [![Version Python](https://img.shields.io/badge/python-3.14%2B-blue)](https://www.python.org/)
 [![Licence: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tests](https://img.shields.io/badge/tests-226%20pass%C3%A9s-brightgreen)](#)
@@ -11,7 +13,7 @@
 
 ## 🇫🇷 Version Française
 
-**Todo Bene** est un gestionnaire de tâches en ligne de commande (CLI) focalisé sur l'efficacité, conçu pour lutter contre la procrastination grâce à une hiérarchie de tâches structurée et un report automatique.
+**Todo Bene** est un gestionnaire de tâches en ligne de commande (CLI) conçu pour lutter contre la procrastination
 
 ---
 
@@ -126,7 +128,7 @@ Développé avec ❤️ par **PhilFiftyEight** (2026).
 
 ## 🇬🇧 English Version
 
-**Todo Bene** is a command-line task manager (CLI) focused on efficiency, designed to fight procrastination through a structured task hierarchy and automatic rescheduling.
+**Todo Bene** is a command-line task manager (CLI) designed to fight procrastination
 
 ---
 
