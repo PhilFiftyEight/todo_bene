@@ -3,9 +3,9 @@
 
 # 📝 Todo Bene
 
-[![Version Python](https://img.shields.io/badge/python-3.13%2B-blue)](https://www.python.org/)
+[![Version Python](https://img.shields.io/badge/python-3.14%2B-blue)](https://www.python.org/)
 [![Licence: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-219%20pass%C3%A9s-brightgreen)](#)
+[![Tests](https://img.shields.io/badge/tests-226%20pass%C3%A9s-brightgreen)](#)
 
 [Version Française](#-version-française) | [English Version](#-english-version)
 
@@ -50,7 +50,7 @@ l'**Assistant Interactif** vous guidera pour créer votre profil et initialiser 
 # Noter que si vous répondez OUI à la version de développement, la base sera créer dans le répertoire `todo_bene` avec le nom `dev.db`
 ```
 
-![Setup](docs/media/01setup.gif) 
+![Setup](docs/media/01setup.gif)
 
 ---
 
@@ -80,7 +80,7 @@ tb list -p [today|week|month|all] # filtrer par période
 
 ### Naviguer, Modifier, Terminer et Répéter, Supprimer
 
-La navigation est récursive pour plonger dans les sous-tâches. 
+La navigation est récursive pour plonger dans les sous-tâches.
 
 Modifier facilement un todo à partir de la vue détails.
 
@@ -89,7 +89,7 @@ Terminer un Todo l' archive (il reste présents dans la bdd afin d'historique et
 Supprimer définitivement un Todo (pas d'archivage)
 
 
-![Demo](docs/media/02demov032.gif) 
+![Demo](docs/media/02demov032.gif)
 
 ### Vue Debug & Dev
 
