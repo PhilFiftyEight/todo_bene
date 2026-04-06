@@ -12,7 +12,7 @@ description = "To-do-list"
 license = "MIT"
 license-files = ["LICENSE.txt"]
 readme = "README.md"
-requires-python = ">=3.13.12,<3.14"
+requires-python = ">=3.12, <3.15"
 dependencies = [
     "cryptography>=46.0.5",
     "dotenv>=0.9.9",
@@ -44,4 +44,3 @@ gh_check = "github_utils.check_ci:check_status"
 
 [tool.uv]
 package = true
-

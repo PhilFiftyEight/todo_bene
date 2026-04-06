@@ -65,3 +65,4 @@ github_utils/
 .tally-config.toml
 scripts/
 heure_ete/
+release.fish

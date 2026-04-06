@@ -161,4 +161,16 @@
 ### Changed
 - Major dependency update (including `duckdb` v1.5.1 and `cryptography` v46.0.6) for improved performance and security.
 
+
+## [0.3.9] - 2026-04-06
+
+### DevOps & CI/CD
+- **GitHub Actions v6**: Migration vers les dernières versions des actions officielles (`checkout@v6`, `setup-python@v6`).
+- **Matrice de Test Dynamique**: Implémentation d'un job de configuration générant automatiquement une matrice de tests pour Python 3.12, 3.13 et 3.14.
+- **Workflow Dispatch**: Ajout du déclenchement manuel des tests depuis l'interface GitHub.
+
+### Infrastructure
+- **Python Compatibility**: Mise à jour de la plage de compatibilité vers `python >= 3.12, < 3.15` pour supporter les dernières versions stables tout en garantissant la compatibilité des dépendances de développement (ex: `ipython`).
+- **Dependency Sync**: Synchronisation complète du fichier `uv.lock` avec les nouvelles contraintes système.
+
 ---

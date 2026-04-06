@@ -5,46 +5,63 @@ on:
     branches:
       - main
       - develop
-      - 'feat/**'  # Inclut toutes tes branches d'issues (ex: feat/issue-1-categories)
+      - 'feat/**'
       - 'fix/**'
   pull_request:
     branches:
       - main
       - develop
+  workflow_dispatch:
 
 jobs:
-  run-tests:
+  setup-matrix:
+    name: Setup Python Matrix
     runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - id: set-matrix
+        run: |
+          # Génère dynamiquement la liste des versions de 3.12 à 3.14
+          python3 -c "import json; print('matrix=' + json.dumps(['3.' + str(v) for v in range(12, 15)]))" >> $GITHUB_OUTPUT
+
+  run-tests:
+    needs: setup-matrix
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ${{ fromJson(needs.setup-matrix.outputs.matrix) }}
 
     steps:
-
       - name: Install French Locale
         run: |
-            sudo apt-get update
-            sudo apt-get install -y locales
-            sudo locale-gen fr_FR.UTF-8
+          sudo apt-get update
+          sudo apt-get install -y locales
+          sudo locale-gen fr_FR.UTF-8
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
         with:
-          python-version: "3.13" # En attendant la stabilité de la 3.14 sur les runners
+          python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
         run: uv sync
 
       - name: Run tests
-        run: uv run -- pytest -s
+        run: uv run pytest -s
         env:
           LANG: fr_FR.UTF-8
           LC_ALL: fr_FR.UTF-8
-          TZ: Europe/Paris          # <--- Force l'heure de Paris
-          COLUMNS: 120              # <--- Force une largeur de terminal suffisante
-          TERM: xterm-256color     # <--- Simule un terminal riche
+          TZ: Europe/Paris
+          COLUMNS: 120
+          TERM: xterm-256color
