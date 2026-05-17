@@ -1,6 +1,7 @@
 from uuid import UUID
 from todo_bene.application.interfaces.category_repository import CategoryRepository
 from todo_bene.domain.entities.category import Category
+from todo_bene.infrastructure.config import get_cached_categories, save_cached_categories
 
 
 class CategoryCreateUseCase:
@@ -23,5 +24,11 @@ class CategoryCreateUseCase:
 
         # 5. Persistance
         self.repo.save_category(category)
+
+        # Synchronisation du cache
+        cached_cats = get_cached_categories()
+        if category.name not in cached_cats:
+            cached_cats.append(category.name)
+            save_cached_categories(cached_cats)
 
         return category

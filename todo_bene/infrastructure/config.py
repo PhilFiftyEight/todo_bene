@@ -273,7 +273,25 @@ def save_user_config(user_id: UUID, db_path: str, profile_name: str):
     save_full_config(config)
 
 
-# # --- Gestion du report automatique par profil ---
+def get_cached_categories() -> List[str]:
+    """Récupère les catégories mises en cache dans le profil actif."""
+    _, _, profile_name = load_user_info()
+    config = load_full_config()
+    if not profile_name or profile_name not in config.get("profiles", {}):
+        return []
+    return config["profiles"][profile_name].get("cached_categories", [])
+
+
+def save_cached_categories(categories: List[str]):
+    """Sauvegarde la liste des catégories dans le profil actif."""
+    _, _, profile_name = load_user_info()
+    if not profile_name:
+        return
+
+    config = load_full_config()
+    if "profiles" in config and profile_name in config["profiles"]:
+        config["profiles"][profile_name]["cached_categories"] = categories
+        save_full_config(config)
 
 
 def get_last_postpone_date() -> Optional[str]:

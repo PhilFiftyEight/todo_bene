@@ -37,6 +37,8 @@ from todo_bene.infrastructure.config import (
     save_smtp_config,
     add_mail_job,
     setup_logging,
+    get_cached_categories,
+    save_cached_categories,
 )
 from todo_bene.domain.services.mail_engine import run_mail_jobs_background
 
@@ -753,13 +755,26 @@ def complete_category(incomplete: str):
         return [
             name for name in Category.ALL if name.lower().startswith(incomplete.lower())
         ]
-    with get_repository() as repo:
-        cat_repo = DuckDBCategoryRepository(repo._conn)
-        list_use_case = CategoryListUseCase(cat_repo)
-        all_categories = list_use_case.execute(user_id)
-    return [
+    
+    # 1. Tentative de récupération depuis le cache
+    user_categories = get_cached_categories()
+    
+    # 2. Fallback : Si le cache est vide interroger la base
+    if not user_categories:
+        with get_repository() as repo:
+            cat_repo = DuckDBCategoryRepository(repo._conn)
+            user_categories = cat_repo.get_all_categories(user_id)
+            save_cached_categories(user_categories)
+    
+    # Ajout des catégories système
+    all_categories = list(set(user_categories + Category.ALL))
+    
+    # 3. Filtrage standard
+    completions = [
         name for name in all_categories if name.lower().startswith(incomplete.lower())
     ]
+            
+    return completions
 
 def complete_period(incomplete: str):
     periods = ["today", "week", "month", "all"]
