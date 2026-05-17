@@ -132,8 +132,12 @@ def test_cli_update_date_invalid_format_shows_error(
     repository.save(todo)
 
     # On saisit un format invalide pour la date
-    inputs = "1\nm\n\n\n\ninvalide-date\nr\n"
-
+    # 1\nm\n : choix du todo et menu modifier
+    # \n\n\n : titre, description, priorité par défaut
+    # \n : catégorie par défaut (on évite le prompt de création)
+    # invalide-date : date invalide
+    # r : retour
+    inputs = "1\nm\n\n\n\n\ninvalide-date\nr\n"
     # WHEN
     result = runner.invoke(
         app, ["list"], input=inputs, env={"TODO_BENE_CONFIG_PATH": str(test_config_env)}

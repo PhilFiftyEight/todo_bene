@@ -59,6 +59,7 @@ audit/
 # fichiers divers
 calendar.ics
 issuesAcrreer.txt
+GEMINI.md
 context_*_*.py
 context_*_*.txt
 github_utils/

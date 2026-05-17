@@ -466,6 +466,17 @@ def _handle_action(
         except KeyboardInterrupt:
             new_cat = todo.category
 
+        # Logique de création de catégorie
+        # cat_repo est déjà défini à la ligne 459
+        if new_cat not in categories.split(" / "):
+             if typer.confirm(f"La catégorie '{new_cat}' n'existe pas. Voulez-vous la créer ?"):
+                 CategoryCreateUseCase(cat_repo).execute(new_cat, user_id)
+                 show_success(f"Catégorie '{new_cat}' créée.", title="Catégorie")
+                 # Rafraîchir les catégories pour la suite si besoin
+                 categories = CategoryListUseCase(cat_repo).execute(user_id)
+             else:
+                 new_cat = todo.category
+
         def ask_date(label: str, default_timestamp: Optional[int] = None) -> int:
             default_date_str = ""
             if default_timestamp:
