@@ -28,6 +28,7 @@ htmtlcov/
 .vscode
 .DS_Store
 .idea/
+todo_bene.code-workspace
 
 # docs perso
 docs_internes_perso/
