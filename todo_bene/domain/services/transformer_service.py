@@ -49,25 +49,20 @@ def waze_link(description: str) -> str:
     Cette fonction parcourt chaque ligne de la description et applique une
     transformation si un format d'adresse valide est détecté.
 
-    Format attendu pour le déclenchement :
-    '[Préfixe/Téléphone] [Adresse], [Ville]'
+    Formats attendus pour le déclenchement :
+    1. Nouveau format (avec Nom/Prénom) : '[Téléphone] [Nom/Prénom], [Adresse], [Ville]'
+    2. Ancien format (compatible) : '[Téléphone] [Adresse], [Ville]'
 
     Règles de transformation :
-    1. Présence d'une virgule : La virgule est le séparateur strict. Tout ce qui
-       se trouve après la dernière virgule de la ligne est considéré comme la ville.
+    1. Séparateurs : 
+       - Si 2 virgules sont détectées : [Préfixe], [Adresse], [Ville]
+       - Si 1 virgule est détectée : [Préfixe/Téléphone + Rue], [Ville]
     2. Isolation du téléphone : Si un numéro de mobile FR est détecté dans le
-       préfixe, il est extrait pour ne pas polluer la recherche Waze, garantissant
-       une précision maximale de l'itinéraire.
+       préfixe, il est extrait pour ne pas polluer la recherche Waze.
     3. Correction géographique (GeoNames) : La ville candidate est validée via
        DuckDB. Si une correspondance est trouvée (même avec des fautes d'orthographe
        ou des accents manquants), elle est remplacée par le nom officiel.
     4. Génération HTML : Ajoute un lien cliquable formaté pour l'affichage email.
-
-    Exemples :
-    - '06 00 00 00 00 5 rue du port, thumerie'
-      -> '06 00 00 00 00 5 rue du port Thumeries <a href="..."> (Waze)</a>'
-    - 'RDV au 14 rue de la mairie, Saint Remy en Bouzemont'
-      -> 'RDV au 14 rue de la mairie Saint-Remy-en-Bouzemont-... <a href="..."> (Waze)</a>'
 
     Args:
         description (str): Le texte multi-ligne du Todo.
@@ -79,40 +74,42 @@ def waze_link(description: str) -> str:
 
     def transform_waze_line(line: str) -> str:
         """Transforme la ligne avec détection téléphone, adresse et ville."""
-        if ',' not in line:
+        # 1. Tentative avec le nouveau format strict (2 virgules)
+        if line.count(',') == 2:
+            parts = line.split(',')
+            prefix = parts[0].strip()   # Téléphone + Nom
+            address = parts[1].strip()  # Adresse
+            city_candidate = parts[2].strip() # Ville
+        # 2. Compatibilité avec l'ancien format (1 virgule)
+        elif line.count(',') == 1:
+            parts = line.rsplit(',', 1)
+            prefix = parts[0].strip()   # Téléphone + Rue
+            city_candidate = parts[1].strip()
+            
+            # Isolation du téléphone dans le préfixe
+            phone_pattern = r'(?:\d{2}[ \.\-]){4}\d{2}'
+            phone_match = re.search(phone_pattern, prefix)
+            if not phone_match:
+                return line
+            phone = phone_match.group(0)
+            address = prefix.replace(phone, "").strip() # Adresse = Rue
+        else:
             return line
-        # 1. Isolation de la ville (après la dernière virgule)
-        parts = line.rsplit(',', 1)
-        prefix = parts[0].strip() # Contient Téléphone + Rue
-        city_candidate = parts[1].strip()
-        # 2. Validation de la ville
+            
+        # Validation de la ville
         validated_city = check_city_duckdb(city_candidate)
         if not validated_city:
             return line
 
-        # 3. Isolation du téléphone pour ne pas polluer la recherche Waze
-        phone_pattern = r'(?:\d{2}[ \.\-]){4}\d{2}'
-        phone_match = re.search(phone_pattern, prefix)
-        if not phone_match: # forcer le format "Téléphone Adresse, Ville"
-            return line # On ne transforme pas si le téléphone manque,
-                        # le format de la ligne n'est pas respecté
-
-        phone = ""
-        street_address = prefix
-
-        phone = phone_match.group(0)
-        # L'adresse est ce qui reste après le téléphone (ou avant)
-        street_address = prefix.replace(phone, "").strip()
-
-        # 4. Construction de l'URL Waze (Rue + Ville validée)
-        full_address_for_waze = f"{street_address} {validated_city}".strip()
+        # 4. Construction de l'URL Waze (Adresse + Ville validée)
+        full_address_for_waze = f"{address} {validated_city}".strip()
         encoded_addr = urllib.parse.quote(full_address_for_waze)
         waze_url = f'https://waze.com/ul?q={encoded_addr}&navigate=yes'
 
         # 5. Reconstruction de la ligne d'affichage
-        # On garde le format original de l'utilisateur pour le texte
-        display_phone = f"{phone} " if phone else ""
-        return f'{display_phone}{street_address}, {validated_city} <a href="{waze_url}">(Waze)</a>'
+        if line.count(',') == 2:
+             return f'{prefix}, {address}, {validated_city} <a href="{waze_url}">(Waze)</a>'
+        return f'{prefix}, {validated_city} <a href="{waze_url}">(Waze)</a>'
 
     if not description:
         return description

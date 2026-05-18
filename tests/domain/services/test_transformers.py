@@ -57,7 +57,7 @@ def test_transformer_phone_only():
 
 def test_transformer_waze_only():
     """Vérifie la création du lien Waze sur une adresse simple."""
-    address = "06 06 06 06 06 20 rue Alexandre Ribot, Arras"
+    address = "06 06 06 06 06 NOM, 20 rue Alexandre Ribot, Arras"
     result = waze_link(address)
 
     assert "https://waze.com/ul?q=20%20rue%20Alexandre%20Ribot%20Arras&navigate=yes" in result
@@ -68,7 +68,7 @@ def test_transformer_pipeline_todo_b():
     s'appliquent correctement à la suite.
     """
     todo_b = """Check-up Dentiste 🏥 rdv annuel
-    03 03 03 03 03 20 rue Alexandre Ribot, Arras"""
+    03 03 03 03 03 NOM, 20 rue Alexandre Ribot, Arras"""
 
     # On applique les deux transformers via le moteur d'exécution
     pipeline = ["format_phone", "waze_link"]
@@ -142,6 +142,23 @@ def test_cascading_transformers_order():
     assert 'href="https://waze.com/ul?q=40B%20rue%20Jules%20Ferry%20Lens' in step2
 
 
+
+def test_waze_link_removes_name_and_surname():
+    """
+    Test de reproduction de l'issue #23 : vérifie que le nom et le prénom 
+    sont exclus de l'URL Waze générée grâce au format à deux virgules.
+    """
+    # Format : Téléphone + Nom, Adresse, Ville
+    input_text = "06 00 00 00 00 NOM PRENOM, 67B Rue gabriel péri, La bassée"
+    output = waze_link(input_text)
+    
+    print(f"\nDEBUG output: {output}")
+    
+    # L'URL Waze ne doit PAS contenir le nom et le prénom
+    assert "NOM%20PRENOM" not in output
+    assert "67B%20Rue%20gabriel%20p%C3%A9ri" in output
+    assert "La%20Bass%C3%A9e" in output
+    assert "(Waze)" in output
 
 def test_waze_link_transformer_success():
     """Test des cas où la transformation doit réussir."""
