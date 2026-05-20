@@ -869,7 +869,13 @@ def create(
 def list_todos(
     category: Annotated[
         Optional[list[str]],
-        typer.Option("--category", "-c", autocompletion=complete_category),
+        typer.Option("--category", "-c", autocompletion=complete_category,
+        help="Multi-category possible with -c ... -c ... etc.")
+    ] = None,
+    exclude_category: Annotated[
+        Optional[list[str]],
+        typer.Option("--exclude", "-x", autocompletion=complete_category,
+        help="Exclude category, multi-exclude possible")
     ] = None,
     period: Annotated[
         str,
@@ -880,11 +886,13 @@ def list_todos(
     with get_repository() as repo:
         while True:
             use_case = TodoGetAllRootsByUserUseCase(repo)
-            roots, postponed_count = use_case.execute(user_id, category=category, period=period)
+            roots, postponed_count = use_case.execute(user_id, category=category, exclude_category=exclude_category, period=period)
             if not roots:
                 msg = f"Aucun Todo trouvé pour la période '{period}'"
                 if category:
                     msg += f" pour la catégorie {category[0]}" if len(category) == 1 else f" pour les catégories {', '.join(category)}"
+                if exclude_category:
+                    msg += f" (hors {exclude_category[0]})" if len(exclude_category) == 1 else f" (hors {', '.join(exclude_category)})"
                 show_error(f"{msg}.", title="Vide")
                 return
             # LANCEMENT DU THREAD (JUSTE APRÈS LA RÉCUPÉRATION)

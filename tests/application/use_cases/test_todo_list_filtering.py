@@ -120,3 +120,27 @@ def test_execute_filter_multi_categories(setup_filter_test):
     assert "Work Task" in titles
     assert "Daily Task" in titles
     assert "Other Task" not in titles
+
+def test_execute_filter_exclude_categories(setup_filter_test):
+    use_case, user_id, _, _ = setup_filter_test
+    repository = use_case.todo_repo
+    
+    cat1 = "Work"
+    cat2 = "It"
+    cat3 = "Loisirs"
+    
+    todo1 = Todo(uuid=uuid4(), title="Work Task", category=cat1, user=user_id, date_start=0, date_due=0)
+    todo2 = Todo(uuid=uuid4(), title="It Task", category=cat2, user=user_id, date_start=0, date_due=0)
+    todo3 = Todo(uuid=uuid4(), title="Loisirs Task", category=cat3, user=user_id, date_start=0, date_due=0)
+    
+    repository.save(todo1)
+    repository.save(todo2)
+    repository.save(todo3)
+    
+    # Test : exclusion de deux catégories (+ celle par défaut de la fixture : Quotidien)
+    # POUR mémoire la fixture créer 2 todos avec la catégorie par défaut soit Quotidien
+    roots, count = use_case.execute(user_id, exclude_category=[cat1, cat2, "Quotidien"], period="all")
+    
+    assert len(roots) == 1
+    assert roots[0].title == "Loisirs Task"
+    assert roots[0].category == cat3

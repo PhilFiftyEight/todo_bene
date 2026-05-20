@@ -86,18 +86,24 @@ class DuckDBTodoRepository(TodoRepository):
         self,
         user_id: UUID,
         category: Optional[list[str]] = None,
+        exclude_category: Optional[list[str]] = None,
         max_date: Optional[int] = None
     ) -> List[Todo]:
         # Base de la requête : tâches racines non complétées
         query = "SELECT * FROM todos WHERE user_id = ? AND parent_id IS NULL AND state = false"
         params = [user_id]
 
-        # Filtre de catégorie
+        # Filtre de catégorie (inclusion)
         if category:
-            # Création de la clause IN avec autant de '?' que de catégories
             placeholders = ", ".join(["?"] * len(category))
             query += f" AND category IN ({placeholders})"
             params.extend(category)
+
+        # Filtre de catégorie (exclusion)
+        if exclude_category:
+            placeholders = ", ".join(["?"] * len(exclude_category))
+            query += f" AND category NOT IN ({placeholders})"
+            params.extend(exclude_category)
 
         # NOUVEAU : Filtre de période
         if max_date is not None:

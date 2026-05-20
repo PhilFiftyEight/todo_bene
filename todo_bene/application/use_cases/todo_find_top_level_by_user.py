@@ -58,7 +58,7 @@ class TodoGetAllRootsByUserUseCase:
     def __init__(self, todo_repo: TodoRepository):
         self.todo_repo = todo_repo
 
-    def execute(self, user_id: UUID, category: list[str] = None, period: str = "all") -> list[Todo]:
+    def execute(self, user_id: UUID, category: list[str] = None, exclude_category: list[str] = None, period: str = "all") -> list[Todo]:
         # 1. Application de la règle métier système (auto-postpone)
         count = apply_auto_postpone(self.todo_repo, user_id)
         
@@ -78,7 +78,8 @@ class TodoGetAllRootsByUserUseCase:
         # 3. Récupération filtrée
         roots = self.todo_repo.find_top_level_by_user(
             user_id, 
-            category=category, 
+            category=category,
+            exclude_category=exclude_category,
             max_date=max_date
         )
         return roots, count

@@ -32,9 +32,10 @@ class TodoRepository(ABC):
         self, 
         user_id: UUID, 
         category: Optional[list[str]] = None,
-        max_date: Optional[int] = None  # Ajout de la borne temporelle
+        exclude_category: Optional[list[str]] = None,
+        max_date: Optional[int] = None
     ) -> list[Todo]:
-        """Récupère les tâches racines, avec filtres optionnels par liste de catégories et date échéance."""
+        """Récupère les tâches racines, avec filtres optionnels par liste de catégories, exclusion, et date échéance."""
         pass
 
     @abstractmethod
