@@ -96,3 +96,27 @@ def test_execute_filter_month(setup_filter_test):
     # On s'attend à avoir au moins 3 tâches (Today + celle de la semaine + celle du mois)
     # Note : Le nombre exact dépend de si Task Future (J+10) tombe dans le mois ou pas
     assert any(t.title == "Task Month" for t in roots)
+
+def test_execute_filter_multi_categories(setup_filter_test):
+    use_case, user_id, _, _ = setup_filter_test
+    repository = use_case.todo_repo
+    
+    cat1 = "Travail"
+    cat2 = "Sport"
+    
+    todo1 = Todo(uuid=uuid4(), title="Work Task", category=cat1, user=user_id, date_start=0, date_due=0)
+    todo2 = Todo(uuid=uuid4(), title="Daily Task", category=cat2, user=user_id, date_start=0, date_due=0)
+    todo3 = Todo(uuid=uuid4(), title="Other Task", category="Loisirs", user=user_id, date_start=0, date_due=0)
+    
+    repository.save(todo1)
+    repository.save(todo2)
+    repository.save(todo3)
+    
+    # Test : filtre sur deux catégories
+    roots, count = use_case.execute(user_id, category=[cat1, cat2], period="all")
+    
+    assert len(roots) == 2
+    titles = [t.title for t in roots]
+    assert "Work Task" in titles
+    assert "Daily Task" in titles
+    assert "Other Task" not in titles

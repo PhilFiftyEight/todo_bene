@@ -85,7 +85,7 @@ class DuckDBTodoRepository(TodoRepository):
     def find_top_level_by_user(
         self,
         user_id: UUID,
-        category: Optional[str] = None,
+        category: Optional[list[str]] = None,
         max_date: Optional[int] = None
     ) -> List[Todo]:
         # Base de la requête : tâches racines non complétées
@@ -94,8 +94,10 @@ class DuckDBTodoRepository(TodoRepository):
 
         # Filtre de catégorie
         if category:
-            query += " AND category = ?"
-            params.append(category)
+            # Création de la clause IN avec autant de '?' que de catégories
+            placeholders = ", ".join(["?"] * len(category))
+            query += f" AND category IN ({placeholders})"
+            params.extend(category)
 
         # NOUVEAU : Filtre de période
         if max_date is not None:

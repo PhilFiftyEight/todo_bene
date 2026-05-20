@@ -58,7 +58,7 @@ class TodoGetAllRootsByUserUseCase:
     def __init__(self, todo_repo: TodoRepository):
         self.todo_repo = todo_repo
 
-    def execute(self, user_id: UUID, category: str = None, period: str = "all") -> list[Todo]:
+    def execute(self, user_id: UUID, category: list[str] = None, period: str = "all") -> list[Todo]:
         # 1. Application de la règle métier système (auto-postpone)
         count = apply_auto_postpone(self.todo_repo, user_id)
         

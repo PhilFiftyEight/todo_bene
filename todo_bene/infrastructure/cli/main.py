@@ -868,7 +868,7 @@ def create(
 @app.command(name="list")
 def list_todos(
     category: Annotated[
-        Optional[str],
+        Optional[list[str]],
         typer.Option("--category", "-c", autocompletion=complete_category),
     ] = None,
     period: Annotated[
@@ -884,7 +884,7 @@ def list_todos(
             if not roots:
                 msg = f"Aucun Todo trouvé pour la période '{period}'"
                 if category:
-                    msg += f" pour la catégorie {category}"
+                    msg += f" pour la catégorie {category[0]}" if len(category) == 1 else f" pour les catégories {', '.join(category)}"
                 show_error(f"{msg}.", title="Vide")
                 return
             # LANCEMENT DU THREAD (JUSTE APRÈS LA RÉCUPÉRATION)

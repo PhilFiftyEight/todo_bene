@@ -36,7 +36,7 @@ class MemoryTodoRepository(TodoRepository):
         ]
 
     def find_top_level_by_user(
-        self, user_id: UUID, category: Optional[str] = None, max_date: Optional[int] = None
+        self, user_id: UUID, category: Optional[list[str]] = None, max_date: Optional[int] = None
     ) -> list[Todo]:
         # Filtrage de base (racines actives de l'utilisateur)
         roots = [
@@ -47,7 +47,7 @@ class MemoryTodoRepository(TodoRepository):
 
         # Filtre de catégorie
         if category:
-            roots = [todo for todo in roots if todo.category == category]
+            roots = [todo for todo in roots if todo.category in category]
 
         # NOUVEAU : Filtre de date
         if max_date:
